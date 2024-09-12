@@ -21,8 +21,6 @@ fun PlaybackSeekBar() {
         Slider(
             value = state.value,
             onValueChange = {
-                viewModel.getPlatformController()
-                    .seekTo((it * viewModel.getPlatformController().duration()).toLong())
                 viewModel.onSeekChanged(it)
             },
             modifier = Modifier

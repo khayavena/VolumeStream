@@ -12,7 +12,9 @@ import androidx.compose.ui.unit.dp
 import com.vdigital.volumestream.ui.viewmodel.PlaybackViewModel
 import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState
 import org.koin.compose.viewmodel.koinViewModel
+import org.koin.core.annotation.KoinExperimentalAPI
 
+@OptIn(KoinExperimentalAPI::class)
 @Composable
 fun PlaybackBufferingIndicator() {
     val viewModel: PlaybackViewModel = koinViewModel()

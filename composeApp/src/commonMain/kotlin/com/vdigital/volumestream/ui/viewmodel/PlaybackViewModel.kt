@@ -56,6 +56,7 @@ class PlaybackViewModel(private val playbackStateController: PlaybackStateContro
 
     fun onSeekChanged(seekValue: Float) {
         viewModelScope.launch {
+            playbackStateController.seekTo((seekValue * playbackStateController.duration()).toLong())
             _progressState.value = seekValue
         }
     }
