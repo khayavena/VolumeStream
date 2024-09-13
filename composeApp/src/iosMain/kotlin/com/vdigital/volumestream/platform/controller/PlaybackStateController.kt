@@ -41,8 +41,11 @@ actual class PlaybackStateController {
         NSTimer.scheduledTimerWithTimeInterval(1.0, true) {
             if (isPlaying()) {
                 callback(currentPosition(), duration())
+                playbackState(playerState())
             }
-            playbackState(playerState())
+            if (avPlayer.currentItem?.isPlaybackBufferEmpty() == true) {
+                playbackState(bufferig)
+            }
         }
     }
 

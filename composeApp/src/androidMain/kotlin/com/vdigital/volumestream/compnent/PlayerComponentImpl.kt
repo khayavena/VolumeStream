@@ -1,23 +1,27 @@
 package com.vdigital.volumestream.compnent
 
 import android.app.Application
-import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaController
 import androidx.media3.session.MediaSession
+import com.vdigital.volumestream.cache.CachedPlaybackDataSourceFactory
 import com.vdigital.volumestream.model.PlaybackMediaItem
+import com.vdigital.volumestream.platform.controller.PlaybackStateController
 
 class PlayerComponentImpl(
     private val context: Application,
+    private val cachedPlaybackDataSourceFactory: CachedPlaybackDataSourceFactory
 ) : PlayerComponent {
     private lateinit var player: ExoPlayer
     private var mediaController: MediaController? = null
     private var mediaSession: MediaSession? = null
     override fun initPlayer() {
-        player = ExoPlayer.Builder(context)
-            .build()
+        player = ExoPlayer.Builder(context).setMediaSourceFactory(
+            cachedPlaybackDataSourceFactory.buildCacheDataSourceFactory()
+        ).build()
         mediaSession =
             MediaSession.Builder(context, player).setCallback(MediaSessionCallback()).build()
         mediaController = mediaSession?.token?.let {
@@ -81,4 +85,14 @@ class PlayerComponentImpl(
     override fun getMediaController(): MediaController? {
         return mediaController
     }
+
+    override fun setControllerLister(playbackControllerListener: PlaybackStateController.PlaybackControllerListener) {
+        mediaController?.addListener(playbackControllerListener)
+    }
+
+    override fun play() {
+        mediaController?.play()
+    }
+
+
 }
