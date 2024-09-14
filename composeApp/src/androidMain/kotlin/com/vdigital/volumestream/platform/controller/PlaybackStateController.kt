@@ -36,15 +36,21 @@ actual class PlaybackStateController(private val playerComponent: PlayerComponen
     }
 
     actual fun isPlaying(): Boolean {
-        return playerComponent.getMediaController()?.isPlaying!!
+        return playerComponent.getMediaController()?.isPlaying==true
     }
 
     actual fun duration(): Long {
-        return playerComponent.getMediaController()?.duration!!
+        if( playerComponent.getMediaController()?.duration != null){
+            return  playerComponent.getMediaController()?.duration!!
+        }
+        return 0L
     }
 
     actual fun currentPosition(): Long {
-        return playerComponent.getMediaController()?.currentPosition!!
+        if(playerComponent.getMediaController()?.currentPosition!= null){
+           return playerComponent.getMediaController()?.currentPosition!!
+        }
+        return 0L
     }
 
     actual fun seekTo(position: Long) {
