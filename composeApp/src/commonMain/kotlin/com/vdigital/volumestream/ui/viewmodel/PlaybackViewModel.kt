@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vdigital.volumestream.model.PlaybackMediaItem
 import com.vdigital.volumestream.platform.controller.PlaybackStateController
+import com.vdigital.volumestream.platform.enum.OsType
 import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,7 +12,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 
-class PlaybackViewModel(private val playbackStateController: PlaybackStateController) :
+class PlaybackViewModel(
+    private val playbackStateController: PlaybackStateController,
+    val osType: OsType
+) :
     ViewModel() {
     private val _playBackState = MutableStateFlow<PlaybackState>(PlaybackState.bufferig)
     private val _progressState = MutableStateFlow(0F)

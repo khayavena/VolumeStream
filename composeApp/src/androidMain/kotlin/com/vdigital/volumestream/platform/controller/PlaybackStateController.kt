@@ -75,29 +75,30 @@ actual class PlaybackStateController(private val playerComponent: PlayerComponen
         override fun onEvents(player: Player, events: Player.Events) {
             super.onEvents(player, events)
             currentPlayer = player
-            if (player.isLoading) {
-                playbackState(PlaybackState.bufferig)
-            } else if (player.isPlaying) {
-                playbackState(PlaybackState.playing)
-            } else {
-                playbackState(PlaybackState.paused)
-            }
+//            if (player.isLoading) {
+//                playbackState(PlaybackState.bufferig)
+//            } else if (player.isPlaying) {
+//                playbackState(PlaybackState.playing)
+//            } else {
+//                playbackState(PlaybackState.paused)
+//            }
+            playbackState(PlaybackState.playing)
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
-            if (playbackState == Player.STATE_READY && currentPlayer?.playWhenReady == false) {
-                playbackState(PlaybackState.paused)
-            } else if (playbackState == Player.STATE_READY) {
-                playbackState(PlaybackState.playing)
-            }
+//            if (playbackState == Player.STATE_READY && currentPlayer?.playWhenReady == false) {
+//                playbackState(PlaybackState.paused)
+//            } else if (playbackState == Player.STATE_READY) {
+//                playbackState(PlaybackState.playing)
+//            }
         }
 
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
-            if (currentPlayer?.playbackState == Player.STATE_READY && currentPlayer?.playWhenReady == false) {
-                playbackState(PlaybackState.paused)
-            } else {
-                playbackState(PlaybackState.playing)
-            }
+//            if (currentPlayer?.playbackState == Player.STATE_READY && currentPlayer?.playWhenReady == false) {
+//                playbackState(PlaybackState.paused)
+//            } else {
+//                playbackState(PlaybackState.playing)
+//            }
         }
     }
 }

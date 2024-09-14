@@ -19,9 +19,7 @@ class PlayerComponentImpl(
     private var mediaController: MediaController? = null
     private var mediaSession: MediaSession? = null
     override fun initPlayer() {
-        player = ExoPlayer.Builder(context).setMediaSourceFactory(
-            cachedPlaybackDataSourceFactory.buildCacheDataSourceFactory()
-        ).build()
+        player = ExoPlayer.Builder(context).build()
         mediaSession =
             MediaSession.Builder(context, player).setCallback(MediaSessionCallback()).build()
         mediaController = mediaSession?.token?.let {
@@ -57,6 +55,7 @@ class PlayerComponentImpl(
             )
             .build()
         player.addMediaItem(mediaItemWithMetadata)
+
     }
 
     override fun addAll(mediaItems: List<PlaybackMediaItem>) {
@@ -73,6 +72,8 @@ class PlayerComponentImpl(
                 )
                 .build()
             player.addMediaItem(mediaItemWithMetadata)
+            player.prepare()
+            player.playWhenReady = true
         }
     }
 

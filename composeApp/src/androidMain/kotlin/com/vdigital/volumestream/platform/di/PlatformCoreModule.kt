@@ -1,21 +1,22 @@
 package com.vdigital.volumestream.platform.di
 
+import com.vdigital.volumestream.AndroidApp
 import com.vdigital.volumestream.cache.CachedPlaybackDataSourceFactory
 import com.vdigital.volumestream.cache.CachedPlaybackDataSourceFactoryImpl
 import com.vdigital.volumestream.compnent.PlayerComponent
 import com.vdigital.volumestream.compnent.PlayerComponentImpl
 import com.vdigital.volumestream.platform.controller.PlaybackStateController
-import org.koin.android.ext.koin.androidApplication
+import com.vdigital.volumestream.platform.enum.OsType
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
 internal actual val platformCoreModule: Module = module {
-    single { androidApplication() }
-    single<PlayerComponent> { PlayerComponentImpl(get(), get()) }
+    single<PlayerComponent> { PlayerComponentImpl(AndroidApp.getAppInstance(), get()) }
     single<PlaybackStateController> { PlaybackStateController(get()) }
+    single<OsType> { OsType.ANDROID }
     single<CachedPlaybackDataSourceFactory> {
         CachedPlaybackDataSourceFactoryImpl(
-            androidApplication()
+            AndroidApp.getAppInstance()
         )
     }
 }
