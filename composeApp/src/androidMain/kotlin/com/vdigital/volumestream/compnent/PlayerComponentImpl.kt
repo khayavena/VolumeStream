@@ -87,7 +87,7 @@ class PlayerComponentImpl(
         return mediaController
     }
 
-    override fun setControllerLister(playbackControllerListener: PlaybackStateController.PlaybackControllerListener) {
+    override fun setControllerListener(playbackControllerListener: PlaybackStateController.PlaybackControllerListener) {
         mediaController?.addListener(playbackControllerListener)
     }
 

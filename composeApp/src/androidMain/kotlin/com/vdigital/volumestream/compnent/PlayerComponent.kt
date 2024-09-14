@@ -11,6 +11,6 @@ interface PlayerComponent {
     fun addAll(mediaItems: List<PlaybackMediaItem>)
     fun releasePlayer()
     fun getMediaController(): MediaController?
-    fun setControllerLister(playbackControllerListener: PlaybackStateController.PlaybackControllerListener)
+    fun setControllerListener(playbackControllerListener: PlaybackStateController.PlaybackControllerListener)
     fun play()
 }
