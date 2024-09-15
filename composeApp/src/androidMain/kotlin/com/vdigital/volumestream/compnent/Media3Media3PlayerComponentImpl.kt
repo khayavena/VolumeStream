@@ -4,17 +4,16 @@ import android.app.Application
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaController
 import androidx.media3.session.MediaSession
 import com.vdigital.volumestream.cache.CachedPlaybackDataSourceFactory
 import com.vdigital.volumestream.model.PlaybackMediaItem
 import com.vdigital.volumestream.platform.controller.PlaybackStateController
 
-class PlayerComponentImpl(
+class Media3Media3PlayerComponentImpl(
     private val context: Application,
     private val cachedPlaybackDataSourceFactory: CachedPlaybackDataSourceFactory
-) : PlayerComponent {
+) : Media3PlayerComponent {
     private lateinit var player: ExoPlayer
     private var mediaController: MediaController? = null
     private var mediaSession: MediaSession? = null

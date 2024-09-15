@@ -4,7 +4,7 @@ import androidx.media3.session.MediaController
 import com.vdigital.volumestream.model.PlaybackMediaItem
 import com.vdigital.volumestream.platform.controller.PlaybackStateController
 
-interface PlayerComponent {
+interface Media3PlayerComponent {
     fun initPlayer()
     fun setMediaItem(mediaItem: PlaybackMediaItem)
     fun addMediaItem(mediaItem: PlaybackMediaItem)

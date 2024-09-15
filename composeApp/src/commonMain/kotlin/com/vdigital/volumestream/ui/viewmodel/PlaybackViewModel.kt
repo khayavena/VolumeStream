@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.vdigital.volumestream.model.PlaybackMediaItem
 import com.vdigital.volumestream.platform.controller.PlaybackStateController
 import com.vdigital.volumestream.platform.enum.OsType
+import com.vdigital.volumestream.repository.PlaybackMediaItemRepository
+import com.vdigital.volumestream.repository.state.MediaItemDataState
 import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +16,8 @@ import kotlinx.coroutines.launch
 
 class PlaybackViewModel(
     private val playbackStateController: PlaybackStateController,
-    val osType: OsType
+    val osType: OsType,
+    private val playbackMediaItemRepository: PlaybackMediaItemRepository
 ) :
     ViewModel() {
     private val _playBackState = MutableStateFlow<PlaybackState>(PlaybackState.bufferig)
@@ -22,39 +25,33 @@ class PlaybackViewModel(
     val playBackStateUI = _playBackState.asStateFlow()
     val progressStateUI = _progressState.asStateFlow()
 
-
-    private val items = listOf(
-        PlaybackMediaItem(
-            "1",
-            "Sample Video 1",
-            "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
-        ),
-        PlaybackMediaItem(
-            "2",
-            "Sample Video 2",
-            "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
-        )
-    )
-
     fun getPlatformController(): PlaybackStateController {
         return playbackStateController
     }
 
     fun initialise() {
         viewModelScope.launch {
-            try {
-                playbackStateController.initPlayer({ currentPosition, duration ->
-                    _progressState.value =
-                        if (duration > 0) currentPosition
-                            .toFloat() / duration else 0f
-                }, playbackState = {
-                    _playBackState.value = it
-                })
-                playbackStateController.addItemItems(items)
-            } catch (e: Exception) {
-                print("Failed player:" + e.message)
-                _playBackState.value = PlaybackState.error("Exception was thrown.")
+            when (val results = playbackMediaItemRepository.fetchMediaItems()) {
+                is MediaItemDataState.Failure -> PlaybackState.error("Failed to load playback items")
+                MediaItemDataState.Loading -> _playBackState.value = PlaybackState.bufferig
+                is MediaItemDataState.Success -> handleStartPlayback(results.data)
             }
+        }
+    }
+
+    private fun handleStartPlayback(playbackMediaItems: MutableList<PlaybackMediaItem>) {
+        try {
+            playbackStateController.initPlayer({ currentPosition, duration ->
+                _progressState.value =
+                    if (duration > 0) currentPosition
+                        .toFloat() / duration else 0f
+            }, playbackState = {
+                _playBackState.value = it
+            })
+            playbackStateController.addItemItems(playbackMediaItems)
+        } catch (e: Exception) {
+            print("Failed player:" + e.message)
+            _playBackState.value = PlaybackState.error("Exception was thrown.")
         }
     }
 
@@ -65,10 +62,6 @@ class PlaybackViewModel(
         }
     }
 
-    override fun onCleared() {
-        viewModelScope.cancel()
-        super.onCleared()
-    }
 
     fun playPause() {
         viewModelScope.launch {
@@ -82,5 +75,10 @@ class PlaybackViewModel(
                     _playBackState.value = it
                 })
         }
+    }
+
+    override fun onCleared() {
+        viewModelScope.cancel()
+        super.onCleared()
     }
 }
