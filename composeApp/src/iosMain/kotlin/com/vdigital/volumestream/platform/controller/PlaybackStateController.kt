@@ -2,13 +2,14 @@ package com.vdigital.volumestream.platform.controller
 
 import com.vdigital.volumestream.model.PlaybackMediaItem
 import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState
-import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState.*
+import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState.bufferig
+import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState.error
+import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState.paused
+import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState.playing
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.AVFoundation.AVPlayer
 import platform.AVFoundation.AVPlayerItem
-import platform.AVFoundation.AVPlayerItemStatus
 import platform.AVFoundation.AVQueuePlayer
-import platform.AVFoundation.asset
 import platform.AVFoundation.currentItem
 import platform.AVFoundation.currentTime
 import platform.AVFoundation.duration

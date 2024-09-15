@@ -4,7 +4,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.interop.UIKitView
-import androidx.compose.ui.window.ComposeUIViewController
 import com.vdigital.volumestream.platform.controller.PlaybackStateController
 import kotlinx.cinterop.CValue
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -25,7 +24,7 @@ actual fun PlatformMediaPlayerView(
     val playbackLayer = remember { AVPlayerLayer() }
     val avPlayerViewController = remember { AVPlayerViewController() }
     avPlayerViewController.player = remember { playbackStateController.avPlayer }
-    avPlayerViewController.showsPlaybackControls = true
+    avPlayerViewController.showsPlaybackControls = false
     playbackLayer.player =  avPlayerViewController.player
 
     UIKitView(

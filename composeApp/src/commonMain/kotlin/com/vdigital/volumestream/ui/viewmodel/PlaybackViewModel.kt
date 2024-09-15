@@ -50,7 +50,6 @@ class PlaybackViewModel(
             })
             playbackStateController.addItemItems(playbackMediaItems)
         } catch (e: Exception) {
-            print("Failed player:" + e.message)
             _playBackState.value = PlaybackState.error("Exception was thrown.")
         }
     }

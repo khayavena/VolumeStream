@@ -5,7 +5,7 @@ import org.koin.core.module.Module
 import org.koin.dsl.module
 
 
-val coreModule: Module
+val appModule: Module
     get() = module {
         includes(commonModule + platformCoreModule)
     }
