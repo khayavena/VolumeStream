@@ -13,7 +13,6 @@
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity
             android:exported="true"
-            android:screenOrientation="landscape"
             android:name=".platform.activity.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
