@@ -98,5 +98,7 @@ actual class PlaybackStateController(private val media3PlayerComponent: Media3Pl
         }
     }
 
+    actual fun downloadDashManifest(playbackItem: PlaybackMediaItem) {
+    }
 }
 

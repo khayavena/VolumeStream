@@ -18,7 +18,9 @@ class Media3Media3PlayerComponentImpl(
     private var mediaController: MediaController? = null
     private var mediaSession: MediaSession? = null
     override fun initPlayer() {
-        player = ExoPlayer.Builder(context).setMediaSourceFactory(cachedPlaybackDataSourceFactory.buildCacheDataSourceFactory()).build()
+        player = ExoPlayer.Builder(context)
+            .setMediaSourceFactory(cachedPlaybackDataSourceFactory.buildCacheDataSourceFactory())
+            .build()
         mediaSession =
             MediaSession.Builder(context, player).setCallback(MediaSessionCallback()).build()
         mediaController = mediaSession?.token?.let {
@@ -32,7 +34,7 @@ class Media3Media3PlayerComponentImpl(
 
     override fun setMediaItem(mediaItem: PlaybackMediaItem) {
         val mediaItemWithMetadata = MediaItem.Builder()
-            .setUri(mediaItem.url).setMediaId(mediaItem.url)
+            .setUri(mediaItem.streamUrl).setMediaId(mediaItem.streamUrl)
             .setMediaMetadata(
                 MediaMetadata.Builder()
                     .setTitle(mediaItem.title)
@@ -45,7 +47,7 @@ class Media3Media3PlayerComponentImpl(
 
     override fun addMediaItem(mediaItem: PlaybackMediaItem) {
         val mediaItemWithMetadata = MediaItem.Builder()
-            .setUri(mediaItem.url).setMediaId(mediaItem.url)
+            .setUri(mediaItem.streamUrl).setMediaId(mediaItem.streamUrl)
             .setMediaMetadata(
                 MediaMetadata.Builder()
                     .setTitle(mediaItem.title)
@@ -62,7 +64,7 @@ class Media3Media3PlayerComponentImpl(
         while (iterator.hasNext()) {
             val mediaItem = iterator.next()
             val mediaItemWithMetadata = MediaItem.Builder()
-                .setUri(mediaItem.url).setMediaId(mediaItem.url)
+                .setUri(mediaItem.streamUrl).setMediaId(mediaItem.streamUrl)
                 .setMediaMetadata(
                     MediaMetadata.Builder()
                         .setTitle(mediaItem.title)

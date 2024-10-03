@@ -16,4 +16,5 @@ expect class PlaybackStateController {
     fun currentPosition(): Long
     fun seekTo(position: Long)
     fun addItemItems(items: List<PlaybackMediaItem>)
+    fun downloadDashManifest(playbackItem: PlaybackMediaItem)
 }

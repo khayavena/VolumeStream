@@ -64,15 +64,17 @@ class PlaybackViewModel(
 
     fun playPause() {
         viewModelScope.launch {
-            if (_playBackState.value == PlaybackState.playing)
+            if (_playBackState.value == PlaybackState.playing) {
                 playbackStateController.pause(
                     playbackState = {
                         _playBackState.value = it
                     }
-                ) else
+                )
+            } else {
                 playbackStateController.play(playbackState = {
                     _playBackState.value = it
                 })
+            }
         }
     }
 

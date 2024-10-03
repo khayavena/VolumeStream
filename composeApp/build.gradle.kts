@@ -1,4 +1,3 @@
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -7,6 +6,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.jetbrainsCompose)
     alias(libs.plugins.compose.compiler)
+    kotlin("plugin.serialization") version "1.9.0"
 }
 
 kotlin {
@@ -38,6 +38,7 @@ kotlin {
             implementation(libs.androidx.media3.session)
             implementation(libs.androidx.media3.ui)
             implementation(libs.koin.android)
+            implementation(libs.ktor.client.okhttp)
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -49,15 +50,22 @@ kotlin {
             implementation(libs.napier)
             implementation(libs.androidx.lifecycle.runtime.compose)
             implementation(libs.lifecycle.viewmodel.compose)
-            implementation(libs.ktor.client.core)
-            implementation(libs.ktor.client.cio)
             implementation(libs.koin.compose)
             implementation(libs.koin.composeVM)
             implementation(libs.koin.core)
-
+            implementation(libs.navigation.compose)
+            //Net-working
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.logging)
+            implementation(libs.ktor.serialization.kotlinx.json)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.client.encoding)
+            //UI images
+            implementation(libs.image.loader)
         }
         iosMain.dependencies {
             implementation(libs.koin.core)
+            implementation(libs.ktor.client.darwin)
         }
     }
 }
@@ -97,6 +105,9 @@ android {
     dependencies {
         debugImplementation(compose.uiTooling)
     }
+}
+dependencies {
+    implementation(libs.androidx.lifecycle.common.jvm)
 }
 
 

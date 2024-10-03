@@ -3,7 +3,7 @@ package com.vdigital.volumestream
 import androidx.compose.material.MaterialTheme
 import androidx.compose.runtime.Composable
 import com.vdigital.volumestream.di.appModule
-import com.vdigital.volumestream.ui.view.PlaybackView
+import com.vdigital.volumestream.ui.view.MainAppView
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.koin.compose.KoinApplication
 
@@ -14,7 +14,7 @@ fun VolumeStreamApp() {
         modules(appModule)
     }) {
         MaterialTheme {
-            PlaybackView()
+            MainAppView()
         }
     }
 }

@@ -24,6 +24,8 @@ import platform.CoreMedia.CMTimeGetSeconds
 import platform.CoreMedia.CMTimeMake
 import platform.Foundation.NSTimer
 import platform.Foundation.NSURL
+import platform.darwin.dispatch_async
+import platform.darwin.dispatch_get_main_queue
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 @OptIn(ExperimentalForeignApi::class)
@@ -31,7 +33,7 @@ actual class PlaybackStateController {
 
     val avPlayer: AVQueuePlayer = AVQueuePlayer()
     actual fun addItem(mediaItem: PlaybackMediaItem) {
-        val nsUrl = NSURL.URLWithString(mediaItem.url)
+        val nsUrl = NSURL.URLWithString(mediaItem.streamUrl)
         val playerItem = nsUrl?.let { AVPlayerItem(it) }
         if (playerItem != null) {
             avPlayer.insertItem(playerItem, null)
@@ -113,6 +115,12 @@ actual class PlaybackStateController {
             } else {
                 bufferig
             }
+        }
+    }
+
+    actual fun downloadDashManifest(playbackItem: PlaybackMediaItem) {
+        dispatch_async(dispatch_get_main_queue()) {
+            //
         }
     }
 }
