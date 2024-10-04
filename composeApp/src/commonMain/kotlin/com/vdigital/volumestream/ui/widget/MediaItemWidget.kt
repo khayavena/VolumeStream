@@ -1,6 +1,7 @@
 package com.vdigital.volumestream.ui.widget
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,9 +21,9 @@ import com.vdigital.volumestream.model.PlaybackMediaItem
 
 
 @Composable
-fun MediaItemWidget(playbackMediaItem: PlaybackMediaItem) {
+fun MediaItemWidget(playbackMediaItem: PlaybackMediaItem, onClick: (() -> Unit)) {
     Column(
-        modifier = Modifier
+        modifier = Modifier.clickable(onClick = onClick)
             .padding(8.dp)
             .width(120.dp)
     ) {

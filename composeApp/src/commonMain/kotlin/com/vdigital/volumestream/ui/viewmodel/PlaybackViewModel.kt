@@ -6,7 +6,6 @@ import com.vdigital.volumestream.model.PlaybackMediaItem
 import com.vdigital.volumestream.platform.controller.PlaybackStateController
 import com.vdigital.volumestream.platform.enum.OsType
 import com.vdigital.volumestream.repository.PlaybackMediaItemRepository
-import com.vdigital.volumestream.repository.state.MediaItemDataState
 import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +16,6 @@ import kotlinx.coroutines.launch
 class PlaybackViewModel(
     private val playbackStateController: PlaybackStateController,
     val osType: OsType,
-    private val playbackMediaItemRepository: PlaybackMediaItemRepository
 ) :
     ViewModel() {
     private val _playBackState = MutableStateFlow<PlaybackState>(PlaybackState.bufferig)
@@ -31,11 +29,7 @@ class PlaybackViewModel(
 
     fun initialise() {
         viewModelScope.launch {
-            when (val results = playbackMediaItemRepository.fetchMediaItems()) {
-                is MediaItemDataState.Failure -> PlaybackState.error("Failed to load playback items")
-                MediaItemDataState.Loading -> _playBackState.value = PlaybackState.bufferig
-                is MediaItemDataState.Success -> handleStartPlayback(results.data)
-            }
+            handleStartPlayback(mutableListOf(currentMediaItem))
         }
     }
 
@@ -50,6 +44,7 @@ class PlaybackViewModel(
             })
             playbackStateController.addItemItems(playbackMediaItems)
         } catch (e: Exception) {
+            e.printStackTrace()
             _playBackState.value = PlaybackState.error("Exception was thrown.")
         }
     }
@@ -82,4 +77,11 @@ class PlaybackViewModel(
         viewModelScope.cancel()
         super.onCleared()
     }
+
+  companion object{
+      private lateinit var currentMediaItem: PlaybackMediaItem
+      fun setSelectedItem(mediaItem: PlaybackMediaItem) {
+          currentMediaItem = mediaItem
+      }
+  }
 }

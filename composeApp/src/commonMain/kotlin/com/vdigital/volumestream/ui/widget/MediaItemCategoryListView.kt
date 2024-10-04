@@ -6,17 +6,22 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
 import com.vdigital.volumestream.model.PlaybackMediaItem
 
 @Composable
-fun MediaItemCategoryListWidget(mediaItemCategories: Map<String, MutableList<PlaybackMediaItem>>) {
+fun MediaItemCategoryListWidget(
+    mediaItemCategories: Map<String, MutableList<PlaybackMediaItem>>,
+    navController: NavHostController
+) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp)
     ) {
         mediaItemCategories.forEach { (category, playbackMediaItems) ->
             item {
-                PlaybackCategoryRowWidget(
+                PlaybackCategoryCarousel(
+                    navController =navController,
                     category = category,
                     playbackMediaItems = playbackMediaItems
                 )

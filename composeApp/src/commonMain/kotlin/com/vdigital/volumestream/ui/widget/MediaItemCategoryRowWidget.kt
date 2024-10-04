@@ -10,10 +10,16 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
 import com.vdigital.volumestream.model.PlaybackMediaItem
+import com.vdigital.volumestream.ui.viewmodel.PlaybackViewModel.Companion.setSelectedItem
 
 @Composable
-fun PlaybackCategoryRowWidget(category: String, playbackMediaItems: List<PlaybackMediaItem>) {
+fun PlaybackCategoryCarousel(
+    category: String,
+    playbackMediaItems: List<PlaybackMediaItem>,
+    navController: NavHostController,
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -26,8 +32,11 @@ fun PlaybackCategoryRowWidget(category: String, playbackMediaItems: List<Playbac
         )
 
         LazyRow {
-            items(playbackMediaItems) { movie ->
-                MediaItemWidget(playbackMediaItem = movie)
+            items(playbackMediaItems) { mediaItem ->
+                MediaItemWidget(playbackMediaItem = mediaItem) {
+                    setSelectedItem(mediaItem)
+                    navController.navigate("play")
+                }
             }
         }
     }

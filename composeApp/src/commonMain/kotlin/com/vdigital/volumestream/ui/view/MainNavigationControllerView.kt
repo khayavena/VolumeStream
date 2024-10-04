@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavController
@@ -21,11 +22,18 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 
 @Composable
-fun MainAppView() {
+fun MainNavigationControllerView() {
     val navController = rememberNavController()
     Scaffold(
         bottomBar = {
-            BottomNavigationBar(navController)
+
+            val navBackStackEntry by navController.currentBackStackEntryAsState()
+            val currentRoute = navBackStackEntry?.destination?.route
+
+            // Show bottom bar only for Home and Profile, hide for Detail screen
+            if (currentRoute != "play") {
+                BottomNavigationBar(navController)
+            }
         }
     ) { innerPadding ->
         NavHost(
@@ -34,13 +42,16 @@ fun MainAppView() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable("home") {
-                HomeScreen()
+                HomeScreen(navController=navController)
             }
             composable("profile") {
                 ProfileScreen()
             }
             composable("settings") {
                 SettingsScreen()
+            }
+            composable("play") { backStackEntry ->
+                PlaybackView()
             }
         }
     }
@@ -65,7 +76,6 @@ fun BottomNavigationBar(navController: NavController) {
                         popUpTo(navController.graph.findStartDestination().navigatorName) {
                             saveState = true
                         }
-
                         launchSingleTop = true
                         restoreState = true
                     }
@@ -84,6 +94,4 @@ fun currentRoute(navController: NavController): String? {
 data class BottomNavItem(
     val name: String,
     val route: String,
-    val icon: ImageVector
-)
-
+    val icon: ImageVector)

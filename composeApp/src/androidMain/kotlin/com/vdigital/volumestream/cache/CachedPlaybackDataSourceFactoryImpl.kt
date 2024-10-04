@@ -17,18 +17,22 @@ import java.io.File
 class CachedPlaybackDataSourceFactoryImpl(
     private val context: Context ,
 ) : CachedPlaybackDataSourceFactory {
+    lateinit var simpleCache:SimpleCache
     override fun buildCacheDataSourceFactory(): DefaultMediaSourceFactory {
-        val cacheDir = File(context.cacheDir, CACHE_FILE)
-        val cache = SimpleCache(
-            cacheDir, LeastRecentlyUsedCacheEvictor(CACHE_SIZE), StandaloneDatabaseProvider(context)
+        simpleCache = SimpleCache(
+            File(context.cacheDir, CACHE_FILE), LeastRecentlyUsedCacheEvictor(CACHE_SIZE), StandaloneDatabaseProvider(context)
         )
         val dataSourceFactory = DefaultDataSource.Factory(
             context,
-            CacheDataSource.Factory().setCache(cache)
+            CacheDataSource.Factory().setCache(simpleCache)
                 .setUpstreamDataSourceFactory(DefaultHttpDataSource.Factory()) // Use HTTP for upstream
                 .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR) // Optional: Ignore cache on error
         )
         return DefaultMediaSourceFactory(context).setDataSourceFactory(dataSourceFactory)
+    }
+
+    override fun clearCache() {
+       simpleCache.release()
     }
 
     companion object {

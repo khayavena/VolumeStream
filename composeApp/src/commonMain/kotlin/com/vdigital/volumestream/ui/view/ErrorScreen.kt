@@ -34,7 +34,7 @@ fun ErrorScreen(
             text = title,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.Red,
+            color = Color.Black,
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
@@ -50,7 +50,7 @@ fun ErrorScreen(
         if (onRetry != null) {
             Button(
                 onClick = onRetry,
-                colors = ButtonDefaults.buttonColors(backgroundColor = Color.Red)
+                colors = ButtonDefaults.buttonColors(backgroundColor = Color.Black)
             ) {
                 Text(
                     text = "Retry",

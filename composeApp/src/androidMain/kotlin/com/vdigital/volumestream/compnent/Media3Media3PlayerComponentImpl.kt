@@ -72,16 +72,18 @@ class Media3Media3PlayerComponentImpl(
                         .build()
                 )
                 .build()
-            player.addMediaItem(mediaItemWithMetadata)
-            player.prepare()
-            player.playWhenReady = true
+            player?.addMediaItem(mediaItemWithMetadata)
         }
+        player?.prepare()
+        player?.playWhenReady = true
     }
 
     override fun releasePlayer() {
+
         player.release()
         mediaSession?.release()
         mediaSession = null
+        cachedPlaybackDataSourceFactory.clearCache()
     }
 
     override fun getMediaController(): MediaController? {

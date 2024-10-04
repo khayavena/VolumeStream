@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,13 +37,14 @@ fun PlaybackView() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Blue), contentAlignment = Alignment.Center
+            .background(Color.Black), contentAlignment = Alignment.Center
     ) {
         when (viewModel.osType) {
             OsType.IOS -> PlatformMediaPlayerView(
                 modifier = Modifier
                     .fillMaxSize(), controller
             )
+
             OsType.ANDROID -> if (state.value == PlaybackState.playing || state.value == PlaybackState.paused) {
                 PlatformMediaPlayerView(
                     modifier = Modifier
@@ -50,7 +52,6 @@ fun PlaybackView() {
                 )
             }
         }
-
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
