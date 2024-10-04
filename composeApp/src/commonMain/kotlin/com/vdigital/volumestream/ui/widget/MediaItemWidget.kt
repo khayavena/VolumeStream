@@ -18,7 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.seiko.imageloader.rememberImagePainter
-import com.vdigital.volumestream.model.PlaybackMediaItem
+import com.vditital.data.model.PlaybackMediaItem
 
 
 @Composable

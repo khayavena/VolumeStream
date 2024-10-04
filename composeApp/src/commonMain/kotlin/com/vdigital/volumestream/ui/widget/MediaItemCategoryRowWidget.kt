@@ -12,8 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import com.vdigital.volumestream.model.PlaybackMediaItem
 import com.vdigital.volumestream.ui.viewmodel.PlaybackViewModel.Companion.setSelectedItem
+import com.vditital.data.model.PlaybackMediaItem
 
 @Composable
 fun PlaybackCategoryCarousel(

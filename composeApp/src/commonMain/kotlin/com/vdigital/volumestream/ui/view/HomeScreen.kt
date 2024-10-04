@@ -5,10 +5,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.navigation.NavHostController
-import com.vdigital.volumestream.model.PlaybackMediaItem
-import com.vdigital.volumestream.repository.state.ResultState
+
 import com.vdigital.volumestream.ui.viewmodel.HomaPageViewModel
 import com.vdigital.volumestream.ui.widget.MediaItemCategoryListView
+import com.vditital.data.model.PlaybackMediaItem
+import com.vditital.data.repository.state.ResultState
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.annotation.KoinExperimentalAPI
 

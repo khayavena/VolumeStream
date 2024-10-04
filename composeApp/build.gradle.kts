@@ -29,7 +29,6 @@ kotlin {
     }
 
     sourceSets {
-
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
@@ -38,9 +37,9 @@ kotlin {
             implementation(libs.androidx.media3.session)
             implementation(libs.androidx.media3.ui)
             implementation(libs.koin.android)
-            implementation(libs.ktor.client.okhttp)
         }
         commonMain.dependencies {
+            api(project(":data"))
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material)
@@ -54,18 +53,12 @@ kotlin {
             implementation(libs.koin.composeVM)
             implementation(libs.koin.core)
             implementation(libs.navigation.compose)
-            //Net-working
-            implementation(libs.ktor.client.core)
-            implementation(libs.ktor.client.logging)
-            implementation(libs.ktor.serialization.kotlinx.json)
-            implementation(libs.ktor.client.content.negotiation)
-            implementation(libs.ktor.client.encoding)
             //UI images
             implementation(libs.image.loader)
+
         }
         iosMain.dependencies {
             implementation(libs.koin.core)
-            implementation(libs.ktor.client.darwin)
         }
     }
 }

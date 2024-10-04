@@ -1,11 +1,11 @@
 package com.vdigital.volumestream.platform.controller
 
-import com.vdigital.volumestream.model.PlaybackMediaItem
 import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState
-import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState.bufferig
-import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState.error
-import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState.paused
-import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState.playing
+import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState.Buffering
+import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState.Error
+import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState.Paused
+import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState.Playing
+import com.vditital.data.model.PlaybackMediaItem
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.AVFoundation.AVPlayer
 import platform.AVFoundation.AVPlayerItem
@@ -47,14 +47,14 @@ actual class PlaybackStateController {
                 playbackState(playerState())
             }
             if (avPlayer.currentItem?.isPlaybackBufferEmpty() == true) {
-                playbackState(bufferig)
+                playbackState(Buffering)
             }
         }
     }
 
     actual fun pause(playbackState: (PlaybackState) -> Unit) {
         (avPlayer as AVPlayer).pause()
-        playbackState(paused)
+        playbackState(Paused)
     }
 
     actual fun release() {
@@ -93,7 +93,7 @@ actual class PlaybackStateController {
 
     actual fun play(playbackState: (PlaybackState) -> Unit) {
         avPlayer.play()
-        playbackState(playing)
+        playbackState(Playing)
     }
 
     actual fun addItemItems(items: List<PlaybackMediaItem>) {
@@ -106,14 +106,14 @@ actual class PlaybackStateController {
     private fun playerState(): PlaybackState {
         val item = avPlayer.currentItem
         return if (item?.isPlaybackLikelyToKeepUp() == true || item?.isPlaybackBufferFull() == true) {
-            playing
+            Playing
         } else if (item?.isPlaybackBufferEmpty() == true) {
-            bufferig
+            Buffering
         } else {
             if (avPlayer.error != null) {
-                error(avPlayer.error!!.code().toString() + "Something went wrong")
+                Error(avPlayer.error!!.code().toString() + "Something went wrong")
             } else {
-                bufferig
+                Buffering
             }
         }
     }

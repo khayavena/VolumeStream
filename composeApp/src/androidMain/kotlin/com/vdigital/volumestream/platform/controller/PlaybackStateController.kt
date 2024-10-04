@@ -8,10 +8,10 @@ import androidx.media3.common.Player
 import androidx.media3.common.Player.Listener
 import androidx.media3.session.MediaController
 import com.vdigital.volumestream.compnent.Media3PlayerComponent
-import com.vdigital.volumestream.model.PlaybackMediaItem
 import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState
-import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState.bufferig
-import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState.playing
+import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState.Buffering
+import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState.Playing
+import com.vditital.data.model.PlaybackMediaItem
 
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
@@ -30,11 +30,11 @@ actual class PlaybackStateController(private val media3PlayerComponent: Media3Pl
             override fun run() {
                 if (media3PlayerComponent.getMediaController() != null && media3PlayerComponent.getMediaController()?.isPlaying == true) {
                     callback(currentPosition(), duration())
-                    playbackState(playing)
+                    playbackState(Playing)
                 }
                 val state = media3PlayerComponent.getMediaController()?.playbackState
                 if (state == Player.STATE_BUFFERING) {
-                    playbackState(bufferig)
+                    playbackState(Buffering)
                 }
                 handler.postDelayed(this, 1000)
             }
@@ -44,7 +44,7 @@ actual class PlaybackStateController(private val media3PlayerComponent: Media3Pl
 
     actual fun pause(playbackState: (PlaybackState) -> Unit) {
         media3PlayerComponent.getMediaController()?.pause()
-        playbackState(PlaybackState.paused)
+        playbackState(PlaybackState.Paused)
     }
 
     actual fun release() {
@@ -79,7 +79,7 @@ actual class PlaybackStateController(private val media3PlayerComponent: Media3Pl
 
     actual fun play(playbackState: (PlaybackState) -> Unit) {
         media3PlayerComponent.getMediaController()?.play()
-        playbackState(playing)
+        playbackState(Playing)
     }
 
     internal fun getController(): MediaController? {
@@ -93,7 +93,7 @@ actual class PlaybackStateController(private val media3PlayerComponent: Media3Pl
     class PlaybackControllerListener(val playbackState: (PlaybackState) -> Unit) : Listener {
         override fun onPlayerError(error: PlaybackException) {
             super.onPlayerError(error)
-            error.message?.let { PlaybackState.error(errorMessage = it) }
+            error.message?.let { PlaybackState.Error(errorMessage = it) }
                 ?.let { playbackState(it) }
         }
     }

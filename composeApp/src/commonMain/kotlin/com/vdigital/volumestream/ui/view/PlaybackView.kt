@@ -12,7 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -45,7 +44,7 @@ fun PlaybackView() {
                     .fillMaxSize(), controller
             )
 
-            OsType.ANDROID -> if (state.value == PlaybackState.playing || state.value == PlaybackState.paused) {
+            OsType.ANDROID -> if (state.value == PlaybackState.Playing || state.value == PlaybackState.Paused) {
                 PlatformMediaPlayerView(
                     modifier = Modifier
                         .fillMaxSize(), controller

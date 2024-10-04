@@ -20,7 +20,7 @@ fun PlaybackBufferingIndicator() {
     val viewModel: PlaybackViewModel = koinViewModel()
     val state = viewModel.playBackStateUI.collectAsState()
     AnimatedVisibility(
-        visible = state.value == PlaybackState.bufferig,
+        visible = state.value == PlaybackState.Buffering,
         enter = fadeIn(),
         exit = fadeOut()
     ) {

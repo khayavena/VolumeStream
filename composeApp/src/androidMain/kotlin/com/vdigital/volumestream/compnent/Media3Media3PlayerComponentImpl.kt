@@ -7,8 +7,9 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaController
 import androidx.media3.session.MediaSession
 import com.vdigital.volumestream.cache.CachedPlaybackDataSourceFactory
-import com.vdigital.volumestream.model.PlaybackMediaItem
+
 import com.vdigital.volumestream.platform.controller.PlaybackStateController
+import com.vditital.data.model.PlaybackMediaItem
 
 class Media3Media3PlayerComponentImpl(
     private val context: Application,

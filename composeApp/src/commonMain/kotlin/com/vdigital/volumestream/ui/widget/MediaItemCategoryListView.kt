@@ -9,7 +9,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import com.vdigital.volumestream.model.PlaybackMediaItem
+import com.vditital.data.model.PlaybackMediaItem
+
 
 @Composable
 fun MediaItemCategoryListView(
@@ -18,7 +19,7 @@ fun MediaItemCategoryListView(
 ) {
     LazyColumn(
         modifier = Modifier.background(Color.Black).fillMaxSize(),
-        contentPadding = PaddingValues(16.dp)
+        contentPadding = PaddingValues(8.dp)
     ) {
         mediaItemCategories.forEach { (category, playbackMediaItems) ->
             item {

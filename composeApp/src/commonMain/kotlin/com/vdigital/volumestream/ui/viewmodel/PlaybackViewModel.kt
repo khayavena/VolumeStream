@@ -2,11 +2,10 @@ package com.vdigital.volumestream.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.vdigital.volumestream.model.PlaybackMediaItem
 import com.vdigital.volumestream.platform.controller.PlaybackStateController
 import com.vdigital.volumestream.platform.enum.OsType
-import com.vdigital.volumestream.repository.PlaybackMediaItemRepository
 import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState
+import com.vditital.data.model.PlaybackMediaItem
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,7 +17,7 @@ class PlaybackViewModel(
     val osType: OsType,
 ) :
     ViewModel() {
-    private val _playBackState = MutableStateFlow<PlaybackState>(PlaybackState.bufferig)
+    private val _playBackState = MutableStateFlow<PlaybackState>(PlaybackState.Buffering)
     private val _progressState = MutableStateFlow(0F)
     val playBackStateUI = _playBackState.asStateFlow()
     val progressStateUI = _progressState.asStateFlow()
@@ -45,7 +44,7 @@ class PlaybackViewModel(
             playbackStateController.addItemItems(playbackMediaItems)
         } catch (e: Exception) {
             e.printStackTrace()
-            _playBackState.value = PlaybackState.error("Exception was thrown.")
+            _playBackState.value = PlaybackState.Error("Exception was thrown.")
         }
     }
 
@@ -59,7 +58,7 @@ class PlaybackViewModel(
 
     fun playPause() {
         viewModelScope.launch {
-            if (_playBackState.value == PlaybackState.playing) {
+            if (_playBackState.value == PlaybackState.Playing) {
                 playbackStateController.pause(
                     playbackState = {
                         _playBackState.value = it

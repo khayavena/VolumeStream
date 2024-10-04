@@ -40,7 +40,7 @@ fun PlayPauseControl(onPlayPause: () -> Unit) {
                 .size(56.dp)
                 .background(Color.Gray, CircleShape)
         ) {
-            val icon = if (state.value == PlaybackState.playing) "❚❚" else "▶"
+            val icon = if (state.value == PlaybackState.Playing) "❚❚" else "▶"
             Text(icon, fontSize = 24.sp, color = Color.White)
         }
     }

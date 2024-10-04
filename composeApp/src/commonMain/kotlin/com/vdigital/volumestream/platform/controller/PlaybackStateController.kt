@@ -1,8 +1,8 @@
 package com.vdigital.volumestream.platform.controller
 
 
-import com.vdigital.volumestream.model.PlaybackMediaItem
 import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState
+import com.vditital.data.model.PlaybackMediaItem
 
 expect class PlaybackStateController {
     fun initPlayer(callback: (Long, Long) -> Unit, playbackState: (PlaybackState) -> Unit)
