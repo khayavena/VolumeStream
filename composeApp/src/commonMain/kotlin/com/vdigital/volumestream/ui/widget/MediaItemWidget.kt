@@ -14,6 +14,7 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.seiko.imageloader.rememberImagePainter
@@ -38,7 +39,8 @@ fun MediaItemWidget(playbackMediaItem: PlaybackMediaItem, onClick: (() -> Unit))
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = playbackMediaItem.title,
-            style = MaterialTheme.typography.body2,
+            color = Color.White,
+            style = MaterialTheme.typography.body1,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )

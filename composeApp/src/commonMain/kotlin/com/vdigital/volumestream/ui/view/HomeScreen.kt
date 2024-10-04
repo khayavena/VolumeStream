@@ -8,7 +8,7 @@ import androidx.navigation.NavHostController
 import com.vdigital.volumestream.model.PlaybackMediaItem
 import com.vdigital.volumestream.repository.state.ResultState
 import com.vdigital.volumestream.ui.viewmodel.HomaPageViewModel
-import com.vdigital.volumestream.ui.widget.MediaItemCategoryListWidget
+import com.vdigital.volumestream.ui.widget.MediaItemCategoryListView
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.annotation.KoinExperimentalAPI
 
@@ -31,7 +31,7 @@ fun HomeScreen(
         is ResultState.Success -> {
             val data =
                 (state.value as ResultState.Success<Map<String, MutableList<PlaybackMediaItem>>>).data
-            MediaItemCategoryListWidget(mediaItemCategories = data, navController = navController)
+            MediaItemCategoryListView(mediaItemCategories = data, navController = navController)
         }
     }
     LaunchedEffect(Unit) {

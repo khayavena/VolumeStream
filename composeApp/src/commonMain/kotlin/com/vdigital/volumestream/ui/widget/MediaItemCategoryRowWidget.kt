@@ -9,6 +9,7 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.vdigital.volumestream.model.PlaybackMediaItem
@@ -26,6 +27,7 @@ fun PlaybackCategoryCarousel(
             .padding(vertical = 8.dp)
     ) {
         Text(
+            color = Color.White,
             text = category,
             style = MaterialTheme.typography.h6,
             modifier = Modifier.padding(horizontal = 8.dp)
