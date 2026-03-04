@@ -24,14 +24,15 @@ import platform.CoreMedia.CMTimeGetSeconds
 import platform.CoreMedia.CMTimeMake
 import platform.Foundation.NSTimer
 import platform.Foundation.NSURL
-import platform.darwin.dispatch_async
-import platform.darwin.dispatch_get_main_queue
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 @OptIn(ExperimentalForeignApi::class)
 actual class PlaybackStateController {
 
     val avPlayer: AVQueuePlayer = AVQueuePlayer()
+    private var progressTimer: NSTimer? = null
+    private var released = false
+
     actual fun addItem(mediaItem: PlaybackMediaItem) {
         val nsUrl = NSURL.URLWithString(mediaItem.streamUrl)
         val playerItem = nsUrl?.let { AVPlayerItem(it) }
@@ -41,7 +42,8 @@ actual class PlaybackStateController {
     }
 
     actual fun initPlayer(callback: (Long, Long) -> Unit, playbackState: (PlaybackState) -> Unit) {
-        NSTimer.scheduledTimerWithTimeInterval(1.0, true) {
+        progressTimer?.invalidate()
+        progressTimer = NSTimer.scheduledTimerWithTimeInterval(1.0, true) {
             if (isPlaying()) {
                 callback(currentPosition(), duration())
                 playbackState(playerState())
@@ -58,6 +60,11 @@ actual class PlaybackStateController {
     }
 
     actual fun release() {
+        if (released) return
+        released = true
+        (avPlayer as AVPlayer).pause()
+        progressTimer?.invalidate()
+        progressTimer = null
         avPlayer.removeAllItems()
     }
 
@@ -70,24 +77,25 @@ actual class PlaybackStateController {
     }
 
     actual fun duration(): Long {
-        val duration = avPlayer.currentItem?.let { CMTimeGetSeconds(it.duration) }
-        if (duration != null) {
-            return duration.toLong()
+        val durationSec = avPlayer.currentItem?.let { CMTimeGetSeconds(it.duration) }
+        if (durationSec != null) {
+            return (durationSec * 1000).toLong()
         }
         return 0L
     }
 
     actual fun currentPosition(): Long {
-        val currentTime = avPlayer.currentItem?.let { CMTimeGetSeconds(it.currentTime()) }
-        if (currentTime != null) {
-            return currentTime.toLong()
+        val currentTimeSec = avPlayer.currentItem?.let { CMTimeGetSeconds(it.currentTime()) }
+        if (currentTimeSec != null) {
+            return (currentTimeSec * 1000).toLong()
         }
         return 0L
     }
 
 
     actual fun seekTo(position: Long) {
-        val seekPosition = CMTimeMake(position, 1)
+        // timescale 1000 = milliseconds, matching the Android Media3 unit
+        val seekPosition = CMTimeMake(position, 1000)
         avPlayer.seekToTime(seekPosition)
     }
 
@@ -97,6 +105,9 @@ actual class PlaybackStateController {
     }
 
     actual fun addItemItems(items: List<PlaybackMediaItem>) {
+        // Clear the existing queue before loading a new track list so that
+        // switching tracks does not stack items on the AVQueuePlayer.
+        avPlayer.removeAllItems()
         val iterator = items.iterator()
         while (iterator.hasNext()) {
             addItem(iterator.next())
@@ -119,8 +130,6 @@ actual class PlaybackStateController {
     }
 
     actual fun downloadDashManifest(playbackItem: PlaybackMediaItem) {
-        dispatch_async(dispatch_get_main_queue()) {
-            //
-        }
+        // AVPlayer handles streaming directly — no separate manifest download needed on iOS
     }
 }

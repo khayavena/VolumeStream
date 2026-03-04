@@ -7,5 +7,5 @@ import org.koin.dsl.module
 
 internal actual val platformCoreModule: Module = module {
     single<OsType> { OsType.IOS }
-    single<PlaybackStateController> { PlaybackStateController() }
+    factory<PlaybackStateController> { PlaybackStateController() }
 }

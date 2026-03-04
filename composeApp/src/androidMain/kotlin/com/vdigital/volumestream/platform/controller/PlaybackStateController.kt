@@ -17,29 +17,43 @@ import com.vditital.data.model.PlaybackMediaItem
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 actual class PlaybackStateController(private val media3PlayerComponent: Media3PlayerComponent) {
 
+    private var released = false
+    private var progressHandler: Handler? = null
+    private var progressRunnable: Runnable? = null
+
 
     actual fun addItem(mediaItem: PlaybackMediaItem) {
         media3PlayerComponent.addMediaItem(mediaItem)
     }
 
     actual fun initPlayer(callback: (Long, Long) -> Unit, playbackState: (PlaybackState) -> Unit) {
-        media3PlayerComponent.initPlayer()
-        media3PlayerComponent.setControllerListener(PlaybackControllerListener(playbackState))
-        val handler = Handler(Looper.getMainLooper())
-        val runnable = object : Runnable {
-            override fun run() {
-                if (media3PlayerComponent.getMediaController() != null && media3PlayerComponent.getMediaController()?.isPlaying == true) {
-                    callback(currentPosition(), duration())
-                    playbackState(Playing)
+        // Cancel any previously running progress timer.
+        progressRunnable?.let { progressHandler?.removeCallbacks(it) }
+        progressHandler = null
+        progressRunnable = null
+        // initPlayer() now accepts an onReady callback called on the main thread
+        // once the MediaController is connected — no background thread needed (#1 fix).
+        media3PlayerComponent.initPlayer {
+            if (released) return@initPlayer
+            media3PlayerComponent.setControllerListener(PlaybackControllerListener(playbackState))
+            val handler = Handler(Looper.getMainLooper())
+            val runnable = object : Runnable {
+                override fun run() {
+                    if (media3PlayerComponent.getMediaController()?.isPlaying == true) {
+                        callback(currentPosition(), duration())
+                        playbackState(Playing)
+                    }
+                    val state = media3PlayerComponent.getMediaController()?.playbackState
+                    if (state == Player.STATE_BUFFERING) {
+                        playbackState(Buffering)
+                    }
+                    handler.postDelayed(this, 1000)
                 }
-                val state = media3PlayerComponent.getMediaController()?.playbackState
-                if (state == Player.STATE_BUFFERING) {
-                    playbackState(Buffering)
-                }
-                handler.postDelayed(this, 1000)
             }
+            progressHandler = handler
+            progressRunnable = runnable
+            handler.post(runnable)
         }
-        handler.post(runnable)
     }
 
     actual fun pause(playbackState: (PlaybackState) -> Unit) {
@@ -48,6 +62,11 @@ actual class PlaybackStateController(private val media3PlayerComponent: Media3Pl
     }
 
     actual fun release() {
+        if (released) return
+        released = true
+        progressRunnable?.let { progressHandler?.removeCallbacks(it) }
+        progressHandler = null
+        progressRunnable = null
         media3PlayerComponent.releasePlayer()
     }
 
@@ -84,6 +103,12 @@ actual class PlaybackStateController(private val media3PlayerComponent: Media3Pl
 
     internal fun getController(): MediaController? {
         return media3PlayerComponent.getMediaController()
+    }
+
+    // PlayerView must use ExoPlayer directly — MediaController is an IPC proxy
+    // and cannot supply a video surface, causing a black screen.
+    internal fun getExoPlayer(): androidx.media3.exoplayer.ExoPlayer {
+        return media3PlayerComponent.getExoPlayer()
     }
 
     actual fun addItemItems(items: List<PlaybackMediaItem>) {

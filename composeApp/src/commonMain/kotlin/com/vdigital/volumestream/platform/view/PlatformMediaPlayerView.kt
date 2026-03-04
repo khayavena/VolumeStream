@@ -8,5 +8,6 @@ import com.vdigital.volumestream.platform.controller.PlaybackStateController
 @Composable
 expect fun PlatformMediaPlayerView(
     modifier: Modifier,
-    playbackStateController: PlaybackStateController
+    playbackStateController: PlaybackStateController,
+    onTap: () -> Unit = {}
 )

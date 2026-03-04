@@ -25,7 +25,7 @@ fun PlaybackBufferingIndicator() {
         exit = fadeOut()
     ) {
         CircularProgressIndicator(
-            color = Color.Blue,
+            color = Color(0xFF00E676),
             strokeWidth = 4.dp
         )
     }

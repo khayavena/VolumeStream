@@ -11,13 +11,13 @@ import org.koin.core.module.Module
 import org.koin.dsl.module
 
 internal actual val platformCoreModule: Module = module {
-    single<Media3PlayerComponent> {
+    factory<Media3PlayerComponent> {
         Media3Media3PlayerComponentImpl(
             AndroidApp.getAppInstance(),
             get()
         )
     }
-    single<PlaybackStateController> { PlaybackStateController(get()) }
+    factory<PlaybackStateController> { PlaybackStateController(get()) }
     single<OsType> { OsType.ANDROID }
     single<CachedPlaybackDataSourceFactory> {
         CachedPlaybackDataSourceFactoryImpl(
