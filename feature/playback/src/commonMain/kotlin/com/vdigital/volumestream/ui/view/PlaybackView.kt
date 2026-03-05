@@ -41,6 +41,7 @@ import com.vdigital.volumestream.platform.enum.OsType
 import com.vdigital.volumestream.platform.orientation.LockLandscapeOrientation
 import com.vdigital.volumestream.platform.view.PlatformMediaPlayerView
 import com.vdigital.volumestream.ui.viewmodel.PlaybackViewModel
+import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState
 import com.vdigital.volumestream.ui.widget.PlayPauseControl
 import com.vdigital.volumestream.ui.widget.PlaybackBufferingIndicator
 import com.vdigital.volumestream.ui.widget.PlaybackSeekBar
@@ -154,7 +155,7 @@ fun PlaybackView(onBack: () -> Unit = {}) {
                         fontSize = 16.sp
                     )
                 }
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(16.dp))
                 IconButton(
                     onClick = {
                         showTrackPanel = !showTrackPanel
@@ -210,4 +211,12 @@ fun PlaybackView(onBack: () -> Unit = {}) {
     }
 
     LaunchedEffect(Unit) { viewModel.initialise() }
+
+    val playbackState by viewModel.playBackStateUI.collectAsState()
+    LaunchedEffect(playbackState) {
+        if (playbackState == PlaybackState.Ended) {
+            delay(600L)
+            onBack()
+        }
+    }
 }

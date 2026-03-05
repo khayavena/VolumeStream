@@ -47,6 +47,7 @@ actual class PlaybackStateController {
                 playbackState(playerState())
             }
             if (avPlayer.currentItem?.isPlaybackBufferEmpty() == true) playbackState(Buffering)
+            if (avPlayer.currentItem == null && !released) playbackState(PlaybackState.Ended)
         }
     }
 

@@ -99,5 +99,11 @@ actual class PlaybackStateController(private val media3PlayerComponent: Media3Pl
             super.onPlayerError(error)
             error.message?.let { playbackState(PlaybackState.Error(it)) }
         }
+
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            if (playbackState == Player.STATE_ENDED) {
+                this.playbackState(PlaybackState.Ended)
+            }
+        }
     }
 }

@@ -4,5 +4,6 @@ sealed class PlaybackState {
     data object Buffering : PlaybackState()
     data object Playing   : PlaybackState()
     data object Paused    : PlaybackState()
+    data object Ended     : PlaybackState()
     data class  Error(val errorMessage: String) : PlaybackState()
 }
