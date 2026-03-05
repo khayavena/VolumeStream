@@ -8,5 +8,6 @@ import com.vdigital.volumestream.platform.controller.PlaybackStateController
 expect fun PlatformMediaPlayerView(
     modifier: Modifier,
     playbackStateController: PlaybackStateController,
-    onTap: () -> Unit = {}
+    onTap: () -> Unit = {},
+    isZoomed: Boolean = true
 )

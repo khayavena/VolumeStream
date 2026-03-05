@@ -9,6 +9,7 @@ import androidx.compose.ui.interop.UIKitView
 import com.vdigital.volumestream.platform.controller.PlaybackStateController
 import kotlinx.cinterop.CValue
 import kotlinx.cinterop.ExperimentalForeignApi
+import platform.AVFoundation.AVLayerVideoGravityResizeAspectFill
 import platform.AVFoundation.AVPlayer
 import platform.AVFoundation.AVPlayerLayer
 import platform.AVFoundation.pause
@@ -28,12 +29,17 @@ import platform.UIKit.UIView
 actual fun PlatformMediaPlayerView(
     modifier: Modifier,
     playbackStateController: PlaybackStateController,
-    onTap: () -> Unit
+    onTap: () -> Unit,
+    isZoomed: Boolean
 ) {
     val playbackLayer = remember { AVPlayerLayer() }
     val avPlayerViewController = remember { AVPlayerViewController() }
     avPlayerViewController.player = remember { playbackStateController.avPlayer }
     avPlayerViewController.showsPlaybackControls = false
+    avPlayerViewController.videoGravity = if (isZoomed)
+        AVLayerVideoGravityResizeAspectFill
+    else
+        platform.AVFoundation.AVLayerVideoGravityResizeAspect
     playbackLayer.player = avPlayerViewController.player
 
     DisposableEffect(Unit) {

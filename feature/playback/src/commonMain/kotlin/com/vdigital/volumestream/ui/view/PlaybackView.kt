@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.IconButton
 import androidx.compose.material.Text
@@ -63,6 +64,7 @@ fun PlaybackView(onBack: () -> Unit = {}) {
 
     var showControls      by remember { mutableStateOf(true) }
     var showTrackPanel    by remember { mutableStateOf(false) }
+    var isZoomed          by remember { mutableStateOf(true) }
     var controlsResetTick by remember { mutableStateOf(0) }
 
     LaunchedEffect(controlsResetTick) {
@@ -87,10 +89,13 @@ fun PlaybackView(onBack: () -> Unit = {}) {
             OsType.IOS -> PlatformMediaPlayerView(
                 modifier = Modifier.fillMaxSize(),
                 playbackStateController = controller,
-                onTap = { controlsResetTick++ }
+                onTap = { controlsResetTick++ },
+                isZoomed = isZoomed
             )
             OsType.ANDROID -> PlatformMediaPlayerView(
-                modifier = Modifier.fillMaxSize(), controller
+                modifier = Modifier.fillMaxSize(),
+                playbackStateController = controller,
+                isZoomed = isZoomed
             )
         }
 
@@ -129,6 +134,27 @@ fun PlaybackView(onBack: () -> Unit = {}) {
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                IconButton(
+                    onClick = {
+                        isZoomed = !isZoomed
+                        controlsResetTick++
+                    },
+                    modifier = Modifier
+                        .size(38.dp)
+                        .background(ControlsBarBg, CircleShape)
+                        .border(
+                            1.dp,
+                            if (isZoomed) GreenAccent else Color(0xFF444444),
+                            CircleShape
+                        )
+                ) {
+                    Text(
+                        if (isZoomed) "⊡" else "⊞",
+                        color = if (isZoomed) GreenAccent else Color.White,
+                        fontSize = 16.sp
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
                 IconButton(
                     onClick = {
                         showTrackPanel = !showTrackPanel
