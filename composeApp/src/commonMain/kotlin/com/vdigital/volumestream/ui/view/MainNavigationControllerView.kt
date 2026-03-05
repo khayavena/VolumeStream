@@ -31,16 +31,17 @@ fun MainNavigationControllerView() {
         bottomBar = {
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
-            if (currentRoute != Screen.Play.route) {
+            if (currentRoute != Screen.Play.route && currentRoute != Screen.Splash.route) {
                 BottomNavigationBar(navController)
             }
         }
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.Home.route,
+            startDestination = Screen.Splash.route,
             modifier = Modifier.padding(innerPadding)
         ) {
+            composable(Screen.Splash.route)   { SplashScreen(navController = navController) }
             composable(Screen.Home.route)     { HomeScreen(navController = navController) }
             composable(Screen.Profile.route)  { ProfileScreen() }
             composable(Screen.Settings.route) { SettingsScreen() }

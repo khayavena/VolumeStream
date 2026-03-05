@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Base app theme (used after splash dismisses) -->
+    <style name="AppTheme" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- Splash screen theme: black background + green circle icon -->
+    <style name="Theme.VolumeStream.Splash" parent="Theme.SplashScreen">
+        <!-- Matches our Compose splash background -->
+        <item name="windowSplashScreenBackground">#000000</item>
+        <!-- Green circle icon -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_icon</item>
+        <!-- Icon background also black so circle has no extra ring -->
+        <item name="windowSplashScreenIconBackgroundColor">#000000</item>
+        <!-- Hand off to app theme once splash is done -->
+        <item name="postSplashScreenTheme">@style/AppTheme</item>
+    </style>
+
+</resources>
