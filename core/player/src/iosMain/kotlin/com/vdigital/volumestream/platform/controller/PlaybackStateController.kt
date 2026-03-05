@@ -98,8 +98,12 @@ actual class PlaybackStateController {
     actual fun downloadDashManifest(playbackItem: PlaybackMediaItem) {}
 
     actual fun setQuality(quality: PlaybackQuality) {
-        // AVFoundation selects the optimal HLS variant automatically.
-        // Manual bitrate override APIs were removed in the current iOS SDK.
+        try {
+            // AVFoundation selects the optimal HLS variant automatically.
+            // Manual bitrate override APIs were removed in the current iOS SDK.
+        } catch (e: Exception) {
+            // no-op: swallow any future errors silently
+        }
     }
 
     private fun playerState(): PlaybackState {

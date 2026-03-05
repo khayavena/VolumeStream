@@ -101,21 +101,25 @@ actual class PlaybackStateController(private val media3PlayerComponent: Media3Pl
 
     @OptIn(UnstableApi::class)
     actual fun setQuality(quality: PlaybackQuality) {
-        val selector = media3PlayerComponent.getExoPlayer().trackSelector as? DefaultTrackSelector ?: run {
-            Log.w("VolumeStream", "setQuality: trackSelector is not DefaultTrackSelector")
-            return
+        try {
+            val selector = media3PlayerComponent.getExoPlayer().trackSelector as? DefaultTrackSelector ?: run {
+                Log.w("VolumeStream", "setQuality: trackSelector is not DefaultTrackSelector")
+                return
+            }
+            val params = selector.buildUponParameters()
+            if (quality == PlaybackQuality.Auto) {
+                params.setMaxVideoSize(Int.MAX_VALUE, Int.MAX_VALUE)
+                      .setMaxVideoBitrate(Int.MAX_VALUE)
+                Log.d("VolumeStream", "setQuality -> Auto (no constraints)")
+            } else {
+                params.setMaxVideoSize(Int.MAX_VALUE, quality.maxHeight)
+                      .setMaxVideoBitrate(quality.maxBitrate.coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
+                Log.d("VolumeStream", "setQuality -> ${quality.label} maxH=${quality.maxHeight} maxBitrate=${quality.maxBitrate}")
+            }
+            selector.setParameters(params)
+        } catch (e: Exception) {
+            Log.e("VolumeStream", "setQuality failed, continuing with current quality", e)
         }
-        val params = selector.buildUponParameters()
-        if (quality == PlaybackQuality.Auto) {
-            params.setMaxVideoSize(Int.MAX_VALUE, Int.MAX_VALUE)
-                  .setMaxVideoBitrate(Int.MAX_VALUE)
-            Log.d("VolumeStream", "setQuality -> Auto (no constraints)")
-        } else {
-            params.setMaxVideoSize(Int.MAX_VALUE, quality.maxHeight)
-                  .setMaxVideoBitrate(quality.maxBitrate.coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
-            Log.d("VolumeStream", "setQuality -> ${quality.label} maxH=${quality.maxHeight} maxBitrate=${quality.maxBitrate}")
-        }
-        selector.setParameters(params)
     }
 
     class PlaybackControllerListener(val playbackState: (PlaybackState) -> Unit) : Listener {
