@@ -1,0 +1,32 @@
+{
+    "recommendations": [
+        // ─── Java ──────────────────────────────────────────────────────────
+        // Full Java language support (Language Server, debugger, test runner,
+        // Maven/Gradle import, refactoring, code actions)
+        "vscjava.vscode-java-pack",          // meta-pack: installs the 5 below
+        "redhat.java",                       //   · JDT language server (completion, errors)
+        "vscjava.vscode-java-debug",         //   · Java debugger
+        "vscjava.vscode-java-test",          //   · JUnit / TestNG runner
+        "vscjava.vscode-java-dependency",    //   · dependency / project view
+        "vscjava.vscode-maven",              //   · Maven support (useful alongside Gradle)
+
+        // ─── Gradle ────────────────────────────────────────────────────────
+        "vscjava.vscode-gradle",             // Gradle tasks sidebar, run/debug tasks
+
+        // ─── Kotlin ────────────────────────────────────────────────────────
+        "mathiasfrohlich.Kotlin",            // Syntax highlighting + snippets for .kt/.kts
+
+        // ─── iOS / Swift ───────────────────────────────────────────────────
+        "sswg.swift-lang",                   // Swift syntax and basic tooling for iosApp/
+
+        // ─── Android ───────────────────────────────────────────────────────
+        "naco-siren.gradle-language",        // Groovy/KTS Gradle syntax highlighting
+
+        // ─── General development ───────────────────────────────────────────
+        "github.copilot",                    // AI code completion
+        "github.copilot-chat",               // Copilot chat
+        "eamodio.gitlens",                   // Git blame, history, compare
+        "EditorConfig.EditorConfig",         // Respect .editorconfig if added
+        "streetsidesoftware.code-spell-checker" // Catch typos in code/comments
+    ]
+}

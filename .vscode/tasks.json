@@ -1,0 +1,94 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Android: Build Debug",
+            "type": "shell",
+            "command": "./gradlew :composeApp:assembleDebug",
+            "group": { "kind": "build", "isDefault": true },
+            "presentation": { "reveal": "always", "panel": "shared" },
+            "problemMatcher": []
+        },
+        {
+            "label": "Android: Install & Run (GYEUZ5SK4XZDJNZX)",
+            "type": "shell",
+            "command": "./gradlew :composeApp:assembleDebug && adb -s GYEUZ5SK4XZDJNZX install -r composeApp/build/outputs/apk/debug/composeApp-debug.apk && adb -s GYEUZ5SK4XZDJNZX shell monkey -p com.vdigital.volumestream -c android.intent.category.LAUNCHER 1",
+            "group": "build",
+            "presentation": { "reveal": "always", "panel": "shared" },
+            "problemMatcher": []
+        },
+        {
+            "label": "Android: Logcat (crash only)",
+            "type": "shell",
+            "command": "adb -s GYEUZ5SK4XZDJNZX logcat -b crash",
+            "group": "test",
+            "isBackground": true,
+            "presentation": { "reveal": "always", "panel": "dedicated" },
+            "problemMatcher": []
+        },
+        {
+            "label": "iOS: Build Framework (arm64)",
+            "type": "shell",
+            "command": "./gradlew :composeApp:linkReleaseFrameworkIosArm64",
+            "group": "build",
+            "presentation": { "reveal": "always", "panel": "shared" },
+            "problemMatcher": []
+        },
+        {
+            "label": "iOS: Build & Run Simulator",
+            "type": "shell",
+            "command": "xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 16e' build && xcrun simctl install booted $(find build/ios/Build/Products -name '*.app' | head -1) && xcrun simctl launch booted com.vdigital.volumestream",
+            "group": "build",
+            "presentation": { "reveal": "always", "panel": "shared" },
+            "problemMatcher": []
+        },
+        {
+            "label": "Gradle: Clean",
+            "type": "shell",
+            "command": "./gradlew clean",
+            "group": "build",
+            "presentation": { "reveal": "always", "panel": "shared" },
+            "problemMatcher": []
+        },
+        {
+            "label": "Gradle: Sync (check all)",
+            "type": "shell",
+            "command": "./gradlew :composeApp:compileDebugKotlinAndroid :composeApp:compileKotlinIosArm64",
+            "group": "build",
+            "presentation": { "reveal": "always", "panel": "shared" },
+            "problemMatcher": []
+        },
+        {
+            "label": "Java: Compile All (Gradle)",
+            "type": "shell",
+            "command": "./gradlew :composeApp:compileDebugJavaWithJavac :data:compileDebugJavaWithJavac",
+            "group": "build",
+            "presentation": { "reveal": "always", "panel": "shared" },
+            "problemMatcher": ["$javac"]
+        },
+        {
+            "label": "Java: Run Tests",
+            "type": "shell",
+            "command": "./gradlew :composeApp:testDebugUnitTest :data:testDebugUnitTest --info",
+            "group": { "kind": "test", "isDefault": true },
+            "presentation": { "reveal": "always", "panel": "shared" },
+            "problemMatcher": ["$javac"]
+        },
+        {
+            "label": "Java: Check JDK Version",
+            "type": "shell",
+            "command": "java -version && echo \"JAVA_HOME: $JAVA_HOME\"",
+            "group": "build",
+            "presentation": { "reveal": "always", "panel": "shared" },
+            "problemMatcher": []
+        },
+        {
+            "label": "Java: List Installed JDKs",
+            "type": "shell",
+            "command": "/usr/libexec/java_home -V",
+            "group": "build",
+            "presentation": { "reveal": "always", "panel": "shared" },
+            "problemMatcher": []
+        }
+    ]
+}

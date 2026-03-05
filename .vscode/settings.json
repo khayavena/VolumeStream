@@ -1,0 +1,76 @@
+{
+    // ─── Java Language Server ────────────────────────────────────────────────
+    // Point the JDT language server at JDK 17 (required to run the LS itself).
+    "java.jdt.ls.java.home": "/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home",
+
+    // Declare all installed JDKs so the LS can compile for different targets.
+    "java.configuration.runtimes": [
+        {
+            "name": "JavaSE-1.8",
+            "path": "/Library/Java/JavaVirtualMachines/adoptopenjdk-8.jdk/Contents/Home"
+        },
+        {
+            "name": "JavaSE-11",
+            "path": "/Library/Java/JavaVirtualMachines/adoptopenjdk-11.jdk/Contents/Home"
+        },
+        {
+            "name": "JavaSE-17",
+            "path": "/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home",
+            "default": true
+        }
+    ],
+
+    // Gradle import (drives both Java and Kotlin/KMP project import).
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.import.gradle.enabled": true,
+    "java.import.gradle.wrapper.enabled": true,
+    "java.import.gradle.home": "${workspaceFolder}",
+    "java.import.gradle.java.home": "/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home",
+
+    // Null analysis and code quality
+    "java.compile.nullAnalysis.mode": "automatic",
+    "java.saveActions.organizeImports": true,
+    "java.format.enabled": true,
+    "java.inlayHints.parameterNames.enabled": "literals",
+    "java.completion.guessMethodArguments": true,
+    "java.references.includeAccessors": true,
+    "java.codeGeneration.generateComments": true,
+
+    // Gradle extension
+    "gradle.nestedProjects": true,
+    "gradle.gradleWrapperEnabled": true,
+
+    // ─── Exclude build output from indexing (performance) ───────────────────
+    "files.exclude": {
+        "**/build/intermediates": true,
+        "**/build/tmp": true,
+        "**/build/kotlin": true,
+        "**/.gradle": true
+    },
+    "search.exclude": {
+        "**/build": true,
+        "**/.gradle": true
+    },
+
+    // ─── Swift (iosApp/) ────────────────────────────────────────────────────
+    "swift.path": "/usr/bin",
+
+    // ─── Terminal: Android SDK + JDK on PATH ────────────────────────────────
+    "terminal.integrated.env.osx": {
+        "ANDROID_HOME": "${env:HOME}/Library/Android/sdk",
+        "JAVA_HOME": "/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home",
+        "PATH": "${env:HOME}/Library/Android/sdk/platform-tools:${env:HOME}/Library/Android/sdk/emulator:/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home/bin:${env:PATH}"
+    },
+
+    // ─── File associations ──────────────────────────────────────────────────
+    "files.associations": {
+        "*.kts": "kotlin",
+        "*.kt": "kotlin",
+        "*.java": "java"
+    },
+
+    // ─── Editor ─────────────────────────────────────────────────────────────
+    "editor.formatOnSave": false,
+    "editor.suggest.snippetsPreventQuickSuggestions": false,
+    "kotlin.languageServer.enabled": false
+}

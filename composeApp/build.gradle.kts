@@ -25,6 +25,7 @@ kotlin {
         iosTarget.binaries.framework {
             baseName = "ComposeApp"
             isStatic = true
+            export(project(":core:player"))
         }
     }
 
@@ -32,14 +33,15 @@ kotlin {
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
-            implementation(libs.androidx.media3.exoplayer)
-            implementation(libs.androidx.media3.exoplayer.dash)
-            implementation(libs.androidx.media3.session)
-            implementation(libs.androidx.media3.ui)
             implementation(libs.koin.android)
         }
         commonMain.dependencies {
-            api(project(":data"))
+            implementation(project(":core:navigation"))
+            api(project(":core:player"))
+            implementation(project(":feature:home"))
+            implementation(project(":feature:playback"))
+            implementation(project(":feature:profile"))
+            implementation(project(":feature:settings"))
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material)
@@ -53,9 +55,6 @@ kotlin {
             implementation(libs.koin.composeVM)
             implementation(libs.koin.core)
             implementation(libs.navigation.compose)
-            //UI images
-            implementation(libs.image.loader)
-
         }
         iosMain.dependencies {
             implementation(libs.koin.core)
@@ -102,6 +101,3 @@ android {
 dependencies {
     implementation(libs.androidx.lifecycle.common.jvm)
 }
-
-
-

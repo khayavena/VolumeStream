@@ -11,6 +11,7 @@ import org.koin.compose.KoinApplication
 @Preview
 fun VolumeStreamApp() {
     KoinApplication(application = {
+        configureKoin()
         modules(appModule)
     }) {
         MaterialTheme {

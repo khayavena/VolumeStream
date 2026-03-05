@@ -17,11 +17,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavController
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.vdigital.volumestream.navigation.Screen
 
 @Composable
 fun MainNavigationControllerView() {
@@ -31,28 +31,20 @@ fun MainNavigationControllerView() {
         bottomBar = {
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
-            if (currentRoute != "play") {
+            if (currentRoute != Screen.Play.route) {
                 BottomNavigationBar(navController)
             }
         }
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = "home",
+            startDestination = Screen.Home.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable("home") {
-                HomeScreen(navController = navController)
-            }
-            composable("profile") {
-                ProfileScreen()
-            }
-            composable("settings") {
-                SettingsScreen()
-            }
-            composable("play") { backStackEntry ->
-                PlaybackView()
-            }
+            composable(Screen.Home.route)     { HomeScreen(navController = navController) }
+            composable(Screen.Profile.route)  { ProfileScreen() }
+            composable(Screen.Settings.route) { SettingsScreen() }
+            composable(Screen.Play.route)     { PlaybackView() }
         }
     }
 }
@@ -60,25 +52,25 @@ fun MainNavigationControllerView() {
 @Composable
 fun BottomNavigationBar(navController: NavController) {
     val items = listOf(
-        BottomNavItem("Home", "home", Icons.Default.Home),
-        BottomNavItem("Profile", "profile", Icons.Default.Person),
-        BottomNavItem("Settings", "settings", Icons.Default.Settings)
+        BottomNavItem("Home",     Screen.Home.route,     Icons.Default.Home),
+        BottomNavItem("Profile",  Screen.Profile.route,  Icons.Default.Person),
+        BottomNavItem("Settings", Screen.Settings.route, Icons.Default.Settings),
     )
     BottomNavigation(modifier = Modifier.background(color = Color.Black)) {
         val currentRoute = currentRoute(navController)
         items.forEach { item ->
             BottomNavigationItem(
-                modifier = Modifier.background(color = Color.Black),
-                icon = { Icon(item.icon, contentDescription = item.name) },
-                label = { Text(item.name) },
-                selected = currentRoute == item.route,
-                onClick = {
+                modifier  = Modifier.background(color = Color.Black),
+                icon      = { Icon(item.icon, contentDescription = item.name) },
+                label     = { Text(item.name) },
+                selected  = currentRoute == item.route,
+                onClick   = {
                     navController.navigate(item.route) {
-                        popUpTo(navController.graph.findStartDestination().navigatorName) {
+                        popUpTo(Screen.Home.route) {
                             saveState = true
                         }
                         launchSingleTop = true
-                        restoreState = true
+                        restoreState    = true
                     }
                 }
             )
@@ -87,13 +79,7 @@ fun BottomNavigationBar(navController: NavController) {
 }
 
 @Composable
-fun currentRoute(navController: NavController): String? {
-    val navBackStackEntry = navController.currentBackStackEntryAsState().value
-    return navBackStackEntry?.destination?.route
-}
+fun currentRoute(navController: NavController): String? =
+    navController.currentBackStackEntryAsState().value?.destination?.route
 
-data class BottomNavItem(
-    val name: String,
-    val route: String,
-    val icon: ImageVector
-)
+data class BottomNavItem(val name: String, val route: String, val icon: ImageVector)
