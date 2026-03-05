@@ -10,12 +10,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.vdigital.volumestream.ui.viewmodel.DownloadViewModel
 import com.vditital.data.model.PlaybackMediaItem
 
 @Composable
 fun MediaItemCategoryListView(
     mediaItemCategories: Map<String, MutableList<PlaybackMediaItem>>,
-    navController: NavHostController
+    navController: NavHostController,
+    downloadViewModel: DownloadViewModel,
 ) {
     val listState = rememberLazyListState()
     LazyColumn(
@@ -28,7 +30,8 @@ fun MediaItemCategoryListView(
                 PlaybackCategoryCarousel(
                     navController = navController,
                     category = category,
-                    playbackMediaItems = items
+                    playbackMediaItems = items,
+                    downloadViewModel = downloadViewModel
                 )
             }
         }

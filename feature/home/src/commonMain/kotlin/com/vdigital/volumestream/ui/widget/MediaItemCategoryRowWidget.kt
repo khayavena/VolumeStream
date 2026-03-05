@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.vdigital.volumestream.core.player.SelectedMediaItemHolder
 import com.vdigital.volumestream.navigation.Screen
+import com.vdigital.volumestream.ui.viewmodel.DownloadViewModel
 import com.vditital.data.model.PlaybackMediaItem
 import org.koin.compose.koinInject
 
@@ -25,6 +26,7 @@ fun PlaybackCategoryCarousel(
     category: String,
     playbackMediaItems: List<PlaybackMediaItem>,
     navController: NavHostController,
+    downloadViewModel: DownloadViewModel,
 ) {
     val holder: SelectedMediaItemHolder = koinInject()
     Column(
@@ -40,7 +42,10 @@ fun PlaybackCategoryCarousel(
         )
         LazyRow(state = rememberLazyListState()) {
             items(playbackMediaItems, key = { "${category}_${it.id}" }) { mediaItem ->
-                MediaItemWidget(playbackMediaItem = mediaItem) {
+                MediaItemWidget(
+                    playbackMediaItem = mediaItem,
+                    downloadViewModel = downloadViewModel
+                ) {
                     holder.select(mediaItem)
                     navController.navigate(Screen.Play.route)
                 }

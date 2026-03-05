@@ -4,6 +4,7 @@ import com.vdigital.volumestream.cache.CachedPlaybackDataSourceFactory
 import com.vdigital.volumestream.cache.CachedPlaybackDataSourceFactoryImpl
 import com.vdigital.volumestream.compnent.Media3Media3PlayerComponentImpl
 import com.vdigital.volumestream.compnent.Media3PlayerComponent
+import com.vdigital.volumestream.core.player.download.DownloadController
 import com.vdigital.volumestream.platform.controller.PlaybackStateController
 import com.vdigital.volumestream.platform.enum.OsType
 import org.koin.android.ext.koin.androidApplication
@@ -19,4 +20,5 @@ internal actual val platformPlayerModule: Module = module {
     }
     factory { PlaybackStateController(get()) }
     single<OsType> { OsType.ANDROID }
+    single { DownloadController(androidApplication()) }
 }

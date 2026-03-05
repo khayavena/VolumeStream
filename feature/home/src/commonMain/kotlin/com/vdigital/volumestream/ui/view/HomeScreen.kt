@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.navigation.NavHostController
+import com.vdigital.volumestream.ui.viewmodel.DownloadViewModel
 import com.vdigital.volumestream.ui.viewmodel.HomaPageViewModel
 import com.vdigital.volumestream.ui.widget.MediaItemCategoryListView
 import com.vditital.data.model.PlaybackMediaItem
@@ -16,6 +17,7 @@ import org.koin.core.annotation.KoinExperimentalAPI
 @Composable
 fun HomeScreen(
     homaPageViewModel: HomaPageViewModel = koinViewModel(),
+    downloadViewModel: DownloadViewModel = koinViewModel(),
     navController: NavHostController
 ) {
     val state = homaPageViewModel.homeDataUIState.collectAsState()
@@ -25,7 +27,11 @@ fun HomeScreen(
         is ResultState.Success -> {
             val data =
                 (state.value as ResultState.Success<Map<String, MutableList<PlaybackMediaItem>>>).data
-            MediaItemCategoryListView(mediaItemCategories = data, navController = navController)
+            MediaItemCategoryListView(
+                mediaItemCategories = data,
+                navController = navController,
+                downloadViewModel = downloadViewModel
+            )
         }
     }
     LaunchedEffect(Unit) { homaPageViewModel.fetchData() }

@@ -3,6 +3,7 @@ package com.vdigital.volumestream.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vdigital.volumestream.core.player.SelectedMediaItemHolder
+import com.vdigital.volumestream.core.player.download.DownloadController
 import com.vdigital.volumestream.platform.controller.PlaybackStateController
 import com.vdigital.volumestream.platform.enum.OsType
 import com.vdigital.volumestream.ui.viewmodel.state.PlaybackQuality
@@ -20,6 +21,7 @@ class PlaybackViewModel(
     private val playbackMediaItemRepository: PlaybackMediaItemRepository,
     private val selectedMediaItemHolder: SelectedMediaItemHolder,
     val osType: OsType,
+    private val downloadController: DownloadController,
 ) : ViewModel() {
 
     private val _playBackState  = MutableStateFlow<PlaybackState>(PlaybackState.Buffering)
@@ -44,7 +46,9 @@ class PlaybackViewModel(
         viewModelScope.launch {
             loadTrackList()
             val item = selectedMediaItemHolder.current() ?: return@launch
-            handleStartPlayback(mutableListOf(item))
+            val localPath = downloadController.getLocalPath(item.id)
+            val playItem = if (localPath != null) item.copy(streamUrl = localPath) else item
+            handleStartPlayback(mutableListOf(playItem))
         }
     }
 
@@ -111,7 +115,9 @@ class PlaybackViewModel(
     fun selectTrack(item: PlaybackMediaItem) {
         _selectedTrackId.value = item.id
         selectedMediaItemHolder.select(item)
-        handleStartPlayback(mutableListOf(item))
+        val localPath = downloadController.getLocalPath(item.id)
+        val playItem = if (localPath != null) item.copy(streamUrl = localPath) else item
+        handleStartPlayback(mutableListOf(playItem))
     }
 
     fun setQuality(q: PlaybackQuality) {

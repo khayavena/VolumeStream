@@ -25,6 +25,7 @@ media3Session = "1.4.1"
 navigationCompose = "2.7.0-alpha07"
 lifecycleCommonJvm = "2.8.6"
 ktor-client = "2.3.12" #latest version of Ktor
+workmanager = "2.9.0"
 
 [libraries]
 #Core library and required plugins in here
@@ -54,6 +55,7 @@ lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifec
 napier = { module = "io.github.aakira:napier", version.ref = "napier" }
 navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 androidx-lifecycle-common-jvm = { group = "androidx.lifecycle", name = "lifecycle-common-jvm", version.ref = "lifecycleCommonJvm" }
+androidx-work-runtime = { module = "androidx.work:work-runtime-ktx", version.ref = "workmanager" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
