@@ -45,7 +45,7 @@ fun MainNavigationControllerView() {
             composable(Screen.Home.route)     { HomeScreen(navController = navController) }
             composable(Screen.Profile.route)  { ProfileScreen() }
             composable(Screen.Settings.route) { SettingsScreen() }
-            composable(Screen.Play.route)     { PlaybackView() }
+            composable(Screen.Play.route)     { PlaybackView(onBack = { navController.popBackStack() }) }
         }
     }
 }

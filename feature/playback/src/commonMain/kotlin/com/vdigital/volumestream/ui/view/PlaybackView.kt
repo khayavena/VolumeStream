@@ -54,7 +54,7 @@ private const val CONTROLS_HIDE_DELAY_MS = 4_000L
 
 @OptIn(KoinExperimentalAPI::class)
 @Composable
-fun PlaybackView() {
+fun PlaybackView(onBack: () -> Unit = {}) {
     LockLandscapeOrientation()
     val viewModel: PlaybackViewModel = koinViewModel()
     val controller = remember { viewModel.getPlatformController() }
@@ -96,6 +96,23 @@ fun PlaybackView() {
 
         Box(modifier = Modifier.align(Alignment.Center)) {
             PlaybackBufferingIndicator()
+        }
+
+        AnimatedVisibility(
+            visible = showControls,
+            modifier = Modifier.align(Alignment.TopStart),
+            enter = fadeIn(), exit = fadeOut()
+        ) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier
+                    .padding(12.dp)
+                    .size(38.dp)
+                    .background(ControlsBarBg, CircleShape)
+                    .border(1.dp, GreenAccent, CircleShape)
+            ) {
+                Text("←", color = GreenAccent, fontSize = 20.sp)
+            }
         }
 
         AnimatedVisibility(
