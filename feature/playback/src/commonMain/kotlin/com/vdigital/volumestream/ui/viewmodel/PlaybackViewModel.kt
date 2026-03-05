@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.vdigital.volumestream.core.player.SelectedMediaItemHolder
 import com.vdigital.volumestream.platform.controller.PlaybackStateController
 import com.vdigital.volumestream.platform.enum.OsType
+import com.vdigital.volumestream.ui.viewmodel.state.PlaybackQuality
 import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState
 import com.vditital.data.model.PlaybackMediaItem
 import com.vditital.data.repository.PlaybackMediaItemRepository
@@ -27,6 +28,7 @@ class PlaybackViewModel(
     private val _durationMs     = MutableStateFlow(0L)
     private val _trackList      = MutableStateFlow<List<PlaybackMediaItem>>(emptyList())
     private val _selectedTrackId = MutableStateFlow<String?>(null)
+    private val _quality         = MutableStateFlow<PlaybackQuality>(PlaybackQuality.Auto)
 
     val playBackStateUI   = _playBackState.asStateFlow()
     val progressStateUI   = _progressState.asStateFlow()
@@ -34,6 +36,7 @@ class PlaybackViewModel(
     val durationMsUI      = _durationMs.asStateFlow()
     val trackListUI       = _trackList.asStateFlow()
     val selectedTrackIdUI = _selectedTrackId.asStateFlow()
+    val qualityUI         = _quality.asStateFlow()
 
     fun getPlatformController(): PlaybackStateController = playbackStateController
 
@@ -109,6 +112,11 @@ class PlaybackViewModel(
         _selectedTrackId.value = item.id
         selectedMediaItemHolder.select(item)
         handleStartPlayback(mutableListOf(item))
+    }
+
+    fun setQuality(q: PlaybackQuality) {
+        _quality.value = q
+        playbackStateController.setQuality(q)
     }
 
     override fun onCleared() {

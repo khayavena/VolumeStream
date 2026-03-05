@@ -2,11 +2,16 @@ package com.vdigital.volumestream.platform.controller
 
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
+import androidx.annotation.OptIn
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Player.Listener
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.session.MediaController
 import com.vdigital.volumestream.compnent.Media3PlayerComponent
+import com.vdigital.volumestream.ui.viewmodel.state.PlaybackQuality
 import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState
 import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState.Buffering
 import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState.Playing
@@ -93,6 +98,25 @@ actual class PlaybackStateController(private val media3PlayerComponent: Media3Pl
     }
 
     actual fun downloadDashManifest(playbackItem: PlaybackMediaItem) {}
+
+    @OptIn(UnstableApi::class)
+    actual fun setQuality(quality: PlaybackQuality) {
+        val selector = media3PlayerComponent.getExoPlayer().trackSelector as? DefaultTrackSelector ?: run {
+            Log.w("VolumeStream", "setQuality: trackSelector is not DefaultTrackSelector")
+            return
+        }
+        val params = selector.buildUponParameters()
+        if (quality == PlaybackQuality.Auto) {
+            params.setMaxVideoSize(Int.MAX_VALUE, Int.MAX_VALUE)
+                  .setMaxVideoBitrate(Int.MAX_VALUE)
+            Log.d("VolumeStream", "setQuality -> Auto (no constraints)")
+        } else {
+            params.setMaxVideoSize(Int.MAX_VALUE, quality.maxHeight)
+                  .setMaxVideoBitrate(quality.maxBitrate.coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
+            Log.d("VolumeStream", "setQuality -> ${quality.label} maxH=${quality.maxHeight} maxBitrate=${quality.maxBitrate}")
+        }
+        selector.setParameters(params)
+    }
 
     class PlaybackControllerListener(val playbackState: (PlaybackState) -> Unit) : Listener {
         override fun onPlayerError(error: PlaybackException) {

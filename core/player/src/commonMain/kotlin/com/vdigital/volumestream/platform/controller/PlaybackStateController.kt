@@ -1,5 +1,6 @@
 package com.vdigital.volumestream.platform.controller
 
+import com.vdigital.volumestream.ui.viewmodel.state.PlaybackQuality
 import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState
 import com.vditital.data.model.PlaybackMediaItem
 
@@ -16,4 +17,5 @@ expect class PlaybackStateController {
     fun seekTo(position: Long)
     fun addItemItems(items: List<PlaybackMediaItem>)
     fun downloadDashManifest(playbackItem: PlaybackMediaItem)
+    fun setQuality(quality: PlaybackQuality)
 }

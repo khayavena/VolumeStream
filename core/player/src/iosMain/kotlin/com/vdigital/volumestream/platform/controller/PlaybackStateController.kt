@@ -1,5 +1,6 @@
 package com.vdigital.volumestream.platform.controller
 
+import com.vdigital.volumestream.ui.viewmodel.state.PlaybackQuality
 import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState
 import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState.Buffering
 import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState.Error
@@ -95,6 +96,11 @@ actual class PlaybackStateController {
     }
 
     actual fun downloadDashManifest(playbackItem: PlaybackMediaItem) {}
+
+    actual fun setQuality(quality: PlaybackQuality) {
+        // AVFoundation selects the optimal HLS variant automatically.
+        // Manual bitrate override APIs were removed in the current iOS SDK.
+    }
 
     private fun playerState(): PlaybackState {
         val item = avPlayer.currentItem

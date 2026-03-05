@@ -42,9 +42,11 @@ import com.vdigital.volumestream.platform.orientation.LockLandscapeOrientation
 import com.vdigital.volumestream.platform.view.PlatformMediaPlayerView
 import com.vdigital.volumestream.ui.viewmodel.PlaybackViewModel
 import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState
+import com.vdigital.volumestream.ui.viewmodel.state.PlaybackQuality
 import com.vdigital.volumestream.ui.widget.PlayPauseControl
 import com.vdigital.volumestream.ui.widget.PlaybackBufferingIndicator
 import com.vdigital.volumestream.ui.widget.PlaybackSeekBar
+import com.vdigital.volumestream.ui.widget.QualitySelectionPanel
 import com.vdigital.volumestream.ui.widget.TrackSelectionPanel
 import kotlinx.coroutines.delay
 import org.koin.compose.viewmodel.koinViewModel
@@ -65,14 +67,17 @@ fun PlaybackView(onBack: () -> Unit = {}) {
 
     var showControls      by remember { mutableStateOf(true) }
     var showTrackPanel    by remember { mutableStateOf(false) }
+    var showQualityPanel  by remember { mutableStateOf(false) }
     var isZoomed          by remember { mutableStateOf(true) }
     var controlsResetTick by remember { mutableStateOf(0) }
+    val currentQuality    by viewModel.qualityUI.collectAsState()
 
     LaunchedEffect(controlsResetTick) {
         showControls = true
         delay(CONTROLS_HIDE_DELAY_MS)
         showControls = false
         showTrackPanel = false
+        showQualityPanel = false
     }
 
     Box(
@@ -155,10 +160,34 @@ fun PlaybackView(onBack: () -> Unit = {}) {
                         fontSize = 16.sp
                     )
                 }
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(
+                    onClick = {
+                        showQualityPanel = !showQualityPanel
+                        if (showQualityPanel) showTrackPanel = false
+                        controlsResetTick++
+                    },
+                    modifier = Modifier
+                        .size(38.dp)
+                        .background(ControlsBarBg, CircleShape)
+                        .border(
+                            1.dp,
+                            if (showQualityPanel) GreenAccent else Color(0xFF444444),
+                            CircleShape
+                        )
+                ) {
+                    Text(
+                        if (currentQuality == PlaybackQuality.Auto) "HD" else currentQuality.label,
+                        color = if (showQualityPanel) GreenAccent else Color.White,
+                        fontSize = 10.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
                 IconButton(
                     onClick = {
                         showTrackPanel = !showTrackPanel
+                        if (showTrackPanel) showQualityPanel = false
                         controlsResetTick++
                     },
                     modifier = Modifier
@@ -207,6 +236,15 @@ fun PlaybackView(onBack: () -> Unit = {}) {
             exit = slideOutVertically(targetOffsetY = { it })
         ) {
             TrackSelectionPanel()
+        }
+
+        AnimatedVisibility(
+            visible = showControls && showQualityPanel,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = slideInVertically(initialOffsetY = { it }),
+            exit = slideOutVertically(targetOffsetY = { it })
+        ) {
+            QualitySelectionPanel(onSelect = { showQualityPanel = false })
         }
     }
 
