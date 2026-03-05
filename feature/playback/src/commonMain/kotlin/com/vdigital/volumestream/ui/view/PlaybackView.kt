@@ -105,13 +105,15 @@ fun PlaybackView(onBack: () -> Unit = {}) {
         ) {
             IconButton(
                 onClick = onBack,
-                modifier = Modifier
-                    .padding(12.dp)
-                    .size(38.dp)
-                    .background(ControlsBarBg, CircleShape)
-                    .border(1.dp, GreenAccent, CircleShape)
+                modifier = Modifier.padding(8.dp).size(44.dp)
             ) {
-                Text("←", color = GreenAccent, fontSize = 20.sp)
+                Text(
+                    text = "❮",
+                    color = GreenAccent,
+                    fontSize = 26.sp,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
             }
         }
 
