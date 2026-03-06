@@ -54,6 +54,8 @@ internal class DownloadWorker(
             val totalBytes = connection.contentLengthLong
             var downloaded = 0L
             var lastReportedProgress = -1
+            // Update notification/progress every 5 % to avoid excessive Binder IPC.
+            val progressStepSize = 5
 
             connection.inputStream.use { input ->
                 FileOutputStream(outputFile).use { output ->
@@ -67,7 +69,11 @@ internal class DownloadWorker(
                         output.write(buffer, 0, read)
                         downloaded += read
                         val progress = if (totalBytes > 0) (downloaded * 100f / totalBytes).toInt() else 0
-                        if (progress != lastReportedProgress) {
+                        // Only report when progress crosses a step boundary.
+                        val reportedBucket = (progress / progressStepSize) * progressStepSize
+                        val lastBucket = if (lastReportedProgress < 0) -1
+                                         else (lastReportedProgress / progressStepSize) * progressStepSize
+                        if (reportedBucket != lastBucket) {
                             lastReportedProgress = progress
                             setProgress(workDataOf(KEY_PROGRESS to progress.toFloat(), KEY_ID to id))
                             setForeground(createForegroundInfo(title, progress))

@@ -23,6 +23,8 @@ import platform.AVFoundation.rate
 import platform.AVFoundation.seekToTime
 import platform.CoreMedia.CMTimeGetSeconds
 import platform.CoreMedia.CMTimeMake
+import platform.Foundation.NSRunLoop
+import platform.Foundation.NSRunLoopCommonModes
 import platform.Foundation.NSTimer
 import platform.Foundation.NSURL
 
@@ -34,19 +36,36 @@ actual class PlaybackStateController {
     private var progressTimer: NSTimer? = null
     private var released = false
 
+    /**
+     * Build an NSURL from a media item's streamUrl.
+     *
+     * iOS stores local paths as plain POSIX paths ("/var/mobile/.../file.mp4").
+     * Android stores them as file:// URIs ("file:///data/.../file.mp4").
+     * Handle both so that downloaded-item playback works on both platforms.
+     */
+    private fun nsUrlFor(streamUrl: String): NSURL? = when {
+        streamUrl.startsWith("file://") ->
+            NSURL.URLWithString(streamUrl)           // already a valid file URL string
+        streamUrl.startsWith("/") ->
+            NSURL.fileURLWithPath(streamUrl)         // plain POSIX path → file URL
+        else ->
+            NSURL.URLWithString(streamUrl)           // http/https remote URL
+    }
+
     actual fun addItem(mediaItem: PlaybackMediaItem) {
-        val nsUrl = if (mediaItem.streamUrl.startsWith("/")) {
-            NSURL.fileURLWithPath(mediaItem.streamUrl)
-        } else {
-            NSURL.URLWithString(mediaItem.streamUrl)
-        }
-        val playerItem = nsUrl?.let { AVPlayerItem(it) }
-        if (playerItem != null) avPlayer.insertItem(playerItem, null)
+        // AVFoundation must be accessed on the Main thread.
+        val url = nsUrlFor(mediaItem.streamUrl) ?: return
+        val playerItem = AVPlayerItem(url)
+        avPlayer.insertItem(playerItem, afterItem = null)
     }
 
     actual fun initPlayer(callback: (Long, Long) -> Unit, playbackState: (PlaybackState) -> Unit) {
         progressTimer?.invalidate()
-        progressTimer = NSTimer.scheduledTimerWithTimeInterval(1.0, true) {
+        progressTimer = null
+
+        // NSTimer must be added to the Main run loop — scheduledTimerWithTimeInterval
+        // only works correctly when called on Main. We schedule explicitly here.
+        val timer = NSTimer.timerWithTimeInterval(1.0, repeats = true) {
             if (isPlaying()) {
                 callback(currentPosition(), duration())
                 playbackState(playerState())
@@ -54,6 +73,8 @@ actual class PlaybackStateController {
             if (avPlayer.currentItem?.isPlaybackBufferEmpty() == true) playbackState(Buffering)
             if (avPlayer.currentItem == null && !released) playbackState(PlaybackState.Ended)
         }
+        NSRunLoop.mainRunLoop.addTimer(timer, forMode = NSRunLoopCommonModes)
+        progressTimer = timer
     }
 
     actual fun pause(playbackState: (PlaybackState) -> Unit) {
@@ -77,12 +98,12 @@ actual class PlaybackStateController {
 
     actual fun duration(): Long {
         val sec = avPlayer.currentItem?.let { CMTimeGetSeconds(it.duration) }
-        return if (sec != null) (sec * 1000).toLong() else 0L
+        return if (sec != null && !sec.isNaN() && sec > 0) (sec * 1000).toLong() else 0L
     }
 
     actual fun currentPosition(): Long {
         val sec = avPlayer.currentItem?.let { CMTimeGetSeconds(it.currentTime()) }
-        return if (sec != null) (sec * 1000).toLong() else 0L
+        return if (sec != null && !sec.isNaN()) (sec * 1000).toLong() else 0L
     }
 
     actual fun seekTo(position: Long) {
@@ -102,12 +123,7 @@ actual class PlaybackStateController {
     actual fun downloadDashManifest(playbackItem: PlaybackMediaItem) {}
 
     actual fun setQuality(quality: PlaybackQuality) {
-        try {
-            // AVFoundation selects the optimal HLS variant automatically.
-            // Manual bitrate override APIs were removed in the current iOS SDK.
-        } catch (e: Exception) {
-            // no-op: swallow any future errors silently
-        }
+        // AVFoundation selects the optimal HLS variant automatically.
     }
 
     private fun playerState(): PlaybackState {

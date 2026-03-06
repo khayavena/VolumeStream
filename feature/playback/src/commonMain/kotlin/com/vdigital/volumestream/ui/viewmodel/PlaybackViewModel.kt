@@ -11,10 +11,12 @@ import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState
 import com.vditital.data.model.PlaybackMediaItem
 import com.vditital.data.repository.PlaybackMediaItemRepository
 import com.vditital.data.repository.state.ResultState
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class PlaybackViewModel(
     private val playbackStateController: PlaybackStateController,
@@ -24,11 +26,11 @@ class PlaybackViewModel(
     private val downloadController: DownloadController,
 ) : ViewModel() {
 
-    private val _playBackState  = MutableStateFlow<PlaybackState>(PlaybackState.Buffering)
-    private val _progressState  = MutableStateFlow(0F)
-    private val _positionMs     = MutableStateFlow(0L)
-    private val _durationMs     = MutableStateFlow(0L)
-    private val _trackList      = MutableStateFlow<List<PlaybackMediaItem>>(emptyList())
+    private val _playBackState   = MutableStateFlow<PlaybackState>(PlaybackState.Buffering)
+    private val _progressState   = MutableStateFlow(0F)
+    private val _positionMs      = MutableStateFlow(0L)
+    private val _durationMs      = MutableStateFlow(0L)
+    private val _trackList       = MutableStateFlow<List<PlaybackMediaItem>>(emptyList())
     private val _selectedTrackId = MutableStateFlow<String?>(null)
     private val _quality         = MutableStateFlow<PlaybackQuality>(PlaybackQuality.Auto)
 
@@ -43,17 +45,25 @@ class PlaybackViewModel(
     fun getPlatformController(): PlaybackStateController = playbackStateController
 
     fun initialise() {
-        viewModelScope.launch {
+        // Always launch on Main — AVFoundation (initPlayer, addItemItems, play) must
+        // be called on the Main thread. We switch to IO only for blocking reads.
+        viewModelScope.launch(Dispatchers.Main) {
             loadTrackList()
             val item = selectedMediaItemHolder.current() ?: return@launch
-            val localPath = downloadController.getLocalPath(item.id)
+            // getLocalPath reads NSUserDefaults — dispatch to IO, then return to Main.
+            val localPath = withContext(Dispatchers.IO) { downloadController.getLocalPath(item.id) }
             val playItem = if (localPath != null) item.copy(streamUrl = localPath) else item
+            // Back on Main here — safe to call AVFoundation.
             handleStartPlayback(mutableListOf(playItem))
         }
     }
 
     private suspend fun loadTrackList() {
-        when (val result = playbackMediaItemRepository.getMediaItemsState()) {
+        // Suspend call — repository may hit network/DB; ensure it runs off Main.
+        val result = withContext(Dispatchers.IO) {
+            playbackMediaItemRepository.getMediaItemsState()
+        }
+        when (result) {
             is ResultState.Success -> _trackList.value = result.data
             else -> {
                 val item = selectedMediaItemHolder.current()
@@ -78,46 +88,46 @@ class PlaybackViewModel(
         }
     }
 
+    // These player calls are all synchronous and must run on Main (player APIs are
+    // Main-thread-bound). No coroutine wrapper needed — calling directly is correct
+    // and avoids unnecessary coroutine allocations + event-loop round-trips.
+
     fun onSeekChanged(seekValue: Float) {
-        viewModelScope.launch {
-            val targetMs = (seekValue * playbackStateController.duration()).toLong()
-            playbackStateController.seekTo(targetMs)
-            playbackStateController.play(playbackState = { _playBackState.value = it })
-            _progressState.value = seekValue
-        }
+        val targetMs = (seekValue * playbackStateController.duration()).toLong()
+        playbackStateController.seekTo(targetMs)
+        playbackStateController.play(playbackState = { _playBackState.value = it })
+        _progressState.value = seekValue
     }
 
     fun playPause() {
-        viewModelScope.launch {
-            if (_playBackState.value == PlaybackState.Playing) {
-                playbackStateController.pause(playbackState = { _playBackState.value = it })
-            } else {
-                playbackStateController.play(playbackState = { _playBackState.value = it })
-            }
+        if (_playBackState.value == PlaybackState.Playing) {
+            playbackStateController.pause(playbackState = { _playBackState.value = it })
+        } else {
+            playbackStateController.play(playbackState = { _playBackState.value = it })
         }
     }
 
     fun skipForward() {
-        viewModelScope.launch {
-            val target = (playbackStateController.currentPosition() + 10_000L)
-                .coerceAtMost(playbackStateController.duration())
-            playbackStateController.seekTo(target)
-        }
+        val target = (playbackStateController.currentPosition() + 10_000L)
+            .coerceAtMost(playbackStateController.duration())
+        playbackStateController.seekTo(target)
     }
 
     fun skipBackward() {
-        viewModelScope.launch {
-            val target = (playbackStateController.currentPosition() - 10_000L).coerceAtLeast(0L)
-            playbackStateController.seekTo(target)
-        }
+        val target = (playbackStateController.currentPosition() - 10_000L).coerceAtLeast(0L)
+        playbackStateController.seekTo(target)
     }
 
     fun selectTrack(item: PlaybackMediaItem) {
         _selectedTrackId.value = item.id
         selectedMediaItemHolder.select(item)
-        val localPath = downloadController.getLocalPath(item.id)
-        val playItem = if (localPath != null) item.copy(streamUrl = localPath) else item
-        handleStartPlayback(mutableListOf(playItem))
+        // Read local path on IO, then switch back to Main before touching AVFoundation.
+        viewModelScope.launch(Dispatchers.Main) {
+            val localPath = withContext(Dispatchers.IO) { downloadController.getLocalPath(item.id) }
+            val playItem = if (localPath != null) item.copy(streamUrl = localPath) else item
+            // handleStartPlayback calls AVFoundation APIs — must stay on Main.
+            handleStartPlayback(mutableListOf(playItem))
+        }
     }
 
     fun setQuality(q: PlaybackQuality) {
@@ -125,8 +135,10 @@ class PlaybackViewModel(
         playbackStateController.setQuality(q)
     }
 
+    // viewModelScope is already cancelled by ViewModel.onCleared() — no need to
+    // call viewModelScope.cancel() manually; doing so is redundant and can mask
+    // bugs by cancelling the scope before super.onCleared() runs.
     override fun onCleared() {
-        viewModelScope.cancel()
         super.onCleared()
     }
 }

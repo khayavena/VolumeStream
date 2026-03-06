@@ -5,9 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.vditital.data.model.PlaybackMediaItem
 import com.vditital.data.repository.PlaybackMediaItemRepository
 import com.vditital.data.repository.state.ResultState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class HomaPageViewModel(
     private val playbackMediaItemRepository: PlaybackMediaItemRepository
@@ -19,7 +22,11 @@ class HomaPageViewModel(
 
     fun fetchData() {
         viewModelScope.launch {
-            homeDataState.value = playbackMediaItemRepository.getMediaItemsByCategoryState()
+            // Repository calls may hit network/DB — always run off Main.
+            val result = withContext(Dispatchers.IO) {
+                playbackMediaItemRepository.getMediaItemsByCategoryState()
+            }
+            homeDataState.value = result
         }
     }
 }
