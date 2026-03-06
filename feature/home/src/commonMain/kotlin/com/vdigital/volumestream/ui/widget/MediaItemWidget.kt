@@ -88,10 +88,11 @@ fun MediaItemWidget(
                         strokeWidth = 2.dp,
                         color = GreenAccent
                     )
-                    is DownloadState.Downloading -> Text(
-                        text = "${(s.progress * 100).toInt()}%",
-                        color = GreenAccent,
-                        style = MaterialTheme.typography.caption
+                    is DownloadState.Downloading -> CircularProgressIndicator(
+                        progress = s.progress,
+                        modifier = Modifier.size(22.dp),
+                        strokeWidth = 2.dp,
+                        color = GreenAccent
                     )
                     is DownloadState.Completed -> Icon(
                         imageVector = Icons.Default.Check,

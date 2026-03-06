@@ -23,10 +23,11 @@ internal class DownloadWorker(
 ) : CoroutineWorker(context, workerParams) {
 
     companion object {
-        const val KEY_URL = "url"
-        const val KEY_ID = "id"
-        const val KEY_TITLE = "title"
-        const val KEY_PROGRESS = "progress"
+        const val KEY_URL     = "url"
+        const val KEY_ID      = "id"
+        const val KEY_TITLE   = "title"
+        const val KEY_ARTWORK = "artwork"
+        const val KEY_PROGRESS  = "progress"
         const val KEY_LOCAL_PATH = "local_path"
         const val PREFS = "vs_downloads"
         private const val NOTIF_CHANNEL_ID = "vs_download_channel"
@@ -34,9 +35,10 @@ internal class DownloadWorker(
     }
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        val id    = inputData.getString(KEY_ID)    ?: return@withContext Result.failure()
-        val url   = inputData.getString(KEY_URL)   ?: return@withContext Result.failure()
-        val title = inputData.getString(KEY_TITLE) ?: "Downloading…"
+        val id       = inputData.getString(KEY_ID)      ?: return@withContext Result.failure()
+        val url      = inputData.getString(KEY_URL)     ?: return@withContext Result.failure()
+        val title    = inputData.getString(KEY_TITLE)   ?: "Downloading…"
+        val artwork  = inputData.getString(KEY_ARTWORK) ?: ""
 
         setForeground(createForegroundInfo(title, 0))
 
@@ -51,6 +53,7 @@ internal class DownloadWorker(
             }
             val totalBytes = connection.contentLengthLong
             var downloaded = 0L
+            var lastReportedProgress = -1
 
             connection.inputStream.use { input ->
                 FileOutputStream(outputFile).use { output ->
@@ -63,9 +66,12 @@ internal class DownloadWorker(
                         }
                         output.write(buffer, 0, read)
                         downloaded += read
-                        val progress = if (totalBytes > 0) (downloaded * 100f / totalBytes) else 0f
-                        setProgress(workDataOf(KEY_PROGRESS to progress, KEY_ID to id))
-                        setForeground(createForegroundInfo(title, progress.toInt()))
+                        val progress = if (totalBytes > 0) (downloaded * 100f / totalBytes).toInt() else 0
+                        if (progress != lastReportedProgress) {
+                            lastReportedProgress = progress
+                            setProgress(workDataOf(KEY_PROGRESS to progress.toFloat(), KEY_ID to id))
+                            setForeground(createForegroundInfo(title, progress))
+                        }
                     }
                 }
             }
@@ -73,7 +79,11 @@ internal class DownloadWorker(
 
             val localUri = Uri.fromFile(outputFile).toString()
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .edit().putString(id, localUri).apply()
+                .edit()
+                .putString(id, localUri)
+                .putString("_t_$id", title)
+                .putString("_a_$id", artwork)
+                .apply()
 
             Result.success(workDataOf(KEY_LOCAL_PATH to localUri))
         } catch (e: Exception) {

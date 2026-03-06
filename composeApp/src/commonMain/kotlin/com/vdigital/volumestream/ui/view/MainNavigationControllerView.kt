@@ -9,6 +9,7 @@ import androidx.compose.material.Scaffold
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
@@ -41,11 +42,12 @@ fun MainNavigationControllerView() {
             startDestination = Screen.Splash.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(Screen.Splash.route)   { SplashScreen(navController = navController) }
-            composable(Screen.Home.route)     { HomeScreen(navController = navController) }
-            composable(Screen.Profile.route)  { ProfileScreen() }
-            composable(Screen.Settings.route) { SettingsScreen() }
-            composable(Screen.Play.route)     { PlaybackView(onBack = { navController.popBackStack() }) }
+            composable(Screen.Splash.route)     { SplashScreen(navController = navController) }
+            composable(Screen.Home.route)        { HomeScreen(navController = navController) }
+            composable(Screen.Downloads.route)   { DownloadsScreen(navController = navController) }
+            composable(Screen.Profile.route)     { ProfileScreen() }
+            composable(Screen.Settings.route)    { SettingsScreen() }
+            composable(Screen.Play.route)        { PlaybackView(onBack = { navController.popBackStack() }) }
         }
     }
 }
@@ -53,9 +55,10 @@ fun MainNavigationControllerView() {
 @Composable
 fun BottomNavigationBar(navController: NavController) {
     val items = listOf(
-        BottomNavItem("Home",     Screen.Home.route,     Icons.Default.Home),
-        BottomNavItem("Profile",  Screen.Profile.route,  Icons.Default.Person),
-        BottomNavItem("Settings", Screen.Settings.route, Icons.Default.Settings),
+        BottomNavItem("Home",      Screen.Home.route,      Icons.Default.Home),
+        BottomNavItem("Downloads", Screen.Downloads.route, Icons.AutoMirrored.Filled.List),
+        BottomNavItem("Profile",   Screen.Profile.route,   Icons.Default.Person),
+        BottomNavItem("Settings",  Screen.Settings.route,  Icons.Default.Settings),
     )
     BottomNavigation(modifier = Modifier.background(color = Color.Black)) {
         val currentRoute = currentRoute(navController)

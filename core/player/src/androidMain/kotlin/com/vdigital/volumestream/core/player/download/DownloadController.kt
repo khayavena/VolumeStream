@@ -16,13 +16,14 @@ import java.util.concurrent.TimeUnit
 
 actual class DownloadController(private val context: Context) {
 
-    actual fun download(id: String, url: String, title: String) {
+    actual fun download(id: String, url: String, title: String, artworkUrl: String) {
         val request = OneTimeWorkRequestBuilder<DownloadWorker>()
             .setInputData(
                 workDataOf(
-                    DownloadWorker.KEY_ID    to id,
-                    DownloadWorker.KEY_URL   to url,
-                    DownloadWorker.KEY_TITLE to title
+                    DownloadWorker.KEY_ID      to id,
+                    DownloadWorker.KEY_URL     to url,
+                    DownloadWorker.KEY_TITLE   to title,
+                    DownloadWorker.KEY_ARTWORK to artworkUrl
                 )
             )
             .setConstraints(Constraints(requiredNetworkType = NetworkType.CONNECTED))
@@ -35,7 +36,7 @@ actual class DownloadController(private val context: Context) {
     actual fun cancel(id: String) {
         WorkManager.getInstance(context).cancelUniqueWork(id)
         context.getSharedPreferences(DownloadWorker.PREFS, Context.MODE_PRIVATE)
-            .edit().remove(id).apply()
+            .edit().remove(id).remove("_t_$id").remove("_a_$id").apply()
     }
 
     actual fun remove(id: String) {
@@ -65,4 +66,23 @@ actual class DownloadController(private val context: Context) {
             .getString(id, null)
 
     actual fun isDownloaded(id: String): Boolean = getLocalPath(id) != null
+
+    @Suppress("UNCHECKED_CAST")
+    actual fun listDownloads(): List<DownloadItem> {
+        val prefs = context.getSharedPreferences(DownloadWorker.PREFS, Context.MODE_PRIVATE)
+        return prefs.all.entries
+            .filter { !it.key.startsWith("_t_") && !it.key.startsWith("_a_") }
+            .mapNotNull { entry ->
+                val id        = entry.key
+                val localPath = entry.value as? String ?: return@mapNotNull null
+                DownloadItem(
+                    id         = id,
+                    title      = prefs.getString("_t_$id", null) ?: id,
+                    url        = localPath,
+                    artworkUrl = prefs.getString("_a_$id", null) ?: "",
+                    state      = DownloadState.Completed,
+                    localPath  = localPath
+                )
+            }
+    }
 }

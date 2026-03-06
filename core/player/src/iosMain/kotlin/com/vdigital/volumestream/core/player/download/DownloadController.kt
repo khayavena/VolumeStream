@@ -102,7 +102,7 @@ actual class DownloadController {
             )
         }
 
-    actual fun download(id: String, url: String, title: String) {
+    actual fun download(id: String, url: String, title: String, artworkUrl: String) {
         val flow = flowFor(id)
         if (flow.value == DownloadState.Completed ||
             flow.value is DownloadState.Downloading ||
@@ -111,6 +111,8 @@ actual class DownloadController {
         val nsUrl = NSURL.URLWithString(url) ?: run {
             flow.value = DownloadState.Failed("Invalid URL"); return
         }
+        prefs.setObject(title, forKey = "vs_dl_t_$id")
+        prefs.setObject(artworkUrl, forKey = "vs_dl_a_$id")
         flow.value = DownloadState.Downloading(0f)
         val task = session.downloadTaskWithURL(nsUrl)
         taskIdToId[task.taskIdentifier] = id
@@ -130,6 +132,8 @@ actual class DownloadController {
             NSFileManager.defaultManager.removeItemAtPath(path, error = null)
         }
         prefs.removeObjectForKey(prefKey(id))
+        prefs.removeObjectForKey("vs_dl_t_$id")
+        prefs.removeObjectForKey("vs_dl_a_$id")
         stateFlows[id]?.value = DownloadState.Idle
     }
 
@@ -138,4 +142,27 @@ actual class DownloadController {
     actual fun getLocalPath(id: String): String? = prefs.stringForKey(prefKey(id))
 
     actual fun isDownloaded(id: String): Boolean = getLocalPath(id) != null
+
+    @Suppress("UNCHECKED_CAST")
+    actual fun listDownloads(): List<DownloadItem> {
+        val dict = prefs.dictionaryRepresentation() as? Map<*, *> ?: return emptyList()
+        return dict.entries
+            .filter { entry ->
+                val key = entry.key as? String ?: return@filter false
+                key.startsWith("vs_dl_") && !key.startsWith("vs_dl_t_") && !key.startsWith("vs_dl_a_")
+            }
+            .mapNotNull { entry ->
+                val key       = entry.key as? String ?: return@mapNotNull null
+                val localPath = entry.value as? String ?: return@mapNotNull null
+                val id        = key.removePrefix("vs_dl_")
+                DownloadItem(
+                    id         = id,
+                    title      = prefs.stringForKey("vs_dl_t_$id") ?: id,
+                    url        = localPath,
+                    artworkUrl = prefs.stringForKey("vs_dl_a_$id") ?: "",
+                    state      = DownloadState.Completed,
+                    localPath  = localPath
+                )
+            }
+    }
 }

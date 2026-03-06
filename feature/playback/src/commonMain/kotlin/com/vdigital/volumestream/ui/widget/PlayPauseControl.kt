@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.IconButton
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -31,7 +32,8 @@ private val ControlsBg  = Color(0xFF000000)
 @Composable
 fun PlayPauseControl(onPlayPause: () -> Unit) {
     val viewModel: PlaybackViewModel = koinViewModel()
-    val state = viewModel.playBackStateUI.collectAsState()
+    val state    = viewModel.playBackStateUI.collectAsState()
+    val progress = viewModel.progressStateUI.collectAsState()
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -50,15 +52,24 @@ fun PlayPauseControl(onPlayPause: () -> Unit) {
 
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(64.dp)
-                .background(GreenAccent, CircleShape)
+            modifier = Modifier.size(64.dp)
         ) {
-            IconButton(onClick = onPlayPause, modifier = Modifier.size(64.dp)) {
+            CircularProgressIndicator(
+                progress = progress.value,
+                modifier = Modifier.size(64.dp),
+                strokeWidth = 3.dp,
+                color = GreenAccent
+            )
+            IconButton(
+                onClick = onPlayPause,
+                modifier = Modifier
+                    .size(56.dp)
+                    .background(ControlsBg, CircleShape)
+            ) {
                 Text(
                     text = if (state.value == PlaybackState.Playing) "⏸" else "▶",
                     fontSize = 28.sp,
-                    color = Color.Black
+                    color = GreenAccent
                 )
             }
         }
