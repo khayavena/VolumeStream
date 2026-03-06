@@ -76,7 +76,15 @@ class DownloadViewModel(
 
     fun observeState(id: String): StateFlow<DownloadState> =
         downloadController.observeState(id)
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DownloadState.Idle)
+            .stateIn(
+                scope          = viewModelScope,
+                started        = SharingStarted.WhileSubscribed(5_000),
+                // Seed with Completed immediately if already downloaded so the UI
+                // never flickers back to Idle while waiting for the first emission
+                // from WorkManager (Android) or NSUserDefaults (iOS).
+                initialValue   = if (downloadController.isDownloaded(id)) DownloadState.Completed
+                                 else DownloadState.Idle
+            )
 
     /**
      * Checks whether an item is already downloaded. The underlying read is lightweight

@@ -48,16 +48,30 @@ actual class DownloadController(private val context: Context) {
         WorkManager.getInstance(context)
             .getWorkInfosForUniqueWorkFlow(id)
             .map { infos ->
-                val info = infos.firstOrNull() ?: return@map DownloadState.Idle
-                when (info.state) {
-                    WorkInfo.State.ENQUEUED,
-                    WorkInfo.State.BLOCKED  -> DownloadState.Queued
-                    WorkInfo.State.RUNNING  -> DownloadState.Downloading(
+                val info = infos.firstOrNull()
+                when {
+                    // No WorkInfo at all — WorkManager has pruned the record.
+                    // Fall back to SharedPreferences: if a local path exists the
+                    // download completed successfully in a previous session.
+                    info == null -> {
+                        if (isDownloaded(id)) DownloadState.Completed else DownloadState.Idle
+                    }
+                    info.state == WorkInfo.State.ENQUEUED ||
+                    info.state == WorkInfo.State.BLOCKED  -> DownloadState.Queued
+                    info.state == WorkInfo.State.RUNNING  -> DownloadState.Downloading(
                         info.progress.getFloat(DownloadWorker.KEY_PROGRESS, 0f) / 100f
                     )
-                    WorkInfo.State.SUCCEEDED -> DownloadState.Completed
-                    WorkInfo.State.FAILED    -> DownloadState.Failed("Download failed")
-                    WorkInfo.State.CANCELLED -> DownloadState.Idle
+                    info.state == WorkInfo.State.SUCCEEDED -> DownloadState.Completed
+                    info.state == WorkInfo.State.FAILED    -> {
+                        // Even on failure, if the file was written in a prior attempt,
+                        // treat it as Completed rather than showing a failed state.
+                        if (isDownloaded(id)) DownloadState.Completed
+                        else DownloadState.Failed("Download failed")
+                    }
+                    info.state == WorkInfo.State.CANCELLED -> {
+                        if (isDownloaded(id)) DownloadState.Completed else DownloadState.Idle
+                    }
+                    else -> DownloadState.Idle
                 }
             }
 
