@@ -11,7 +11,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 class DownloadViewModel(
     private val downloadController: DownloadController,
@@ -28,6 +31,12 @@ class DownloadViewModel(
     fun download(item: PlaybackMediaItem) {
         val url = item.downloadUrl.ifBlank { item.streamUrl }
         downloadController.download(item.id, url, item.title, item.artworkUrl)
+        viewModelScope.launch {
+            downloadController.observeState(item.id)
+                .filter { it == DownloadState.Completed }
+                .first()
+            refreshDownloads()
+        }
     }
 
     fun cancel(id: String) = downloadController.cancel(id)

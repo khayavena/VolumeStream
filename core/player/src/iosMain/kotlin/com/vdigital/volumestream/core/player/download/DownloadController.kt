@@ -21,7 +21,8 @@ import platform.darwin.NSUInteger
 
 @OptIn(ExperimentalForeignApi::class)
 private class VsDownloadDelegate(
-    private val onFinished: (taskId: NSUInteger, tmpUrl: NSURL?, error: NSError?) -> Unit
+    private val onFinished: (taskId: NSUInteger, tmpUrl: NSURL?, error: NSError?) -> Unit,
+    private val onProgress: (taskId: NSUInteger, written: Long, total: Long) -> Unit
 ) : NSObject(), NSURLSessionDownloadDelegateProtocol {
 
     override fun URLSession(
@@ -30,6 +31,16 @@ private class VsDownloadDelegate(
         didFinishDownloadingToURL: NSURL
     ) {
         onFinished(downloadTask.taskIdentifier, didFinishDownloadingToURL, null)
+    }
+
+    override fun URLSession(
+        session: NSURLSession,
+        downloadTask: NSURLSessionDownloadTask,
+        didWriteData: Long,
+        totalBytesWritten: Long,
+        totalBytesExpectedToWrite: Long
+    ) {
+        onProgress(downloadTask.taskIdentifier, totalBytesWritten, totalBytesExpectedToWrite)
     }
 
     override fun URLSession(
@@ -51,33 +62,48 @@ actual class DownloadController {
     private val taskIdToId = mutableMapOf<NSUInteger, String>()
     private val idToTask = mutableMapOf<String, NSURLSessionDownloadTask>()
 
-    private val delegate = VsDownloadDelegate { taskId, tmpUrl, error ->
-        val id = taskIdToId.remove(taskId) ?: return@VsDownloadDelegate
-        idToTask.remove(id)
-        val flow = stateFlows[id] ?: return@VsDownloadDelegate
-
-        if (error != null || tmpUrl == null) {
-            flow.value = DownloadState.Failed(error?.localizedDescription ?: "Download failed")
-            return@VsDownloadDelegate
+    private val delegate = VsDownloadDelegate(
+        onFinished = { taskId, tmpUrl, error ->
+            val id = taskIdToId.remove(taskId)
+            if (id != null) {
+                idToTask.remove(id)
+                val flow = stateFlows[id]
+                if (flow != null) {
+                    if (error != null || tmpUrl == null) {
+                        flow.value = DownloadState.Failed(error?.localizedDescription ?: "Download failed")
+                    } else {
+                        val dest = destPathFor(id)
+                        if (dest == null) {
+                            flow.value = DownloadState.Failed("No destination")
+                        } else {
+                            val fm = NSFileManager.defaultManager
+                            fm.createDirectoryAtPath(
+                                dest.substringBeforeLast("/"),
+                                withIntermediateDirectories = true,
+                                attributes = null,
+                                error = null
+                            )
+                            fm.removeItemAtPath(dest, error = null)
+                            if (fm.moveItemAtURL(tmpUrl, toURL = NSURL.fileURLWithPath(dest), error = null)) {
+                                prefs.setObject(dest, forKey = prefKey(id))
+                                flow.value = DownloadState.Completed
+                            } else {
+                                flow.value = DownloadState.Failed("Move failed")
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        onProgress = { taskId, written, total ->
+            val id = taskIdToId[taskId]
+            val flow = if (id != null) stateFlows[id] else null
+            if (id != null && flow != null) {
+                val progress = if (total > 0) written.toFloat() / total else 0f
+                flow.value = DownloadState.Downloading(progress)
+            }
         }
-        val dest = destPathFor(id) ?: run {
-            flow.value = DownloadState.Failed("No destination"); return@VsDownloadDelegate
-        }
-        val fm = NSFileManager.defaultManager
-        fm.createDirectoryAtPath(
-            dest.substringBeforeLast("/"),
-            withIntermediateDirectories = true,
-            attributes = null,
-            error = null
-        )
-        fm.removeItemAtPath(dest, error = null)
-        if (fm.moveItemAtURL(tmpUrl, toURL = NSURL.fileURLWithPath(dest), error = null)) {
-            prefs.setObject(dest, forKey = prefKey(id))
-            flow.value = DownloadState.Completed
-        } else {
-            flow.value = DownloadState.Failed("Move failed")
-        }
-    }
+    )
 
     private val session: NSURLSession = NSURLSession.sessionWithConfiguration(
         configuration = NSURLSessionConfiguration.defaultSessionConfiguration(),

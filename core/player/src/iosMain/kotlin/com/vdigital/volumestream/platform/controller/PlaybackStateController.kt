@@ -35,7 +35,11 @@ actual class PlaybackStateController {
     private var released = false
 
     actual fun addItem(mediaItem: PlaybackMediaItem) {
-        val nsUrl = NSURL.URLWithString(mediaItem.streamUrl)
+        val nsUrl = if (mediaItem.streamUrl.startsWith("/")) {
+            NSURL.fileURLWithPath(mediaItem.streamUrl)
+        } else {
+            NSURL.URLWithString(mediaItem.streamUrl)
+        }
         val playerItem = nsUrl?.let { AVPlayerItem(it) }
         if (playerItem != null) avPlayer.insertItem(playerItem, null)
     }
