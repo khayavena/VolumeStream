@@ -9,10 +9,13 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import android.util.Log
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.io.File
 import java.util.concurrent.TimeUnit
+
+private const val TAG = "VS_DL_Controller"
 
 actual class DownloadController(private val context: Context) {
 
@@ -34,12 +37,15 @@ actual class DownloadController(private val context: Context) {
     }
 
     actual fun cancel(id: String) {
+        Log.d(TAG, "cancel($id) — cancelling WorkManager work + clearing prefs")
         WorkManager.getInstance(context).cancelUniqueWork(id)
         context.getSharedPreferences(DownloadWorker.PREFS, Context.MODE_PRIVATE)
             .edit().remove(id).remove("_t_$id").remove("_a_$id").apply()
+        Log.d(TAG, "cancel($id) — prefs cleared")
     }
 
     actual fun remove(id: String) {
+        Log.d(TAG, "remove($id)")
         cancel(id)
         File(context.filesDir, "downloads/$id.mp4").takeIf { it.exists() }?.delete()
     }
@@ -49,30 +55,43 @@ actual class DownloadController(private val context: Context) {
             .getWorkInfosForUniqueWorkFlow(id)
             .map { infos ->
                 val info = infos.firstOrNull()
-                when {
+                val rawState = info?.state?.name ?: "null"
+                val isDownloaded = isDownloaded(id)
+                val mapped = when {
                     // No WorkInfo at all — WorkManager has pruned the record.
                     // Fall back to SharedPreferences: if a local path exists the
                     // download completed successfully in a previous session.
                     info == null -> {
-                        if (isDownloaded(id)) DownloadState.Completed else DownloadState.Idle
+                        if (isDownloaded) DownloadState.Completed else DownloadState.Idle
                     }
                     info.state == WorkInfo.State.ENQUEUED ||
                     info.state == WorkInfo.State.BLOCKED  -> DownloadState.Queued
                     info.state == WorkInfo.State.RUNNING  -> DownloadState.Downloading(
                         info.progress.getFloat(DownloadWorker.KEY_PROGRESS, 0f) / 100f
                     )
-                    info.state == WorkInfo.State.SUCCEEDED -> DownloadState.Completed
+                    info.state == WorkInfo.State.SUCCEEDED -> {
+                        // Guard against the race where remove() has cleared prefs but
+                        // WorkManager hasn't yet transitioned away from SUCCEEDED.
+                        if (isDownloaded) DownloadState.Completed else DownloadState.Idle
+                    }
                     info.state == WorkInfo.State.FAILED    -> {
                         // Even on failure, if the file was written in a prior attempt,
                         // treat it as Completed rather than showing a failed state.
-                        if (isDownloaded(id)) DownloadState.Completed
+                        if (isDownloaded) DownloadState.Completed
                         else DownloadState.Failed("Download failed")
                     }
                     info.state == WorkInfo.State.CANCELLED -> {
-                        if (isDownloaded(id)) DownloadState.Completed else DownloadState.Idle
+                        // cancel()/remove() clears SharedPreferences synchronously before
+                        // WorkManager fires the CANCELLED event, so isDownloaded() will
+                        // already return false here.  Always treat CANCELLED as Idle to
+                        // prevent the UI from flickering back to a Completed (tick) state
+                        // after the user deletes a download.
+                        DownloadState.Idle
                     }
                     else -> DownloadState.Idle
                 }
+                Log.d(TAG, "observeState($id): WorkInfo.state=$rawState isDownloaded=$isDownloaded -> $mapped")
+                mapped
             }
 
     actual fun getLocalPath(id: String): String? =

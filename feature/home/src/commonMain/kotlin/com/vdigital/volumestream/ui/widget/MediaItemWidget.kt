@@ -19,7 +19,8 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
@@ -78,22 +79,26 @@ fun MediaItemWidget(
                 contentAlignment = Alignment.Center
             ) {
                 when (val s = downloadState.value) {
-                    is DownloadState.Idle, is DownloadState.Failed -> Text(
-                        text = "\u2193",
-                        color = Color.White,
-                        style = MaterialTheme.typography.h6
+                    is DownloadState.Idle, is DownloadState.Failed -> Icon(
+                        imageVector = Icons.Default.FileDownload,
+                        contentDescription = "Download",
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
                     )
                     is DownloadState.Queued -> CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(20.dp),
                         strokeWidth = 2.dp,
-                        color = GreenAccent
+                        color = Color.White
                     )
-                    is DownloadState.Downloading -> CircularProgressIndicator(
-                        progress = s.progress,
-                        modifier = Modifier.size(22.dp),
-                        strokeWidth = 2.dp,
-                        color = GreenAccent
-                    )
+                    is DownloadState.Downloading -> Box(contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(
+                            progress = s.progress,
+                            modifier = Modifier.size(28.dp),
+                            strokeWidth = 2.dp,
+                            color = GreenAccent
+                        )
+                        
+                    }
                     is DownloadState.Completed -> Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = "Downloaded",
