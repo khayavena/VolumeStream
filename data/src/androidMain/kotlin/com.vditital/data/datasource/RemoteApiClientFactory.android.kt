@@ -10,6 +10,7 @@ import io.ktor.client.plugins.logging.Logging
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
+import com.vditital.data.util.AppLogger
 
 
 actual class RemoteApiClientFactory {
@@ -33,7 +34,11 @@ actual class RemoteApiClientFactory {
             }
 
             install(Logging) {
-                logger = Logger.DEFAULT
+                logger = object : Logger {
+                    override fun log(message: String) {
+                        AppLogger.d("Ktor", message)
+                    }
+                }
                 level = LogLevel.INFO
             }
         }

@@ -15,7 +15,9 @@ import io.ktor.http.URLProtocol
 import io.ktor.http.path
 import kotlinx.serialization.json.Json
 
-private const val API_HOST       = "localhost"
+// iOS simulator uses localhost; Android device uses the Mac's WiFi IP (see ApiHost.android.kt)
+internal expect val apiHost: String
+
 private const val API_PORT       = 8080
 private const val USE_HTTPS      = false
 private const val DEFAULT_PAGE   = 1
@@ -34,12 +36,12 @@ class RemotePlaybackDataSourceImpl(private val httpClient: HttpClient) : RemoteP
     }
 
     override suspend fun fetchFeed(): Map<String, MutableList<PlaybackMediaItem>> {
-        AppLogger.d("DataSource", "Requesting feed page=$DEFAULT_PAGE pageSize=$DEFAULT_LIMIT from $API_HOST:$API_PORT/$feedPath")
+        AppLogger.d("DataSource", "Requesting feed page=$DEFAULT_PAGE pageSize=$DEFAULT_LIMIT from $apiHost:$API_PORT/$feedPath")
 
         val httpResponse = httpClient.get {
             url {
                 protocol = if (USE_HTTPS) URLProtocol.HTTPS else URLProtocol.HTTP
-                host = API_HOST
+                host = apiHost
                 port = API_PORT
                 path(feedPath)
                 parameters.append("page", DEFAULT_PAGE.toString())
