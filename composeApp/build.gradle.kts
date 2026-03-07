@@ -6,7 +6,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.jetbrainsCompose)
     alias(libs.plugins.compose.compiler)
-    kotlin("plugin.serialization") version "1.9.0"
+    kotlin("plugin.serialization") version libs.versions.kotlin.get()
 }
 
 kotlin {

@@ -11,6 +11,7 @@ import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState
 import com.vditital.data.model.PlaybackMediaItem
 import com.vditital.data.repository.PlaybackMediaItemRepository
 import com.vditital.data.repository.state.ResultState
+import com.vditital.data.util.AppLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -57,7 +58,7 @@ class PlaybackViewModel(
                 // Back on Main here — safe to call AVFoundation.
                 handleStartPlayback(mutableListOf(playItem))
             } catch (e: Exception) {
-                e.printStackTrace()
+                AppLogger.e("PlaybackVM", "Playback initialisation failed", e)
                 _playBackState.value = PlaybackState.Error("Playback initialisation failed.")
             }
         }
@@ -88,7 +89,7 @@ class PlaybackViewModel(
             playbackStateController.addItemItems(playbackMediaItems)
             playbackStateController.play(playbackState = { _playBackState.value = it })
         } catch (e: Exception) {
-            e.printStackTrace()
+            AppLogger.e("PlaybackVM", "Player initialisation error", e)
             _playBackState.value = PlaybackState.Error("Exception was thrown.")
         }
     }
@@ -134,7 +135,7 @@ class PlaybackViewModel(
                 // handleStartPlayback calls AVFoundation APIs — must stay on Main.
                 handleStartPlayback(mutableListOf(playItem))
             } catch (e: Exception) {
-                e.printStackTrace()
+                AppLogger.e("PlaybackVM", "Track selection failed", e)
                 _playBackState.value = PlaybackState.Error("Track selection failed.")
             }
         }

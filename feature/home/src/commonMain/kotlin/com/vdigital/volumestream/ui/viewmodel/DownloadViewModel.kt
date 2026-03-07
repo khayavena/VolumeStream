@@ -7,6 +7,7 @@ import com.vdigital.volumestream.core.player.download.DownloadController
 import com.vdigital.volumestream.core.player.download.DownloadItem
 import com.vdigital.volumestream.core.player.download.DownloadState
 import com.vditital.data.model.PlaybackMediaItem
+import com.vditital.data.util.AppLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,7 +54,7 @@ class DownloadViewModel(
                 val items = withContext(Dispatchers.IO) { downloadController.listDownloads() }
                 _allDownloads.value = items
             } catch (e: Exception) {
-                e.printStackTrace()
+                AppLogger.e("DownloadVM", "refreshDownloads failed", e)
             }
         }
     }
@@ -77,7 +78,7 @@ class DownloadViewModel(
                 }
                 refreshDownloads()
             } catch (e: Exception) {
-                e.printStackTrace()
+                AppLogger.e("DownloadVM", "download failed", e)
             }
         }
     }
@@ -89,7 +90,7 @@ class DownloadViewModel(
     fun cancel(id: String) {
         // Force the UI to Idle immediately — before WorkManager's async CANCELLED
         // event arrives — so the button never flashes back to a "tick" state.
-        println("VS_DL_VM [$id] cancel() — setting override=Idle")
+        AppLogger.d("DownloadVM", "[$id] cancel() — setting override=Idle")
         overrideFor(id).value = DownloadState.Idle
         viewModelScope.launch(Dispatchers.IO) {
             downloadController.cancel(id)
@@ -103,14 +104,14 @@ class DownloadViewModel(
     fun remove(id: String) {
         // Push Idle synchronously on the Main thread so the button updates instantly,
         // before the file deletion and WorkManager cancellation complete asynchronously.
-        println("VS_DL_VM [$id] remove() — setting override=Idle")
+        AppLogger.d("DownloadVM", "[$id] remove() — setting override=Idle")
         overrideFor(id).value = DownloadState.Idle
         viewModelScope.launch {
             try {
                 withContext(Dispatchers.IO) { downloadController.remove(id) }
                 refreshDownloads()
             } catch (e: Exception) {
-                e.printStackTrace()
+                AppLogger.e("DownloadVM", "remove failed", e)
             }
         }
     }
@@ -136,7 +137,7 @@ class DownloadViewModel(
             downloadController.observeState(id),
             override
         ) { controllerState, overrideState ->
-            println("VS_DL_VM [$id] combine: controller=$controllerState  override=$overrideState")
+            AppLogger.d("DownloadVM", "[$id] combine: controller=$controllerState  override=$overrideState")
             val result = if (overrideState != null) {
                 val shouldClear = when {
                     // Idle override: only clear when a fresh active download starts
@@ -153,14 +154,14 @@ class DownloadViewModel(
                     else -> false
                 }
                 if (shouldClear) {
-                    println("VS_DL_VM [$id] clearing override (was $overrideState)")
+                    AppLogger.d("DownloadVM", "[$id] clearing override (was $overrideState)")
                     override.value = null
                 }
                 overrideState
             } else {
                 controllerState
             }
-            println("VS_DL_VM [$id] emitting: $result")
+            AppLogger.d("DownloadVM", "[$id] emitting: $result")
             result
         }.stateIn(
             scope        = viewModelScope,

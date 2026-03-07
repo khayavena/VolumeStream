@@ -10,6 +10,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import com.vditital.data.util.AppLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -93,7 +94,7 @@ internal class DownloadWorker(
 
             Result.success(workDataOf(KEY_LOCAL_PATH to localUri))
         } catch (e: Exception) {
-            e.printStackTrace()
+            AppLogger.e("DownloadWorker", "Download failed", e)
             outputFile.delete()
             if (runAttemptCount < 2) Result.retry() else Result.failure()
         }

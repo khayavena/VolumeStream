@@ -22,6 +22,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(project(":data"))
+            implementation(libs.napier)
             implementation(project(":core:navigation"))
             implementation(project(":core:player"))
             implementation(compose.runtime)
