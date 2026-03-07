@@ -15,15 +15,15 @@ import io.ktor.http.URLProtocol
 import io.ktor.http.path
 import kotlinx.serialization.json.Json
 
-// iOS simulator uses localhost; Android device uses the Mac's WiFi IP (see ApiHost.android.kt)
-internal expect val apiHost: String
-
 private const val API_PORT       = 8080
 private const val USE_HTTPS      = false
 private const val DEFAULT_PAGE   = 1
 private const val DEFAULT_LIMIT  = 20
 
-class RemotePlaybackDataSourceImpl(private val httpClient: HttpClient) : RemotePlaybackDataSource {
+class RemotePlaybackDataSourceImpl(
+    private val httpClient: HttpClient,
+    private val apiHost: String,
+) : RemotePlaybackDataSource {
 
     // Base endpoint: http://localhost:8080/api/v1/media?page=1&pageSize=20
     private val feedPath = "api/v1/media"

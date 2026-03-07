@@ -1,3 +1,4 @@
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -8,6 +9,33 @@ plugins {
     alias(libs.plugins.compose.compiler)
     kotlin("plugin.serialization") version libs.versions.kotlin.get()
 }
+
+// ── App config ───────────────────────────────────────────────────────────────
+// All runtime config lives in local.properties (gitignored).
+// Add entries there; they are injected into Android via BuildConfig and into
+// iOS via a generated Kotlin source file at build time.
+val localProps = Properties().also { props: Properties ->
+    val f = rootProject.file("local.properties")
+    if (f.exists()) props.load(f.inputStream())
+}
+val apiHostValue: String = localProps.getProperty("API_HOST", "localhost")
+
+// Generates AppConfig.kt into composeApp's iosMain so the iOS Koin module
+// can read values that come from local.properties without hardcoding them.
+val generateIosAppConfig by tasks.registering {
+    val outputDir = layout.buildDirectory.dir(
+        "generated/appConfig/kotlin/com/vdigital/volumestream/config"
+    )
+    outputs.dir(outputDir)
+    doFirst {
+        val dir = outputDir.get().asFile
+        dir.mkdirs()
+        File(dir, "AppConfig.kt").writeText(
+            "package com.vdigital.volumestream.config\n\ninternal val API_HOST: String = \"$apiHostValue\"\n"
+        )
+    }
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 kotlin {
     androidTarget {
@@ -57,8 +85,15 @@ kotlin {
             implementation(libs.koin.core)
             implementation(libs.navigation.compose)
         }
-        iosMain.dependencies {
-            implementation(libs.koin.core)
+        iosMain {
+            kotlin.srcDir(
+                generateIosAppConfig.map {
+                    layout.buildDirectory.dir("generated/appConfig/kotlin")
+                }
+            )
+            dependencies {
+                implementation(libs.koin.core)
+            }
         }
     }
 }
@@ -77,6 +112,7 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
+        buildConfigField("String", "API_HOST", "\"$apiHostValue\"")
     }
     packaging {
         resources {
@@ -94,6 +130,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     dependencies {
         debugImplementation(compose.uiTooling)
