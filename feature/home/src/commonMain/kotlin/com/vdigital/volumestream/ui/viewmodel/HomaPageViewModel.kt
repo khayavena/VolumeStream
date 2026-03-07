@@ -22,11 +22,17 @@ class HomaPageViewModel(
 
     fun fetchData() {
         viewModelScope.launch {
-            // Repository calls may hit network/DB — always run off Main.
-            val result = withContext(Dispatchers.IO) {
-                playbackMediaItemRepository.getMediaItemsByCategoryState()
+            println("[HomeVM] fetchData called")
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    playbackMediaItemRepository.getMediaItemsByCategoryState()
+                }
+                println("[HomeVM] result: $result")
+                homeDataState.value = result
+            } catch (e: Throwable) {
+                println("[HomeVM] uncaught error: $e")
+                homeDataState.value = ResultState.Error(Exception(e))
             }
-            homeDataState.value = result
         }
     }
 }

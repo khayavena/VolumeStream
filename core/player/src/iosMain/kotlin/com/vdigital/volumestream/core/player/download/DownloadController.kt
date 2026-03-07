@@ -182,6 +182,8 @@ actual class DownloadController {
     }
 
     actual fun remove(id: String) {
+        // cancel() already cancels the NSURLSession task, clears the task maps,
+        // and sets the stateFlow to Idle — so we only need to clean up storage here.
         cancel(id)
         prefs.stringForKey(prefKey(id))?.let { path ->
             NSFileManager.defaultManager.removeItemAtPath(path, error = null)
@@ -189,7 +191,10 @@ actual class DownloadController {
         prefs.removeObjectForKey(prefKey(id))
         prefs.removeObjectForKey("vs_dl_t_$id")
         prefs.removeObjectForKey("vs_dl_a_$id")
-        withLock { stateFlows[id] }?.value = DownloadState.Idle
+        // Flush NSUserDefaults to disk so that isDownloaded(id) returns false
+        // immediately in the same run-loop turn (avoids a stale-read race in
+        // observeState / flowFor on the next recomposition).
+        prefs.synchronize()
     }
 
     actual fun observeState(id: String): Flow<DownloadState> = flowFor(id)

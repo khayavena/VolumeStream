@@ -11,11 +11,9 @@ actual fun LockLandscapeOrientation() {
     val context = LocalContext.current
     DisposableEffect(Unit) {
         val activity = context as? Activity
-        val original = activity?.requestedOrientation
         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         onDispose {
-            activity?.requestedOrientation =
-                original ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
     }
 }

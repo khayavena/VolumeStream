@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -36,6 +35,11 @@ class DownloadViewModel(
     // mutableMapOf is safe without synchronisation.
     private val _stateOverrides = mutableMapOf<String, MutableStateFlow<DownloadState?>>()
 
+    // Cache the combined+stateIn StateFlow per id so that recompositions
+    // always get the same shared hot flow rather than creating a new stateIn
+    // subscription on every call.
+    private val _observedStates = mutableMapOf<String, StateFlow<DownloadState>>()
+
     private fun overrideFor(id: String): MutableStateFlow<DownloadState?> =
         _stateOverrides.getOrPut(id) { MutableStateFlow(null) }
 
@@ -45,23 +49,36 @@ class DownloadViewModel(
      */
     fun refreshDownloads() {
         viewModelScope.launch {
-            val items = withContext(Dispatchers.IO) { downloadController.listDownloads() }
-            _allDownloads.value = items
+            try {
+                val items = withContext(Dispatchers.IO) { downloadController.listDownloads() }
+                _allDownloads.value = items
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
     fun download(item: PlaybackMediaItem) {
         val url = item.downloadUrl.ifBlank { item.streamUrl }
+        // Clear any stale Idle override so the UI immediately shows Queued/Downloading
+        // as soon as the controller emits it, rather than being stuck on Idle.
+        overrideFor(item.id).value = null
         viewModelScope.launch {
-            // enqueueUniqueWork() is a Binder IPC call — must not run on Main.
-            withContext(Dispatchers.IO) {
-                downloadController.download(item.id, url, item.title, item.artworkUrl)
+            try {
+                // enqueueUniqueWork() is a Binder IPC call — must not run on Main.
+                withContext(Dispatchers.IO) {
+                    downloadController.download(item.id, url, item.title, item.artworkUrl)
+                }
+                // Observe directly from the controller (not the stateIn wrapper) to
+                // avoid a race where the stateIn hasn't started collecting yet.
+                withContext(Dispatchers.IO) {
+                    downloadController.observeState(item.id)
+                        .first { it == DownloadState.Completed || it is DownloadState.Failed }
+                }
+                refreshDownloads()
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-            // After enqueue, wait off-Main for completion then refresh.
-            downloadController.observeState(item.id)
-                .filter { it == DownloadState.Completed }
-                .first()
-            refreshDownloads()
         }
     }
 
@@ -89,32 +106,53 @@ class DownloadViewModel(
         println("VS_DL_VM [$id] remove() — setting override=Idle")
         overrideFor(id).value = DownloadState.Idle
         viewModelScope.launch {
-            withContext(Dispatchers.IO) { downloadController.remove(id) }
-            refreshDownloads()
+            try {
+                withContext(Dispatchers.IO) { downloadController.remove(id) }
+                refreshDownloads()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
     fun observeState(id: String): StateFlow<DownloadState> {
+        // Return the cached flow if already created — avoids creating a new stateIn
+        // subscription on every recomposition of MediaItemWidget.
+        _observedStates[id]?.let { return it }
+
         val override = overrideFor(id)
         // Combine: if an override is present use it, otherwise fall through to the
-        // controller's flow.  The override is cleared back to null once the
-        // underlying flow emits a stable (non-transitional) state so that fresh
-        // downloads or re-downloads work normally.
-        return combine(
+        // controller's flow.
+        //
+        // Override clearing rules:
+        //  • Idle override  → only cleared when the controller enters an active state
+        //                     (Queued/Downloading/Completed), i.e. a re-download has begun.
+        //                     It is NOT cleared when controllerState==Idle because
+        //                     WorkManager emits a CANCELLED→Idle transition *after* the
+        //                     override was set, which would cause the tick to flash back.
+        //  • Other overrides → cleared as soon as the controller reaches the same state
+        //                     or moves to any active state (normal flow).
+        val flow = combine(
             downloadController.observeState(id),
             override
         ) { controllerState, overrideState ->
             println("VS_DL_VM [$id] combine: controller=$controllerState  override=$overrideState")
             val result = if (overrideState != null) {
-                // Clear the override only when the controller has reached a stable
-                // matching state OR when the override was NOT an Idle-cancel and the
-                // controller has moved on to a new active state (re-download).
-                // Crucially, do NOT clear an Idle override just because WorkManager
-                // briefly emits RUNNING while cancelling — that is what causes the flash.
-                if (controllerState == overrideState ||
-                    (overrideState != DownloadState.Idle &&
+                val shouldClear = when {
+                    // Idle override: only clear when a fresh active download starts
+                    overrideState == DownloadState.Idle ->
+                        controllerState is DownloadState.Queued ||
+                        controllerState is DownloadState.Downloading ||
+                        controllerState == DownloadState.Completed
+                    // Non-idle override: clear when controller reaches the same state
+                    // or when a new active download supersedes it
+                    controllerState == overrideState -> true
+                    overrideState != DownloadState.Idle &&
                         (controllerState is DownloadState.Queued ||
-                         controllerState is DownloadState.Downloading))) {
+                         controllerState is DownloadState.Downloading) -> true
+                    else -> false
+                }
+                if (shouldClear) {
                     println("VS_DL_VM [$id] clearing override (was $overrideState)")
                     override.value = null
                 }
@@ -134,6 +172,8 @@ class DownloadViewModel(
                 ?: if (downloadController.isDownloaded(id)) DownloadState.Completed
                    else DownloadState.Idle
         )
+        _observedStates[id] = flow
+        return flow
     }
 
     /**

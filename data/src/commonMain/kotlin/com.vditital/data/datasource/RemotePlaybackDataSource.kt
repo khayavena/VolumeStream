@@ -6,5 +6,6 @@ import com.vditital.data.model.PlaybackMediaItem
 
 interface RemotePlaybackDataSource {
     suspend fun fetchData(): MutableList<PlaybackMediaItem>
+    suspend fun fetchFeed(): Map<String, MutableList<PlaybackMediaItem>>
     suspend fun fetchDataModel(): DataModel
 }

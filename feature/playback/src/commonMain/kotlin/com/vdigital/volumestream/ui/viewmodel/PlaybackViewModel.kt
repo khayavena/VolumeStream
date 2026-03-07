@@ -48,13 +48,18 @@ class PlaybackViewModel(
         // Always launch on Main — AVFoundation (initPlayer, addItemItems, play) must
         // be called on the Main thread. We switch to IO only for blocking reads.
         viewModelScope.launch(Dispatchers.Main) {
-            loadTrackList()
-            val item = selectedMediaItemHolder.current() ?: return@launch
-            // getLocalPath reads NSUserDefaults — dispatch to IO, then return to Main.
-            val localPath = withContext(Dispatchers.IO) { downloadController.getLocalPath(item.id) }
-            val playItem = if (localPath != null) item.copy(streamUrl = localPath) else item
-            // Back on Main here — safe to call AVFoundation.
-            handleStartPlayback(mutableListOf(playItem))
+            try {
+                loadTrackList()
+                val item = selectedMediaItemHolder.current() ?: return@launch
+                // getLocalPath reads NSUserDefaults — dispatch to IO, then return to Main.
+                val localPath = withContext(Dispatchers.IO) { downloadController.getLocalPath(item.id) }
+                val playItem = if (localPath != null) item.copy(streamUrl = localPath) else item
+                // Back on Main here — safe to call AVFoundation.
+                handleStartPlayback(mutableListOf(playItem))
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _playBackState.value = PlaybackState.Error("Playback initialisation failed.")
+            }
         }
     }
 
@@ -123,10 +128,15 @@ class PlaybackViewModel(
         selectedMediaItemHolder.select(item)
         // Read local path on IO, then switch back to Main before touching AVFoundation.
         viewModelScope.launch(Dispatchers.Main) {
-            val localPath = withContext(Dispatchers.IO) { downloadController.getLocalPath(item.id) }
-            val playItem = if (localPath != null) item.copy(streamUrl = localPath) else item
-            // handleStartPlayback calls AVFoundation APIs — must stay on Main.
-            handleStartPlayback(mutableListOf(playItem))
+            try {
+                val localPath = withContext(Dispatchers.IO) { downloadController.getLocalPath(item.id) }
+                val playItem = if (localPath != null) item.copy(streamUrl = localPath) else item
+                // handleStartPlayback calls AVFoundation APIs — must stay on Main.
+                handleStartPlayback(mutableListOf(playItem))
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _playBackState.value = PlaybackState.Error("Track selection failed.")
+            }
         }
     }
 

@@ -8,7 +8,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         supportedInterfaceOrientationsFor window: UIWindow?
     ) -> UIInterfaceOrientationMask {
-        return OrientationManager.shared.forceLandscape ? .landscape : .all
+        return OrientationManager.shared.forceLandscape ? .landscape : .portrait
     }
 
     func application(
@@ -25,7 +25,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             if #available(iOS 16.0, *) {
                 windowScene.requestGeometryUpdate(
                     .iOS(interfaceOrientations: OrientationManager.shared.forceLandscape
-                        ? .landscape : .all)
+                        ? .landscape : .portrait)
                 )
                 windowScene.keyWindow?.rootViewController?
                     .setNeedsUpdateOfSupportedInterfaceOrientations()
