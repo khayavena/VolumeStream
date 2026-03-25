@@ -19,8 +19,8 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
@@ -67,7 +67,7 @@ fun MediaItemWidget(
                     .clip(CircleShape)
                     .background(Color.Black.copy(alpha = 0.65f))
                     .clickable {
-                        when (val s = downloadState.value) {
+                        when (downloadState.value) {
                             is DownloadState.Idle, is DownloadState.Failed ->
                                 downloadViewModel.download(playbackMediaItem)
                             is DownloadState.Queued, is DownloadState.Downloading ->
@@ -97,7 +97,12 @@ fun MediaItemWidget(
                             strokeWidth = 2.dp,
                             color = GreenAccent
                         )
-                        
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Cancel download",
+                            tint = Color.White,
+                            modifier = Modifier.size(12.dp)
+                        )
                     }
                     is DownloadState.Completed -> Icon(
                         imageVector = Icons.Default.Check,

@@ -27,35 +27,47 @@ import platform.Foundation.NSRunLoop
 import platform.Foundation.NSRunLoopCommonModes
 import platform.Foundation.NSTimer
 import platform.Foundation.NSURL
+import platform.AVFoundation.AVURLAsset
+import com.vdigital.volumestream.config.PlayerConfig
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 @OptIn(ExperimentalForeignApi::class)
-actual class PlaybackStateController {
+actual class PlaybackStateController(
+    private val playerConfig: PlayerConfig = PlayerConfig()
+) {
 
     val avPlayer: AVQueuePlayer = AVQueuePlayer()
     private var progressTimer: NSTimer? = null
     private var released = false
+    private var authHeaders: Map<String, String> = emptyMap()
+
+    actual fun setAuthHeaders(headers: Map<String, String>) {
+        authHeaders = headers
+    }
 
     /**
      * Build an NSURL from a media item's streamUrl.
-     *
-     * iOS stores local paths as plain POSIX paths ("/var/mobile/.../file.mp4").
-     * Android stores them as file:// URIs ("file:///data/.../file.mp4").
-     * Handle both so that downloaded-item playback works on both platforms.
      */
     private fun nsUrlFor(streamUrl: String): NSURL? = when {
-        streamUrl.startsWith("file://") ->
-            NSURL.URLWithString(streamUrl)           // already a valid file URL string
-        streamUrl.startsWith("/") ->
-            NSURL.fileURLWithPath(streamUrl)         // plain POSIX path → file URL
-        else ->
-            NSURL.URLWithString(streamUrl)           // http/https remote URL
+        streamUrl.startsWith("file://") -> NSURL.URLWithString(streamUrl)
+        streamUrl.startsWith("/")       -> NSURL.fileURLWithPath(streamUrl)
+        else                            -> NSURL.URLWithString(streamUrl)
     }
 
     actual fun addItem(mediaItem: PlaybackMediaItem) {
-        // AVFoundation must be accessed on the Main thread.
         val url = nsUrlFor(mediaItem.streamUrl) ?: return
-        val playerItem = AVPlayerItem(url)
+        val playerItem: AVPlayerItem = if (authHeaders.isNotEmpty()) {
+            // Wrap in AVURLAsset so AVFoundation forwards custom headers to
+            // manifest, EXT-X-KEY, and all segment requests.
+            @Suppress("UNCHECKED_CAST")
+            val asset = AVURLAsset(
+                uRL     = url,
+                options = mapOf(playerConfig.avFoundationHttpHeadersKey to authHeaders) as Map<Any?, *>
+            )
+            AVPlayerItem(asset = asset)
+        } else {
+            AVPlayerItem(url)
+        }
         avPlayer.insertItem(playerItem, afterItem = null)
     }
 

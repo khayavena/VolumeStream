@@ -65,6 +65,7 @@ kotlin {
             implementation(libs.android.splashscreen)
         }
         commonMain.dependencies {
+            implementation(project(":data"))
             implementation(project(":core:navigation"))
             api(project(":core:player"))
             implementation(project(":feature:home"))

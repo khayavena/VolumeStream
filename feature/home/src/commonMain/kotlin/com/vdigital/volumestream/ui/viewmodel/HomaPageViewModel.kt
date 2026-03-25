@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vditital.data.model.PlaybackMediaItem
 import com.vditital.data.repository.PlaybackMediaItemRepository
+import com.vditital.data.repository.SessionRepository
 import com.vditital.data.repository.state.ResultState
 import com.vditital.data.util.AppLogger
 import kotlinx.coroutines.Dispatchers
@@ -14,7 +15,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class HomaPageViewModel(
-    private val playbackMediaItemRepository: PlaybackMediaItemRepository
+    private val playbackMediaItemRepository: PlaybackMediaItemRepository,
+    private val sessionRepository: SessionRepository,
 ) : ViewModel() {
 
     private val homeDataState =
@@ -24,6 +26,13 @@ class HomaPageViewModel(
     fun fetchData() {
         viewModelScope.launch {
             AppLogger.d("HomeVM", "fetchData called")
+
+            // Fire-and-forget: register the device's RSA public key once per install.
+            // 409 (already registered) is silently ignored by ensureDeviceRegistered().
+            launch(Dispatchers.IO) {
+                sessionRepository.ensureDeviceRegistered()
+            }
+
             try {
                 val result = withContext(Dispatchers.IO) {
                     playbackMediaItemRepository.getMediaItemsByCategoryState()

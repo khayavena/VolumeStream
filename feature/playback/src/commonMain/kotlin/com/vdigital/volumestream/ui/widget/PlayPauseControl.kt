@@ -32,8 +32,9 @@ private val ControlsBg  = Color(0xFF000000)
 @Composable
 fun PlayPauseControl(onPlayPause: () -> Unit) {
     val viewModel: PlaybackViewModel = koinViewModel()
-    val state    = viewModel.playBackStateUI.collectAsState()
-    val progress = viewModel.progressStateUI.collectAsState()
+    // Collect only playback state here — progress is isolated in ProgressRing
+    // so this composable only recomposes when play/pause/buffering state changes.
+    val state = viewModel.playBackStateUI.collectAsState()
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -50,16 +51,14 @@ fun PlayPauseControl(onPlayPause: () -> Unit) {
 
         Spacer(Modifier.width(24.dp))
 
+        // Box holds the progress ring (fast-changing) + play button (slow-changing)
+        // in separate composable scopes so Compose can skip the button recompose
+        // on every position tick.
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier.size(64.dp)
         ) {
-            CircularProgressIndicator(
-                progress = progress.value,
-                modifier = Modifier.size(64.dp),
-                strokeWidth = 3.dp,
-                color = GreenAccent
-            )
+            ProgressRing()
             IconButton(
                 onClick = onPlayPause,
                 modifier = Modifier
@@ -84,4 +83,22 @@ fun PlayPauseControl(onPlayPause: () -> Unit) {
                 .background(ControlsBg, CircleShape)
         ) { Text("10⏭", fontSize = 12.sp, color = GreenAccent) }
     }
+}
+
+/**
+ * Isolated composable for the seek-progress ring.
+ * Recomposes every ~200 ms (player position tick) without touching
+ * the surrounding [PlayPauseControl] or the play/pause button.
+ */
+@OptIn(KoinExperimentalAPI::class)
+@Composable
+private fun ProgressRing() {
+    val viewModel: PlaybackViewModel = koinViewModel()
+    val progress = viewModel.progressStateUI.collectAsState()
+    CircularProgressIndicator(
+        progress    = progress.value,
+        modifier    = Modifier.size(64.dp),
+        strokeWidth = 3.dp,
+        color       = GreenAccent
+    )
 }

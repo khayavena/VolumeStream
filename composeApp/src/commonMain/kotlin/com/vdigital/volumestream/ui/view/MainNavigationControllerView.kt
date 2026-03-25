@@ -8,9 +8,10 @@ import androidx.compose.material.Icon
 import androidx.compose.material.Scaffold
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -24,6 +25,14 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.vdigital.volumestream.navigation.Screen
 
+/** Routes that should never show the bottom navigation bar. */
+private val NO_BOTTOM_NAV_ROUTES = setOf(
+    Screen.Play.route,
+    Screen.Splash.route,
+    Screen.Login.route,
+    Screen.Register.route,
+)
+
 @Composable
 fun MainNavigationControllerView() {
     val navController = rememberNavController()
@@ -32,7 +41,7 @@ fun MainNavigationControllerView() {
         bottomBar = {
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
-            if (currentRoute != Screen.Play.route && currentRoute != Screen.Splash.route) {
+            if (currentRoute !in NO_BOTTOM_NAV_ROUTES) {
                 BottomNavigationBar(navController)
             }
         }
@@ -42,12 +51,15 @@ fun MainNavigationControllerView() {
             startDestination = Screen.Splash.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(Screen.Splash.route)     { SplashScreen(navController = navController) }
-            composable(Screen.Home.route)        { HomeScreen(navController = navController) }
-            composable(Screen.Downloads.route)   { DownloadsScreen(navController = navController) }
-            composable(Screen.Profile.route)     { ProfileScreen() }
-            composable(Screen.Settings.route)    { SettingsScreen() }
-            composable(Screen.Play.route)        { PlaybackView(onBack = { navController.popBackStack() }) }
+            composable(Screen.Splash.route)    { SplashScreen(navController = navController) }
+            composable(Screen.Login.route)     { LoginScreen(navController = navController) }
+            composable(Screen.Register.route)  { RegisterScreen(navController = navController) }
+            composable(Screen.Home.route)      { HomeScreen(navController = navController) }
+            composable(Screen.Search.route)    { SearchScreen(navController = navController) }
+            composable(Screen.Downloads.route) { DownloadsScreen(navController = navController) }
+            composable(Screen.Profile.route)   { ProfileScreen(navController = navController) }
+            composable(Screen.Settings.route)  { SettingsScreen() }
+            composable(Screen.Play.route)      { PlaybackView(onBack = { navController.popBackStack() }) }
         }
     }
 }
@@ -56,6 +68,7 @@ fun MainNavigationControllerView() {
 fun BottomNavigationBar(navController: NavController) {
     val items = listOf(
         BottomNavItem("Home",      Screen.Home.route,      Icons.Default.Home),
+        BottomNavItem("Search",    Screen.Search.route,    Icons.Default.Search),
         BottomNavItem("Downloads", Screen.Downloads.route, Icons.AutoMirrored.Filled.List),
         BottomNavItem("Profile",   Screen.Profile.route,   Icons.Default.Person),
         BottomNavItem("Settings",  Screen.Settings.route,  Icons.Default.Settings),

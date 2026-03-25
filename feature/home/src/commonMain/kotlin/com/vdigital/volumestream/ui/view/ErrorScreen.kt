@@ -1,5 +1,6 @@
 package com.vdigital.volumestream.ui.view
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,6 +16,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+private val GreenAccent = Color(0xFF00E676)
+
 @Composable
 fun ErrorScreen(
     title: String = "Something went wrong",
@@ -24,6 +27,7 @@ fun ErrorScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(Color.Black)
             .padding(16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
@@ -32,7 +36,7 @@ fun ErrorScreen(
             text = title,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.Black,
+            color = Color.White,
             modifier = Modifier.padding(bottom = 8.dp)
         )
         Text(
@@ -44,9 +48,9 @@ fun ErrorScreen(
         if (onRetry != null) {
             Button(
                 onClick = onRetry,
-                colors = ButtonDefaults.buttonColors(backgroundColor = Color.Black)
+                colors = ButtonDefaults.buttonColors(backgroundColor = GreenAccent)
             ) {
-                Text(text = "Retry", color = Color.White)
+                Text(text = "Retry", color = Color.Black, fontWeight = FontWeight.Bold)
             }
         }
     }

@@ -80,6 +80,18 @@ fun PlaybackView(onBack: () -> Unit = {}) {
         showQualityPanel = false
     }
 
+    // Kick off player initialisation: JWT refresh, session start, then play.
+    LaunchedEffect(Unit) { viewModel.initialise() }
+
+    // Auto-navigate back when the stream ends.
+    val playbackState by viewModel.playBackStateUI.collectAsState()
+    LaunchedEffect(playbackState) {
+        if (playbackState == PlaybackState.Ended) {
+            delay(600L)
+            onBack()
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -245,16 +257,6 @@ fun PlaybackView(onBack: () -> Unit = {}) {
             exit = slideOutVertically(targetOffsetY = { it })
         ) {
             QualitySelectionPanel(onSelect = { showQualityPanel = false })
-        }
-    }
-
-    LaunchedEffect(Unit) { viewModel.initialise() }
-
-    val playbackState by viewModel.playBackStateUI.collectAsState()
-    LaunchedEffect(playbackState) {
-        if (playbackState == PlaybackState.Ended) {
-            delay(600L)
-            onBack()
         }
     }
 }

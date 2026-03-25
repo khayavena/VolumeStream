@@ -5,7 +5,8 @@ import com.vdigital.volumestream.platform.controller.PlaybackStateController
 import com.vditital.data.model.PlaybackMediaItem
 
 interface Media3PlayerComponent {
-    fun initPlayer(onReady: () -> Unit = {})
+    fun setDefaultHeaders(headers: Map<String, String>)
+    fun initPlayer(onReady: () -> Unit)
     fun setMediaItem(mediaItem: PlaybackMediaItem)
     fun addMediaItem(mediaItem: PlaybackMediaItem)
     fun addAll(mediaItems: List<PlaybackMediaItem>)

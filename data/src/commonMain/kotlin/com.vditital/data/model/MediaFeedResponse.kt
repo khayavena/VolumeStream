@@ -1,18 +1,14 @@
 package com.vditital.data.model
 
+import com.vditital.data.config.StreamVaultConfig
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+/** Top-level response from GET /api/v1/media/feed */
 @Serializable
 data class MediaFeedResponse(
-    @SerialName("items")
-    val items: List<MediaItemDto>,
-    @SerialName("totalCount")
-    val totalCount: Int = 0,
-    @SerialName("page")
-    val page: Int = 1,
-    @SerialName("pageSize")
-    val pageSize: Int = 20
+    @SerialName("categories")
+    val categories: Map<String, List<MediaItemDto>> = emptyMap()
 )
 
 @Serializable
@@ -26,9 +22,9 @@ data class MediaItemDto(
     @SerialName("streamUrl")
     val streamUrl: String,
     @SerialName("downloadUrl")
-    val downloadUrl: String = "",
+    val downloadUrl: String? = null,
     @SerialName("artworkUrl")
-    val artworkUrl: String = "",
+    val artworkUrl: String? = null,
     @SerialName("durationMs")
     val durationMs: Long = 0,
     @SerialName("fileSizeBytes")
@@ -45,11 +41,15 @@ data class MediaItemDto(
     val qualities: List<String> = emptyList()
 )
 
-fun MediaItemDto.toPlaybackMediaItem() = PlaybackMediaItem(
-    id = id,
-    title = title,
+fun MediaItemDto.toPlaybackMediaItem(apiHost: String, config: StreamVaultConfig = StreamVaultConfig()) = PlaybackMediaItem(
+    id           = id,
+    title        = title,
     isDownloaded = false,
-    streamUrl = streamUrl,
-    downloadUrl = downloadUrl,
-    artworkUrl = artworkUrl
+    // Build the authenticated HLS manifest URL from host + config so that port
+    // and scheme are never hardcoded and any SDK consumer can customise them.
+    streamUrl    = "${if (config.useHttps) "https" else "http"}://$apiHost:${config.apiPort}/${config.apiBasePath}/manifest/hls/$id",
+    downloadUrl  = downloadUrl ?: "",
+    artworkUrl   = artworkUrl ?: "",
+    durationMs   = durationMs,
+    description  = description ?: ""
 )

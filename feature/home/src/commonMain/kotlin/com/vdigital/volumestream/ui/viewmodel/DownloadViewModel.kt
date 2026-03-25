@@ -61,20 +61,21 @@ class DownloadViewModel(
 
     fun download(item: PlaybackMediaItem) {
         val url = item.downloadUrl.ifBlank { item.streamUrl }
-        // Clear any stale Idle override so the UI immediately shows Queued/Downloading
-        // as soon as the controller emits it, rather than being stuck on Idle.
         overrideFor(item.id).value = null
         viewModelScope.launch {
             try {
-                // enqueueUniqueWork() is a Binder IPC call — must not run on Main.
                 withContext(Dispatchers.IO) {
                     downloadController.download(item.id, url, item.title, item.artworkUrl)
                 }
-                // Observe directly from the controller (not the stateIn wrapper) to
-                // avoid a race where the stateIn hasn't started collecting yet.
+                // Wait for terminal state — Idle covers the "cancelled" path so
+                // this coroutine always unblocks and refreshDownloads() always fires.
                 withContext(Dispatchers.IO) {
                     downloadController.observeState(item.id)
-                        .first { it == DownloadState.Completed || it is DownloadState.Failed }
+                        .first {
+                            it == DownloadState.Completed ||
+                            it is DownloadState.Failed    ||
+                            it == DownloadState.Idle
+                        }
                 }
                 refreshDownloads()
             } catch (e: Exception) {
@@ -198,6 +199,15 @@ class DownloadViewModel(
                 artworkUrl = item.artworkUrl
             )
         )
+    }
+
+    /** Release all cached StateFlow subscriptions when the ViewModel is destroyed. */
+    override fun onCleared() {
+        super.onCleared()
+        // viewModelScope is cancelled by super — the stateIn coroutines it owns stop
+        // automatically. Clearing the maps releases the StateFlow references too.
+        _stateOverrides.clear()
+        _observedStates.clear()
     }
 }
 

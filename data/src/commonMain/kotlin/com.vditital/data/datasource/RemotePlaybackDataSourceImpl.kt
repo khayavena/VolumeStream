@@ -1,94 +1,66 @@
 package com.vditital.data.datasource
 
+import com.vditital.data.config.StreamVaultConfig
 import com.vditital.data.model.DataModel
 import com.vditital.data.model.MediaFeedResponse
 import com.vditital.data.model.PlaybackMediaItem
 import com.vditital.data.model.toPlaybackMediaItem
+import com.vditital.data.security.TokenStore
 import com.vditital.data.util.AppLogger
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
+import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
-import io.ktor.client.request.headers
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.URLProtocol
 import io.ktor.http.path
 import kotlinx.serialization.json.Json
 
-private const val API_PORT       = 8080
-private const val USE_HTTPS      = false
-private const val DEFAULT_PAGE   = 1
-private const val DEFAULT_LIMIT  = 20
-
 class RemotePlaybackDataSourceImpl(
     private val httpClient: HttpClient,
     private val apiHost: String,
+    private val tokenStore: TokenStore,
+    private val config: StreamVaultConfig = StreamVaultConfig()
 ) : RemotePlaybackDataSource {
 
-    // Base endpoint: http://localhost:8080/api/v1/media?page=1&pageSize=20
-    private val feedPath = "api/v1/media"
+    private val protocol  get() = if (config.useHttps) URLProtocol.HTTPS else URLProtocol.HTTP
+    private val port      get() = config.apiPort
+    private val feedPath  get() = "${config.apiBasePath}/media/feed"
 
-    // Lenient Json matching the iOS/Android ContentNegotiation config
     private val json = Json {
-        isLenient = true
+        isLenient         = true
         ignoreUnknownKeys = true
-        explicitNulls = false
+        explicitNulls     = false
     }
 
     override suspend fun fetchFeed(): Map<String, MutableList<PlaybackMediaItem>> {
-        AppLogger.d("DataSource", "Requesting feed page=$DEFAULT_PAGE pageSize=$DEFAULT_LIMIT from $apiHost:$API_PORT/$feedPath")
+        val jwt = tokenStore.getJwt()
+        AppLogger.d("DataSource", "fetchFeed from $apiHost:$port/$feedPath  jwt=${jwt != null}")
 
-        val httpResponse = httpClient.get {
+        val response = httpClient.get {
             url {
-                protocol = if (USE_HTTPS) URLProtocol.HTTPS else URLProtocol.HTTP
-                host = apiHost
-                port = API_PORT
+                protocol = this@RemotePlaybackDataSourceImpl.protocol
+                host     = apiHost
+                port     = this@RemotePlaybackDataSourceImpl.port
                 path(feedPath)
-                parameters.append("page", DEFAULT_PAGE.toString())
-                parameters.append("pageSize", DEFAULT_LIMIT.toString())
             }
-            headers {
-                append(HttpHeaders.Accept, "application/json")
-            }
+            if (jwt != null) bearerAuth(jwt)
+            headers.append(HttpHeaders.Accept, "application/json")
         }
 
-        val rawBody = httpResponse.bodyAsText()
-        AppLogger.d("DataSource", "HTTP status: ${httpResponse.status}")
-        AppLogger.d("DataSource", "Raw response body: $rawBody")
+        val rawBody = response.bodyAsText()
+        AppLogger.d("DataSource", "HTTP ${response.status}  body=${rawBody.take(200)}")
 
-        val response = json.decodeFromString<MediaFeedResponse>(rawBody)
-        AppLogger.d("DataSource", "Parsed ${response.items.size} items across categories")
+        val feedResponse = json.decodeFromString<MediaFeedResponse>(rawBody)
+        AppLogger.d("DataSource", "Parsed ${feedResponse.categories.size} categories")
 
-        return response.items
-            .groupBy { it.categoryName.ifBlank { "Other" } }
-            .mapValues { (_, items) -> items.map { it.toPlaybackMediaItem() }.toMutableList() }
-    }
-
-    override suspend fun fetchData(): MutableList<PlaybackMediaItem> {
-        return fetchFeed().values.flatten().toMutableList()
-    }
-
-    override suspend fun fetchDataModel(): DataModel {
-        return try {
-            val result: DataModel = httpClient.get {
-                url {
-                    protocol = URLProtocol.HTTPS
-                    host = "jsonplaceholder.typicode.com"
-                    path("todos/1")
-                    parameters.append("id", "123")
-                }
-                headers {
-                    append(HttpHeaders.Authorization, "Bearer token")
-                    append(HttpHeaders.ContentType, "application/json")
-                }
-            }.body()
-            AppLogger.d("DataSource", "fetchDataModel success: $result")
-            result
-        } catch (e: Exception) {
-            AppLogger.e("DataSource", "fetchDataModel failed", e)
-            DataModel()
+        return feedResponse.categories.mapValues { (_, items) ->
+            items.map { it.toPlaybackMediaItem(apiHost, config) }.toMutableList()
         }
     }
+
+    override suspend fun fetchData(): MutableList<PlaybackMediaItem> =
+        fetchFeed().values.flatten().toMutableList()
+
+    override suspend fun fetchDataModel(): DataModel = DataModel()
 }
-
-

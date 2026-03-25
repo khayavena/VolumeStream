@@ -24,6 +24,10 @@ actual class PlaybackStateController(private val media3PlayerComponent: Media3Pl
     private var progressHandler: Handler? = null
     private var progressRunnable: Runnable? = null
 
+    actual fun setAuthHeaders(headers: Map<String, String>) {
+        media3PlayerComponent.setDefaultHeaders(headers)
+    }
+
     actual fun addItem(mediaItem: PlaybackMediaItem) {
         media3PlayerComponent.addMediaItem(mediaItem)
     }

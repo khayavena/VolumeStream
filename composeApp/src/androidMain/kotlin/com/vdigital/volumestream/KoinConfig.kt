@@ -9,6 +9,7 @@ import org.koin.dsl.module
 actual fun KoinApplication.configureKoin() {
     androidContext(AndroidApp.getAppInstance())
     modules(module {
-        single<String>(named("apiHost")) { BuildConfig.API_HOST }
+        single<String>(named("apiHost"))  { BuildConfig.API_HOST }
+        single<String>(named("authHost")) { BuildConfig.API_HOST }
     })
 }

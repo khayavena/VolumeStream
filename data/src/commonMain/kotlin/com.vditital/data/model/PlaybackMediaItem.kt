@@ -9,5 +9,7 @@ data class PlaybackMediaItem(
     val isDownloaded: Boolean = false,
     val streamUrl: String,
     val downloadUrl: String = "",
-    val artworkUrl: String = ""
+    val artworkUrl: String = "",
+    val durationMs: Long = 0L,
+    val description: String = ""
 )

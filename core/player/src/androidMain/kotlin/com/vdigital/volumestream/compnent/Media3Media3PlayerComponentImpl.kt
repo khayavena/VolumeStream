@@ -1,8 +1,10 @@
 package com.vdigital.volumestream.compnent
 
 import android.app.Application
+import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.MimeTypes
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaController
 import androidx.media3.session.MediaSession
@@ -27,17 +29,26 @@ class Media3Media3PlayerComponentImpl(
         .setMediaSourceFactory(cachedPlaybackDataSourceFactory.buildCacheDataSourceFactory())
         .build()
 
+    override fun setDefaultHeaders(headers: Map<String, String>) {
+        cachedPlaybackDataSourceFactory.setDefaultHeaders(headers)
+    }
+
     override fun initPlayer(onReady: () -> Unit) {
         controllerListener?.let { mediaController?.removeListener(it) }
         mediaController?.release()
         mediaController = null
         mediaSession?.release()
-        if (playerReleased) {
-            player = buildPlayer()
-            playerReleased = false
+        mediaSession = null
+
+        // Always release and rebuild the ExoPlayer so it picks up the
+        // latest auth headers that were injected via setDefaultHeaders().
+        if (!playerReleased) {
+            player.stop()
+            player.release()
         }
-        player.stop()
-        player.clearMediaItems()
+        player = buildPlayer()
+        playerReleased = false
+
         mediaSession = MediaSession.Builder(context, player).setCallback(MediaSessionCallback()).build()
         val future = MediaController.Builder(context, mediaSession!!.token).buildAsync()
         Futures.addCallback(future, object : FutureCallback<MediaController> {
@@ -46,7 +57,7 @@ class Media3Media3PlayerComponentImpl(
                 onReady()
             }
             override fun onFailure(t: Throwable) { onReady() }
-        }, context.mainExecutor)
+        }, ContextCompat.getMainExecutor(context))
     }
 
     override fun setMediaItem(mediaItem: PlaybackMediaItem) {
@@ -85,10 +96,14 @@ class Media3Media3PlayerComponentImpl(
 
     override fun play() { mediaController?.play() }
 
-    private fun buildMediaItem(item: PlaybackMediaItem): MediaItem =
-        MediaItem.Builder()
+    private fun buildMediaItem(item: PlaybackMediaItem): MediaItem {
+        val isRemoteHls = item.streamUrl.startsWith("http") &&
+                !item.streamUrl.endsWith(".mp4", ignoreCase = true) &&
+                !item.streamUrl.endsWith(".mp3", ignoreCase = true)
+        return MediaItem.Builder()
             .setUri(item.streamUrl)
             .setMediaId(item.streamUrl)
+            .apply { if (isRemoteHls) setMimeType(MimeTypes.APPLICATION_M3U8) }
             .setMediaMetadata(
                 MediaMetadata.Builder()
                     .setTitle(item.title)
@@ -96,4 +111,5 @@ class Media3Media3PlayerComponentImpl(
                     .build()
             )
             .build()
+    }
 }

@@ -36,8 +36,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.vdigital.volumestream.navigation.Screen
+import com.vditital.data.repository.AuthRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 
 private val GreenAccent   = Color(0xFF00E676)
 private val GreenDark     = Color(0xFF00C853)
@@ -46,6 +48,7 @@ private val GreenGlowFade = Color(0x0000E676)
 
 @Composable
 fun SplashScreen(navController: NavHostController) {
+    val authRepository: AuthRepository = koinInject()
 
     // ── Animatables ──────────────────────────────────────────────────────────
     val circleScale   = remember { Animatable(0f) }
@@ -101,8 +104,10 @@ fun SplashScreen(navController: NavHostController) {
         taglineAlpha.animateTo(1f, tween(500))
         delay(1000)
 
-        // 5. Navigate to Home
-        navController.navigate(Screen.Home.route) {
+        // 5. Navigate — Login if not authenticated, Home if already logged in
+        val destination = if (authRepository.isLoggedIn()) Screen.Home.route
+                          else Screen.Login.route
+        navController.navigate(destination) {
             popUpTo(Screen.Splash.route) { inclusive = true }
         }
     }

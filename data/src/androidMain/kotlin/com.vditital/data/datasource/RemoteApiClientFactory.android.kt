@@ -39,7 +39,7 @@ actual class RemoteApiClientFactory {
                         AppLogger.d("Ktor", message)
                     }
                 }
-                level = LogLevel.INFO
+                level = LogLevel.HEADERS
             }
         }
     }
