@@ -205,14 +205,19 @@ class PlaybackViewModel(
     }
 
     fun skipForward() {
-        val target = (playbackStateController.currentPosition() + 10_000L)
-            .coerceAtMost(playbackStateController.duration())
+        val dur    = playbackStateController.duration()
+        val target = (playbackStateController.currentPosition() + 10_000L).coerceAtMost(dur)
         playbackStateController.seekTo(target)
+        // Immediately reflect the new position so the seek bar jumps to the
+        // correct spot without waiting for the next timer tick.
+        if (dur > 0) _progressState.value = target.toFloat() / dur
     }
 
     fun skipBackward() {
+        val dur    = playbackStateController.duration()
         val target = (playbackStateController.currentPosition() - 10_000L).coerceAtLeast(0L)
         playbackStateController.seekTo(target)
+        if (dur > 0) _progressState.value = target.toFloat() / dur
     }
 
     fun selectTrack(item: PlaybackMediaItem) {

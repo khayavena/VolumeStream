@@ -86,13 +86,21 @@ actual class PlaybackStateController(
 
         // NSTimer must be added to the Main run loop — scheduledTimerWithTimeInterval
         // only works correctly when called on Main. We schedule explicitly here.
-        val timer = NSTimer.timerWithTimeInterval(1.0, repeats = true) {
-            if (isPlaying()) {
-                callback(currentPosition(), duration())
-                playbackState(playerState())
+        // 0.5 s ticks (down from 1.0 s) for a smoother seek bar.
+        val timer = NSTimer.timerWithTimeInterval(0.5, repeats = true) {
+            val pos = currentPosition()
+            val dur = duration()
+            // Always fire the callback so the seek bar stays accurate after
+            // seeks and reflects the correct position while paused.
+            callback(pos, dur)
+            when {
+                isPlaying() ->
+                    playbackState(playerState())
+                avPlayer.currentItem?.isPlaybackBufferEmpty() == true ->
+                    playbackState(Buffering)
+                avPlayer.currentItem == null && !released ->
+                    playbackState(PlaybackState.Ended)
             }
-            if (avPlayer.currentItem?.isPlaybackBufferEmpty() == true) playbackState(Buffering)
-            if (avPlayer.currentItem == null && !released) playbackState(PlaybackState.Ended)
         }
         NSRunLoop.mainRunLoop.addTimer(timer, forMode = NSRunLoopCommonModes)
         progressTimer = timer

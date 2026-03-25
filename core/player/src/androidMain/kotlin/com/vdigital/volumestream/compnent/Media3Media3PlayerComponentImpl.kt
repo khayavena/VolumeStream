@@ -112,6 +112,9 @@ class Media3Media3PlayerComponentImpl(
     }
 
     override fun addAll(mediaItems: List<PlaybackMediaItem>) {
+        // Clear any previously queued items so a track-switch starts fresh
+        // and doesn't append the new item behind the old one.
+        player.clearMediaItems()
         mediaItems.forEach { player.addMediaItem(buildMediaItem(it)) }
         player.prepare()
         player.playWhenReady = true

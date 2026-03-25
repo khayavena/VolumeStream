@@ -37,6 +37,9 @@ actual class PlaybackStateController(private val media3PlayerComponent: Media3Pl
     }
 
     actual fun initPlayer(callback: (Long, Long) -> Unit, playbackState: (PlaybackState) -> Unit) {
+        // Reset released flag so the onReady lambda below isn't skipped when
+        // this controller is reused (single DI scope) after a previous release().
+        released = false
         progressRunnable?.let { progressHandler?.removeCallbacks(it) }
         progressHandler = null
         progressRunnable = null
@@ -46,14 +49,25 @@ actual class PlaybackStateController(private val media3PlayerComponent: Media3Pl
             val handler = Handler(Looper.getMainLooper())
             val runnable = object : Runnable {
                 override fun run() {
-                    if (media3PlayerComponent.getMediaController()?.isPlaying == true) {
-                        callback(currentPosition(), duration())
-                        playbackState(Playing)
+                    if (released) return   // player was released mid-playback
+                    val exo = media3PlayerComponent.getExoPlayer()
+                    // C.TIME_UNSET == Long.MIN_VALUE — normalise to 0 so the
+                    // ViewModel can safely divide position / duration.
+                    val dur = exo.duration.coerceAtLeast(0L)
+                    val pos = exo.currentPosition.coerceAtLeast(0L)
+                    // Always fire the callback so the seek bar reflects the
+                    // true position after a seek, even while briefly paused or
+                    // buffering between ticks.
+                    callback(pos, dur)
+                    when {
+                        exo.isPlaying ->
+                            playbackState(Playing)
+                        exo.playbackState == Player.STATE_BUFFERING ->
+                            playbackState(Buffering)
+                        exo.playbackState == Player.STATE_ENDED ->
+                            playbackState(PlaybackState.Ended)
                     }
-                    if (media3PlayerComponent.getMediaController()?.playbackState == Player.STATE_BUFFERING) {
-                        playbackState(Buffering)
-                    }
-                    handler.postDelayed(this, 1000)
+                    handler.postDelayed(this, 500) // 500 ms ticks for a smooth slider
                 }
             }
             progressHandler = handler
