@@ -34,6 +34,17 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtime.compose)
             implementation(libs.image.loader)
         }
+        androidMain.dependencies {
+            // BackHandler for intercepting the hardware/gesture back button on Android
+            implementation(libs.androidx.activity.compose)
+        }
+        // Shared source set for all iOS targets (x64, arm64, simulatorArm64)
+        val iosMain by creating {
+            dependsOn(commonMain.get())
+        }
+        val iosX64Main by getting { dependsOn(iosMain) }
+        val iosArm64Main by getting { dependsOn(iosMain) }
+        val iosSimulatorArm64Main by getting { dependsOn(iosMain) }
     }
 }
 

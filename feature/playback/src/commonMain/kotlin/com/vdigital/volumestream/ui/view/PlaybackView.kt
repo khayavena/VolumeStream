@@ -63,6 +63,18 @@ fun PlaybackView(onBack: () -> Unit = {}) {
     val viewModel: PlaybackViewModel = koinViewModel()
     val controller = remember { viewModel.getPlatformController() }
 
+    // Stop playback immediately then navigate — prevents audio bleeding into the
+    // transition animation when the user presses back.
+    val handleBack: () -> Unit = remember(controller, onBack) {
+        {
+            controller.pause(playbackState = {})
+            onBack()
+        }
+    }
+
+    // Intercept Android hardware back key and predictive-back gesture.
+    PlatformBackHandler(onBack = handleBack)
+
     DisposableEffect(Unit) { onDispose { controller.release() } }
 
     var showControls      by remember { mutableStateOf(true) }
@@ -88,7 +100,7 @@ fun PlaybackView(onBack: () -> Unit = {}) {
     LaunchedEffect(playbackState) {
         if (playbackState == PlaybackState.Ended) {
             delay(600L)
-            onBack()
+            handleBack()
         }
     }
 
@@ -127,7 +139,7 @@ fun PlaybackView(onBack: () -> Unit = {}) {
             enter = fadeIn(), exit = fadeOut()
         ) {
             IconButton(
-                onClick = onBack,
+                onClick = handleBack,
                 modifier = Modifier.padding(8.dp).size(44.dp)
             ) {
                 Text(
