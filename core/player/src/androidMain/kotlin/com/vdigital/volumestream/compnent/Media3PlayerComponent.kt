@@ -6,6 +6,8 @@ import com.vditital.data.model.PlaybackMediaItem
 
 interface Media3PlayerComponent {
     fun setDefaultHeaders(headers: Map<String, String>)
+    /** Pass the 16-byte AES-128 session key so DASH segments can be decrypted. */
+    fun setAesKey(key: ByteArray)
     fun initPlayer(onReady: () -> Unit)
     fun setMediaItem(mediaItem: PlaybackMediaItem)
     fun addMediaItem(mediaItem: PlaybackMediaItem)

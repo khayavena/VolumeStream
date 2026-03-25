@@ -13,19 +13,41 @@ data class LoginRequest(
 data class RegisterRequest(
     @SerialName("email") val email: String,
     @SerialName("password") val password: String,
-    @SerialName("name") val name: String = ""
+    @SerialName("role") val role: String = "USER"
+)
+
+/** Body for POST /api/refresh — server expects {"token":"Bearer <jwt>"} */
+@Serializable
+data class RefreshTokenRequest(
+    @SerialName("token") val token: String
 )
 
 @Serializable
 data class AuthResponse(
-    @SerialName("jwtToken") val token: String
-)
+    @SerialName("token") val tokenFallback: String = "", 
+    @SerialName("jwtToken") val jwtTokenFallback: String = "",
+    @SerialName("accessToken") val accessTokenFallback: String = ""
+) {
+    val token: String 
+        get() = tokenFallback.takeIf { it.isNotEmpty() } 
+            ?: jwtTokenFallback.takeIf { it.isNotEmpty() } 
+            ?: accessTokenFallback.takeIf { it.isNotEmpty() } 
+            ?: ""
+}
 
 @Serializable
 data class RefreshTokenResponse(
-    @SerialName("jwtToken") val token: String,
+    @SerialName("token") val tokenFallback: String = "", 
+    @SerialName("jwtToken") val jwtTokenFallback: String = "",
+    @SerialName("accessToken") val accessTokenFallback: String = "",
     @SerialName("refreshTime") val refreshTime: Long = 0L
-)
+) {
+    val token: String 
+        get() = tokenFallback.takeIf { it.isNotEmpty() } 
+            ?: jwtTokenFallback.takeIf { it.isNotEmpty() } 
+            ?: accessTokenFallback.takeIf { it.isNotEmpty() } 
+            ?: ""
+}
 
 @Serializable
 data class DeviceRegisterRequest(
@@ -52,4 +74,3 @@ data class ApiError(
     @SerialName("code") val code: String = "",
     @SerialName("message") val message: String = ""
 )
-

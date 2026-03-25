@@ -5,10 +5,14 @@ import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState
 import com.vditital.data.model.PlaybackMediaItem
 
 expect class PlaybackStateController {
-    /** Attach arbitrary HTTP headers to every player request (manifest, key, segments).
-     *  Called from common code before [initPlayer]; header names and values are
-     *  supplied by the caller so the player layer stays protocol-agnostic. */
+    /** Attach arbitrary HTTP headers to every player request (manifest, key, segments). */
     fun setAuthHeaders(headers: Map<String, String>)
+    /**
+     * Supply the 16-byte AES-128 session key so DASH segments can be decrypted.
+     * Must be called after [setAuthHeaders] and before [initPlayer].
+     * No-op on iOS (AVPlayer handles HLS natively).
+     */
+    fun setAesKey(key: ByteArray)
     fun initPlayer(callback: (Long, Long) -> Unit, playbackState: (PlaybackState) -> Unit)
     fun addItem(mediaItem: PlaybackMediaItem)
     fun pause(playbackState: (PlaybackState) -> Unit)

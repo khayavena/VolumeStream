@@ -46,6 +46,15 @@ actual class PlaybackStateController(
     }
 
     /**
+     * No-op on iOS — AVFoundation / HLS handles AES-128 key delivery natively
+     * via the EXT-X-KEY URI in the playlist.  The key is fetched by AVFoundation
+     * using the same HTTP headers injected via [setAuthHeaders].
+     */
+    actual fun setAesKey(key: ByteArray) {
+        // No-op: AVFoundation decrypts HLS segments transparently.
+    }
+
+    /**
      * Build an NSURL from a media item's streamUrl.
      */
     private fun nsUrlFor(streamUrl: String): NSURL? = when {

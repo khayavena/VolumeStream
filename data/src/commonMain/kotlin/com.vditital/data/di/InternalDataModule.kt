@@ -1,6 +1,5 @@
 package com.vditital.data.di
 
-import com.vditital.data.config.StreamVaultConfig
 import com.vditital.data.datasource.AuthDataSource
 import com.vditital.data.datasource.AuthDataSourceImpl
 import com.vditital.data.datasource.RemoteApiClientFactory
@@ -19,10 +18,10 @@ import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 val internalDataModule = module {
-    // ── SDK config ────────────────────────────────────────────────────────────
-    // Provides a default StreamVaultConfig. SDK consumers override this by
-    // registering their own StreamVaultConfig singleton *before* appModule.
-    single<StreamVaultConfig> { StreamVaultConfig() }
+    // StreamVaultConfig is NOT provided here — it must be registered by the app
+    // via configureKoin() (Android: KoinConfig.kt, iOS: KoinConfig.kt) BEFORE
+    // appModule is loaded. Defining it here caused the default (port 8080/8081)
+    // to overwrite the app-supplied config because internalDataModule is loaded last.
 
     single<HttpClient> { get<RemoteApiClientFactory>().create() }
 

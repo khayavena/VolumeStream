@@ -37,5 +37,19 @@ class SessionRepositoryImpl(
         runCatching { sessionDataSource.endSession(jwt, sessionId) }
             .onFailure { AppLogger.e("SessionRepo", "endSession failed (ignored)", it as? Exception) }
     }
+
+    override suspend fun fetchAesKey(
+        mediaId: String,
+        sessionId: String,
+        sessionToken: String
+    ): ResultState<ByteArray> = runCatching {
+        sessionDataSource.fetchAesKey(mediaId, sessionId, sessionToken)
+    }.fold(
+        onSuccess = { ResultState.Success(it) },
+        onFailure = { e ->
+            AppLogger.e("SessionRepo", "fetchAesKey failed", e as? Exception)
+            ResultState.Error(e)
+        }
+    )
 }
 

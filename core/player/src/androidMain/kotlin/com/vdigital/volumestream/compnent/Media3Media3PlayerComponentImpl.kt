@@ -33,6 +33,10 @@ class Media3Media3PlayerComponentImpl(
         cachedPlaybackDataSourceFactory.setDefaultHeaders(headers)
     }
 
+    override fun setAesKey(key: ByteArray) {
+        cachedPlaybackDataSourceFactory.setAesKey(key)
+    }
+
     override fun initPlayer(onReady: () -> Unit) {
         controllerListener?.let { mediaController?.removeListener(it) }
         mediaController?.release()
@@ -97,13 +101,21 @@ class Media3Media3PlayerComponentImpl(
     override fun play() { mediaController?.play() }
 
     private fun buildMediaItem(item: PlaybackMediaItem): MediaItem {
-        val isRemoteHls = item.streamUrl.startsWith("http") &&
-                !item.streamUrl.endsWith(".mp4", ignoreCase = true) &&
-                !item.streamUrl.endsWith(".mp3", ignoreCase = true)
+        val uri = item.streamUrl
+        val mimeType = when {
+            uri.contains("/manifest/dash/", ignoreCase = true) -> MimeTypes.APPLICATION_MPD
+            uri.endsWith(".mpd", ignoreCase = true)            -> MimeTypes.APPLICATION_MPD
+            uri.endsWith(".mp4", ignoreCase = true)            -> null
+            uri.endsWith(".mp3", ignoreCase = true)            -> null
+            // /manifest/{id} — HLS (.m3u8) served by the StreamVault manifest endpoint
+            uri.contains("/manifest/", ignoreCase = true)      -> MimeTypes.APPLICATION_M3U8
+            uri.startsWith("http")                             -> MimeTypes.APPLICATION_M3U8
+            else                                               -> null
+        }
         return MediaItem.Builder()
-            .setUri(item.streamUrl)
-            .setMediaId(item.streamUrl)
-            .apply { if (isRemoteHls) setMimeType(MimeTypes.APPLICATION_M3U8) }
+            .setUri(uri)
+            .setMediaId(uri)
+            .apply { if (mimeType != null) setMimeType(mimeType) }
             .setMediaMetadata(
                 MediaMetadata.Builder()
                     .setTitle(item.title)

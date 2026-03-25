@@ -45,9 +45,10 @@ fun MediaItemDto.toPlaybackMediaItem(apiHost: String, config: StreamVaultConfig 
     id           = id,
     title        = title,
     isDownloaded = false,
-    // Build the authenticated HLS manifest URL from host + config so that port
-    // and scheme are never hardcoded and any SDK consumer can customise them.
-    streamUrl    = "${if (config.useHttps) "https" else "http"}://$apiHost:${config.apiPort}/${config.apiBasePath}/manifest/hls/$id",
+    // HLS manifest endpoint: GET /api/v1/manifest/{id}
+    // Requires Authorization + X-Session-Token headers (injected by the player layer).
+    // DASH is served at /manifest/dash/{id} but requires license.dash.enabled=true on the server.
+    streamUrl    = "${if (config.useHttps) "https" else "http"}://$apiHost:${config.apiPort}/${config.apiBasePath}/manifest/$id",
     downloadUrl  = downloadUrl ?: "",
     artworkUrl   = artworkUrl ?: "",
     durationMs   = durationMs,

@@ -5,6 +5,8 @@
 xcuserdata
 !src/**/build/
 local.properties
+# Generated iOS app config (machine-specific values from local.properties)
+composeApp/src/iosMain/kotlin/com/vdigital/volumestream/config/AppConfig.kt
 .idea
 .DS_Store
 captures

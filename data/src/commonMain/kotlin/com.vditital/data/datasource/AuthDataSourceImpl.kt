@@ -3,12 +3,12 @@ package com.vditital.data.datasource
 import com.vditital.data.config.StreamVaultConfig
 import com.vditital.data.model.AuthResponse
 import com.vditital.data.model.LoginRequest
+import com.vditital.data.model.RefreshTokenRequest
 import com.vditital.data.model.RefreshTokenResponse
 import com.vditital.data.model.RegisterRequest
 import com.vditital.data.util.AppLogger
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -28,7 +28,7 @@ class AuthDataSourceImpl(
 
     override suspend fun login(email: String, password: String): AuthResponse {
         AppLogger.d("AuthDS", "login → $authHost:$port")
-        return httpClient.post {
+        val response = httpClient.post {
             url {
                 protocol = this@AuthDataSourceImpl.protocol
                 host     = authHost
@@ -37,10 +37,18 @@ class AuthDataSourceImpl(
             }
             contentType(ContentType.Application.Json)
             setBody(LoginRequest(email, password))
-        }.body()
+        }
+        
+        return try {
+            response.body()
+        } catch (e: Exception) {
+            val responseText = response.body<String>()
+            AppLogger.e("AuthDS", "FAILED TO SERIALIZE LOGIN RESPONSE: $responseText", e)
+            throw e
+        }
     }
 
-    override suspend fun register(email: String, password: String, name: String): AuthResponse {
+    override suspend fun register(email: String, password: String): AuthResponse {
         AppLogger.d("AuthDS", "register → $authHost:$port")
         return httpClient.post {
             url {
@@ -50,11 +58,13 @@ class AuthDataSourceImpl(
                 path("$base/register")
             }
             contentType(ContentType.Application.Json)
-            setBody(RegisterRequest(email, password, name))
+            setBody(RegisterRequest(email, password))
         }.body()
     }
 
     override suspend fun refreshToken(jwt: String): RefreshTokenResponse {
+        // Server expects POST /api/refresh with body {"token":"Bearer <jwt>"}
+        AppLogger.d("AuthDS", "refreshToken → $authHost:$port")
         return httpClient.post {
             url {
                 protocol = this@AuthDataSourceImpl.protocol
@@ -62,7 +72,8 @@ class AuthDataSourceImpl(
                 port     = this@AuthDataSourceImpl.port
                 path("$base/refresh")
             }
-            bearerAuth(jwt)
+            contentType(ContentType.Application.Json)
+            setBody(RefreshTokenRequest("Bearer $jwt"))
         }.body()
     }
 }

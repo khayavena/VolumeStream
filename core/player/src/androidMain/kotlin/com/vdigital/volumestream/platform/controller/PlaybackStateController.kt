@@ -28,6 +28,10 @@ actual class PlaybackStateController(private val media3PlayerComponent: Media3Pl
         media3PlayerComponent.setDefaultHeaders(headers)
     }
 
+    actual fun setAesKey(key: ByteArray) {
+        media3PlayerComponent.setAesKey(key)
+    }
+
     actual fun addItem(mediaItem: PlaybackMediaItem) {
         media3PlayerComponent.addMediaItem(mediaItem)
     }

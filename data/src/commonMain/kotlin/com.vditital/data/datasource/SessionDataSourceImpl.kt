@@ -13,6 +13,8 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.delete
+import io.ktor.client.request.get
+import io.ktor.client.statement.readRawBytes
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -20,7 +22,6 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.URLProtocol
 import io.ktor.http.contentType
-import io.ktor.http.path
 
 class SessionDataSourceImpl(
     private val httpClient: HttpClient,
@@ -38,13 +39,7 @@ class SessionDataSourceImpl(
         val deviceId     = tokenStore.getDeviceId()
         val publicKeyB64 = deviceCrypto.getOrCreatePublicKeyB64()
         AppLogger.d("SessionDS", "registerDevice deviceId=$deviceId")
-        val response = httpClient.post {
-            url {
-                protocol = this@SessionDataSourceImpl.protocol
-                host     = apiHost
-                port     = this@SessionDataSourceImpl.port
-                path("$base/device/register")
-            }
+        val response = httpClient.post("${protocol.name.lowercase()}://$apiHost:$port/$base/device/register") {
             bearerAuth(jwt)
             contentType(ContentType.Application.Json)
             setBody(DeviceRegisterRequest(deviceId, publicKeyB64))
@@ -70,13 +65,7 @@ class SessionDataSourceImpl(
         AppLogger.i("SessionDS", "  videoId=$videoId  userId=$userId")
         AppLogger.i("SessionDS", "────────────────────────────────────────────────────")
 
-        return httpClient.post {
-            url {
-                protocol = this@SessionDataSourceImpl.protocol
-                host     = apiHost
-                port     = this@SessionDataSourceImpl.port
-                path("$base/session/start")
-            }
+        return httpClient.post(sessionUrl) {
             bearerAuth(jwt)
             header(config.headerDeviceId,        deviceId)
             header(config.headerCertTimestamp,   certTimestamp.toString())
@@ -89,15 +78,20 @@ class SessionDataSourceImpl(
     override suspend fun endSession(jwt: String, sessionId: String) {
         AppLogger.d("SessionDS", "endSession sessionId=$sessionId")
         runCatching {
-            httpClient.delete {
-                url {
-                    protocol = this@SessionDataSourceImpl.protocol
-                    host     = apiHost
-                    port     = this@SessionDataSourceImpl.port
-                    path("$base/session/$sessionId")
-                }
+            httpClient.delete("${protocol.name.lowercase()}://$apiHost:$port/$base/session/$sessionId") {
                 bearerAuth(jwt)
             }
         }
+    }
+
+    override suspend fun fetchAesKey(mediaId: String, sessionId: String, sessionToken: String): ByteArray {
+        AppLogger.d("SessionDS", "fetchAesKey mediaId=$mediaId sid=$sessionId")
+        val response = httpClient.get("${protocol.name.lowercase()}://$apiHost:$port/$base/manifest/$mediaId/key?sid=$sessionId&t=$sessionToken")
+        val bytes = response.readRawBytes()
+        check(bytes.size == 16) {
+            "StreamVault key endpoint returned ${bytes.size} bytes; expected 16 (AES-128)"
+        }
+        AppLogger.d("SessionDS", "fetchAesKey OK — 16 bytes received")
+        return bytes
     }
 }

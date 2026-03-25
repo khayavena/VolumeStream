@@ -98,6 +98,24 @@ class PlaybackViewModel(
                                 HEADER_SESSION_TOKEN to sessionResult.data.sessionToken
                             )
                         )
+                        // 4. Fetch + inject the 16-byte AES-128 key for DASH segment
+                        //    decryption.  Must be called BEFORE initPlayer() so that
+                        //    ExoPlayer's RoutingDataSourceFactory picks it up on the
+                        //    very first segment request.  No-op on iOS (AVFoundation
+                        //    handles HLS key delivery natively via EXT-X-KEY).
+                        val keyResult = withContext(Dispatchers.IO) {
+                            sessionRepository.fetchAesKey(
+                                mediaId      = item.id,
+                                sessionId    = sessionResult.data.sessionId,
+                                sessionToken = sessionResult.data.sessionToken
+                            )
+                        }
+                        if (keyResult is ResultState.Success) {
+                            playbackStateController.setAesKey(keyResult.data)
+                            AppLogger.d("PlaybackVM", "AES key injected (${keyResult.data.size} bytes)")
+                        } else {
+                            AppLogger.w("PlaybackVM", "AES key unavailable — encrypted DASH may not play")
+                        }
                         AppLogger.d("PlaybackVM", "Session started: ${sessionResult.data.sessionId}")
                     } else {
                         AppLogger.e("PlaybackVM", "Session start failed — playing without token", null)
@@ -232,6 +250,21 @@ class PlaybackViewModel(
                                 HEADER_SESSION_TOKEN to sessionResult.data.sessionToken
                             )
                         )
+                        // Fetch + inject the AES-128 key for the new session so DASH
+                        // decryption continues to work after a track switch.
+                        val keyResult = withContext(Dispatchers.IO) {
+                            sessionRepository.fetchAesKey(
+                                mediaId      = item.id,
+                                sessionId    = sessionResult.data.sessionId,
+                                sessionToken = sessionResult.data.sessionToken
+                            )
+                        }
+                        if (keyResult is ResultState.Success) {
+                            playbackStateController.setAesKey(keyResult.data)
+                            AppLogger.d("PlaybackVM", "AES key injected for track ${item.id}")
+                        } else {
+                            AppLogger.w("PlaybackVM", "AES key unavailable for track ${item.id}")
+                        }
                     }
                 }
 
