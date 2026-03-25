@@ -25,7 +25,7 @@ internal actual val platformPlayerModule: Module = module {
     // player. Using factory creates a new ExoPlayer each injection, which detaches
     // the surface from PlayerView and produces black video + audio only.
     single<Media3PlayerComponent> {
-        Media3Media3PlayerComponentImpl(androidApplication(), get())
+        Media3Media3PlayerComponentImpl(androidApplication(), get(), get())
     }
     single { PlaybackStateController(get()) }
     single<OsType> { OsType.ANDROID }

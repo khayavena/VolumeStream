@@ -29,6 +29,9 @@ class CachedPlaybackDataSourceFactoryImpl(
 
     /** Live HTTP factory — headers updated via [setDefaultHeaders] without rebuilding ExoPlayer. */
     private val httpFactory = DefaultHttpDataSource.Factory()
+        .setConnectTimeoutMs(playerConfig.httpConnectTimeoutMs)
+        .setReadTimeoutMs(playerConfig.httpReadTimeoutMs)
+        .setAllowCrossProtocolRedirects(true)
 
     /** AES-128 session key; null until [setAesKey] is called after session start. */
     @Volatile private var aesKey: ByteArray? = null

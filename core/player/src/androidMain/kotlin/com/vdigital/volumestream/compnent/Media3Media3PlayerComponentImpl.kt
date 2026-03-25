@@ -5,18 +5,21 @@ import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaController
 import androidx.media3.session.MediaSession
 import com.google.common.util.concurrent.FutureCallback
 import com.google.common.util.concurrent.Futures
 import com.vdigital.volumestream.cache.CachedPlaybackDataSourceFactory
+import com.vdigital.volumestream.config.PlayerConfig
 import com.vdigital.volumestream.platform.controller.PlaybackStateController
 import com.vditital.data.model.PlaybackMediaItem
 
 class Media3Media3PlayerComponentImpl(
     private val context: Application,
-    private val cachedPlaybackDataSourceFactory: CachedPlaybackDataSourceFactory
+    private val cachedPlaybackDataSourceFactory: CachedPlaybackDataSourceFactory,
+    private val playerConfig: PlayerConfig = PlayerConfig()
 ) : Media3PlayerComponent {
 
     private var player: ExoPlayer = buildPlayer()
@@ -25,9 +28,20 @@ class Media3Media3PlayerComponentImpl(
     private var playerReleased = false
     private var controllerListener: PlaybackStateController.PlaybackControllerListener? = null
 
-    private fun buildPlayer(): ExoPlayer = ExoPlayer.Builder(context)
-        .setMediaSourceFactory(cachedPlaybackDataSourceFactory.buildCacheDataSourceFactory())
-        .build()
+    private fun buildPlayer(): ExoPlayer {
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                playerConfig.minBufferMs,
+                playerConfig.maxBufferMs,
+                playerConfig.bufferForPlaybackMs,
+                playerConfig.bufferForPlaybackAfterRebufferMs
+            )
+            .build()
+        return ExoPlayer.Builder(context)
+            .setMediaSourceFactory(cachedPlaybackDataSourceFactory.buildCacheDataSourceFactory())
+            .setLoadControl(loadControl)
+            .build()
+    }
 
     override fun setDefaultHeaders(headers: Map<String, String>) {
         cachedPlaybackDataSourceFactory.setDefaultHeaders(headers)
