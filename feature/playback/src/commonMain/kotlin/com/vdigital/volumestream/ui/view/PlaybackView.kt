@@ -118,7 +118,7 @@ fun PlaybackView(onBack: () -> Unit = {}) {
         }
 
         Box(modifier = Modifier.align(Alignment.Center)) {
-            PlaybackBufferingIndicator()
+            PlaybackBufferingIndicator(playbackState)
         }
 
         AnimatedVisibility(

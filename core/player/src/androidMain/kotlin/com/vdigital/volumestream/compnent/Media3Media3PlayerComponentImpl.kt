@@ -1,11 +1,16 @@
 package com.vdigital.volumestream.compnent
 
 import android.app.Application
+import android.util.Log
+import androidx.annotation.OptIn
 import androidx.core.content.ContextCompat
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaController
 import androidx.media3.session.MediaSession
@@ -28,6 +33,7 @@ class Media3Media3PlayerComponentImpl(
     private var playerReleased = false
     private var controllerListener: PlaybackStateController.PlaybackControllerListener? = null
 
+    @OptIn(UnstableApi::class)
     private fun buildPlayer(): ExoPlayer {
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
@@ -37,10 +43,23 @@ class Media3Media3PlayerComponentImpl(
                 playerConfig.bufferForPlaybackAfterRebufferMs
             )
             .build()
-        return ExoPlayer.Builder(context)
+
+        // Prefer hardware codec extensions (e.g. MediaCodec VP9/AV1 hardware decoder).
+        // Falls back to software if no hardware decoder is available.
+        val renderersFactory = DefaultRenderersFactory(context)
+            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+            .setEnableDecoderFallback(true)
+
+        return ExoPlayer.Builder(context, renderersFactory)
             .setMediaSourceFactory(cachedPlaybackDataSourceFactory.buildCacheDataSourceFactory())
             .setLoadControl(loadControl)
             .build()
+            .also { player ->
+                // Scale video to fit the surface exactly — avoids a stretch/crop step
+                // in the video renderer that would otherwise run per-frame.
+                player.setVideoScalingMode(C.VIDEO_SCALING_MODE_SCALE_TO_FIT)
+                Log.d("VolumeStream", "ExoPlayer built with hardware-preferred renderer")
+            }
     }
 
     override fun setDefaultHeaders(headers: Map<String, String>) {
