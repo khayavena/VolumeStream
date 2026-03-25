@@ -44,14 +44,20 @@ class Media3Media3PlayerComponentImpl(
         mediaSession?.release()
         mediaSession = null
 
-        // Always release and rebuild the ExoPlayer so it picks up the
-        // latest auth headers that were injected via setDefaultHeaders().
-        if (!playerReleased) {
+        // IMPORTANT: do NOT release + rebuild the ExoPlayer here.
+        // Rebuilding detaches the player from PlayerView's video surface, producing
+        // black video with audio-only playback. Instead, stop/clear the existing
+        // player so it is ready for a fresh media item.
+        // The httpFactory's request properties (auth headers) are updated live via
+        // setDefaultHeaders() — no ExoPlayer rebuild is needed to pick them up.
+        // We only rebuild if the player was explicitly released via releasePlayer().
+        if (playerReleased) {
+            player = buildPlayer()
+            playerReleased = false
+        } else {
             player.stop()
-            player.release()
+            player.clearMediaItems()
         }
-        player = buildPlayer()
-        playerReleased = false
 
         mediaSession = MediaSession.Builder(context, player).setCallback(MediaSessionCallback()).build()
         val future = MediaController.Builder(context, mediaSession!!.token).buildAsync()

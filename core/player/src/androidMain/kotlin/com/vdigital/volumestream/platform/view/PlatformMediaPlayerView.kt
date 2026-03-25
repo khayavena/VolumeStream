@@ -23,10 +23,10 @@ actual fun PlatformMediaPlayerView(
     isZoomed: Boolean
 ) {
     val context = LocalContext.current
-    val exoPlayer = remember { playbackStateController.getExoPlayer() }
+    // Do NOT cache the ExoPlayer via remember — initPlayer() releases and rebuilds
+    // it, so a remembered reference would point to a dead player (black video + audio).
     val playerView = remember {
         PlayerView(context).apply {
-            player = exoPlayer
             useController = false
             resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
         }
@@ -49,6 +49,15 @@ actual fun PlatformMediaPlayerView(
     }
     AndroidView(
         factory = { playerView },
+        update = { view ->
+            // Re-attach the current ExoPlayer to the surface on every recomposition.
+            // initPlayer() rebuilds the ExoPlayer instance; without this update block
+            // the PlayerView stays bound to the old released player → black video + audio only.
+            val currentPlayer = playbackStateController.getExoPlayer()
+            if (view.player !== currentPlayer) {
+                view.player = currentPlayer
+            }
+        },
         modifier = modifier.graphicsLayer(scaleX = scale, scaleY = scale, clip = true)
     )
 }

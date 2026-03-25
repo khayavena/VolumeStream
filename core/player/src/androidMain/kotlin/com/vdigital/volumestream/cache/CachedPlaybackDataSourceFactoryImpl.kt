@@ -57,10 +57,10 @@ class CachedPlaybackDataSourceFactoryImpl(
     }
 
     override fun buildCacheDataSourceFactory(): DefaultMediaSourceFactory {
-        // The routing factory inspects each URI:
-        //   /api/v1/proxy/dash/… → AesGcmDecryptingDataSource (decrypts GCM on the fly)
-        //   everything else      → plain DefaultHttpDataSource (manifest, key endpoint, etc.)
-        val routingFactory = RoutingDataSourceFactory(httpFactory, aesKey)
+        // Pass a lambda so RoutingDataSource reads aesKey lazily at open() time.
+        // This means setAesKey() can be called after buildCacheDataSourceFactory()
+        // (e.g. when initPlayer reuses the same ExoPlayer) and the key is still picked up.
+        val routingFactory = RoutingDataSourceFactory(httpFactory) { aesKey }
 
         val dataSourceFactory = DefaultDataSource.Factory(
             context,
@@ -84,22 +84,22 @@ class CachedPlaybackDataSourceFactoryImpl(
 @OptIn(UnstableApi::class)
 private class RoutingDataSourceFactory(
     private val httpFactory: DefaultHttpDataSource.Factory,
-    private val aesKey: ByteArray?
+    private val aesKeyProvider: () -> ByteArray?
 ) : DataSource.Factory {
-    override fun createDataSource(): DataSource = RoutingDataSource(httpFactory, aesKey)
+    override fun createDataSource(): DataSource = RoutingDataSource(httpFactory, aesKeyProvider)
 }
 
 @OptIn(UnstableApi::class)
 private class RoutingDataSource(
     private val httpFactory: DefaultHttpDataSource.Factory,
-    private val aesKey: ByteArray?
+    private val aesKeyProvider: () -> ByteArray?
 ) : DataSource {
 
     private var delegate: DataSource? = null
 
     override fun open(dataSpec: DataSpec): Long {
         val uri = dataSpec.uri.toString()
-        val key = aesKey
+        val key = aesKeyProvider()
         delegate = if (key != null && isDashProxySegment(uri)) {
             // DASH media/init segment — decrypt with AES-128-GCM
             AesGcmDecryptingDataSource(
@@ -107,7 +107,7 @@ private class RoutingDataSource(
                 httpFactory = httpFactory
             )
         } else {
-            // Manifest, key-delivery, or anything else — plain HTTP
+            // Manifest, key-delivery, HLS segments, or anything else — plain HTTP
             httpFactory.createDataSource()
         }
         return delegate!!.open(dataSpec)
