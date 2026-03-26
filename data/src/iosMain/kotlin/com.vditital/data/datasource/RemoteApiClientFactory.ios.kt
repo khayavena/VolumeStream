@@ -1,9 +1,13 @@
 package com.vditital.data.datasource
 
+import com.vditital.data.security.SessionRevokedBus
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.darwin.Darwin
+import io.ktor.client.plugins.HttpSend
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.plugin
+import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
@@ -15,7 +19,7 @@ import kotlinx.serialization.json.Json
 actual class RemoteApiClientFactory {
     @OptIn(ExperimentalSerializationApi::class)
     actual fun create(): HttpClient {
-        return HttpClient(Darwin) {
+        val client = HttpClient(Darwin) {
             install(ContentNegotiation) {
                 json(Json {
                     prettyPrint = true
@@ -31,5 +35,16 @@ actual class RemoteApiClientFactory {
                 socketTimeoutMillis = 15_000
             }
         }
+
+        // Same 401 guard as Android: stop the revoked-token retry storm.
+        client.plugin(HttpSend).intercept { request ->
+            val call = execute(request)
+            if (call.response.status == HttpStatusCode.Unauthorized) {
+                SessionRevokedBus.emit()
+            }
+            call
+        }
+
+        return client
     }
 }

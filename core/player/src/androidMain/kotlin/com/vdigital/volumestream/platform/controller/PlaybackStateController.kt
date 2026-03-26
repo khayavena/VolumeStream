@@ -147,7 +147,18 @@ actual class PlaybackStateController(private val media3PlayerComponent: Media3Pl
     class PlaybackControllerListener(val playbackState: (PlaybackState) -> Unit) : Listener {
         override fun onPlayerError(error: PlaybackException) {
             super.onPlayerError(error)
-            error.message?.let { playbackState(PlaybackState.Error(it)) }
+            // ERROR_CODE_AUTHENTICATION_EXPIRED = 4003 in Media3.
+            // This happens when the DASH segment request returns 401 mid-playback
+            // (e.g. the session was revoked server-side). Treat it the same way as
+            // the Ktor HTTP interceptor: clear the JWT and signal re-login so the
+            // player doesn't keep fetching segments with the dead token, which
+            // caused the "Connection reset by peer" and the segment-gap in the logs.
+            if (error.errorCode == PlaybackException.ERROR_CODE_AUTHENTICATION_EXPIRED) {
+                com.vditital.data.security.SessionRevokedBus.emit()
+                playbackState(PlaybackState.SessionExpired)
+            } else {
+                error.message?.let { playbackState(PlaybackState.Error(it)) }
+            }
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {

@@ -98,9 +98,20 @@ fun PlaybackView(onBack: () -> Unit = {}) {
     // Auto-navigate back when the stream ends.
     val playbackState by viewModel.playBackStateUI.collectAsState()
     LaunchedEffect(playbackState) {
-        if (playbackState == PlaybackState.Ended) {
-            delay(600L)
-            handleBack()
+        when (playbackState) {
+            PlaybackState.Ended -> {
+                delay(600L)
+                handleBack()
+            }
+            // SessionExpired is emitted by PlaybackControllerListener when ExoPlayer
+            // receives a 401 mid-stream (ERROR_CODE_AUTHENTICATION_EXPIRED).
+            // SessionRevokedBus has already been signalled — the MainNavigationControllerView
+            // watcher will navigate to Login once the back-stack unwinds here.
+            PlaybackState.SessionExpired -> {
+                controller.release()
+                handleBack()
+            }
+            else -> Unit
         }
     }
 

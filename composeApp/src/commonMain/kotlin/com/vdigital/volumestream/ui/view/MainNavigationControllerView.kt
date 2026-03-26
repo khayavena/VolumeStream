@@ -14,6 +14,8 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -24,6 +26,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.vdigital.volumestream.navigation.Screen
+import com.vdigital.volumestream.ui.viewmodel.AuthUiState
+import com.vdigital.volumestream.ui.viewmodel.AuthViewModel
+import org.koin.compose.viewmodel.koinViewModel
+import org.koin.core.annotation.KoinExperimentalAPI
 
 /** Routes that should never show the bottom navigation bar. */
 private val NO_BOTTOM_NAV_ROUTES = setOf(
@@ -33,9 +39,27 @@ private val NO_BOTTOM_NAV_ROUTES = setOf(
     Screen.Register.route,
 )
 
+@OptIn(KoinExperimentalAPI::class)
 @Composable
 fun MainNavigationControllerView() {
     val navController = rememberNavController()
+    val authViewModel: AuthViewModel = koinViewModel()
+    val authState by authViewModel.uiState.collectAsState()
+
+    // When the server revokes the session (401 TOKEN_INVALID), clear the entire
+    // back-stack and send the user back to the login screen immediately.
+    // This prevents the retry storm where multiple in-flight requests all bounce
+    // with 401 and the app just keeps retrying with the dead token.
+    LaunchedEffect(authState) {
+        if (authState is AuthUiState.SessionRevoked) {
+            navController.navigate(Screen.Login.route) {
+                popUpTo(Screen.Splash.route) { inclusive = true }
+                launchSingleTop = true
+            }
+            authViewModel.resetState()
+        }
+    }
+
     Scaffold(
         modifier = Modifier.background(Color.Black),
         bottomBar = {
