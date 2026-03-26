@@ -31,6 +31,20 @@ data class StreamVaultConfig(
     val apiBasePath: String = "api/v1",
     /** Common prefix for all auth-pulse paths, e.g. "api". */
     val authBasePath: String = "api",
+    /**
+     * Path segment appended to [apiBasePath] to reach the DASH MPD manifest endpoint.
+     * Full manifest URL: {scheme}://{host}:{port}/{apiBasePath}/{dashManifestPath}/{mediaId}
+     * → default: api/v1/manifest/dash/{id}
+     */
+    val dashManifestPath: String = "manifest/dash",
+    /**
+     * Path segment appended to [apiBasePath] for the AES-128-GCM encrypted DASH
+     * segment proxy.  Segments are served at:
+     *   {scheme}://{host}:{port}/{apiBasePath}/{dashProxyPath}/{mediaId}/{segmentIdx}?t=…
+     * The player layer uses this value to route matching URLs through
+     * AesGcmDecryptingDataSource.  Must stay in sync with the server configuration.
+     */
+    val dashProxyPath: String = "proxy/dash",
 
     // ── Cert-pin session headers ──────────────────────────────────────────────
     /** Header carrying the stable device identifier. */

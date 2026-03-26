@@ -63,7 +63,11 @@ class CachedPlaybackDataSourceFactoryImpl(
         // Pass a lambda so RoutingDataSource reads aesKey lazily at open() time.
         // This means setAesKey() can be called after buildCacheDataSourceFactory()
         // (e.g. when initPlayer reuses the same ExoPlayer) and the key is still picked up.
-        val routingFactory = RoutingDataSourceFactory(httpFactory) { aesKey }
+        val routingFactory = RoutingDataSourceFactory(
+            httpFactory          = httpFactory,
+            aesKeyProvider       = { aesKey },
+            dashProxyPathFragment = playerConfig.dashProxyPathFragment
+        )
 
         val dataSourceFactory = DefaultDataSource.Factory(
             context,
@@ -87,15 +91,17 @@ class CachedPlaybackDataSourceFactoryImpl(
 @OptIn(UnstableApi::class)
 private class RoutingDataSourceFactory(
     private val httpFactory: DefaultHttpDataSource.Factory,
-    private val aesKeyProvider: () -> ByteArray?
+    private val aesKeyProvider: () -> ByteArray?,
+    private val dashProxyPathFragment: String
 ) : DataSource.Factory {
-    override fun createDataSource(): DataSource = RoutingDataSource(httpFactory, aesKeyProvider)
+    override fun createDataSource(): DataSource = RoutingDataSource(httpFactory, aesKeyProvider, dashProxyPathFragment)
 }
 
 @OptIn(UnstableApi::class)
 private class RoutingDataSource(
     private val httpFactory: DefaultHttpDataSource.Factory,
-    private val aesKeyProvider: () -> ByteArray?
+    private val aesKeyProvider: () -> ByteArray?,
+    private val dashProxyPathFragment: String
 ) : DataSource {
 
     private var delegate: DataSource? = null
@@ -131,7 +137,11 @@ private class RoutingDataSource(
         delegate?.addTransferListener(transferListener)
     }
 
-    /** Only DASH proxy segments are AES-128-GCM encrypted. */
+    /**
+     * Only DASH proxy segments are AES-128-GCM encrypted.
+     * Matched against [dashProxyPathFragment] (default "/api/v1/proxy/dash/")
+     * so the routing is driven by [PlayerConfig.dashProxyPathFragment].
+     */
     private fun isDashProxySegment(uri: String) =
-        uri.contains("/api/v1/proxy/dash/", ignoreCase = true)
+        uri.contains(dashProxyPathFragment, ignoreCase = true)
 }

@@ -43,5 +43,17 @@ data class PlayerConfig(
      * Matches the Objective-C constant `AVURLAssetHTTPHeaderFieldsKey`.
      */
     val avFoundationHttpHeadersKey: String = "AVURLAssetHTTPHeaderFieldsKey",
+
+    // ── DASH proxy ────────────────────────────────────────────────────────────
+    /**
+     * URL sub-path used to identify AES-128-GCM encrypted DASH segment requests.
+     * Any request URL containing this string is routed through
+     * AesGcmDecryptingDataSource.  Must match the server-side DASH proxy path,
+     * e.g. "/api/v1/proxy/dash/".
+     *
+     * Default aligns with StreamVaultConfig.dashProxyPath ("proxy/dash") prepended
+     * by the standard API base path "api/v1".
+     */
+    val dashProxyPathFragment: String = "/api/v1/proxy/dash/",
 )
 

@@ -45,10 +45,12 @@ fun MediaItemDto.toPlaybackMediaItem(apiHost: String, config: StreamVaultConfig 
     id           = id,
     title        = title,
     isDownloaded = false,
-    // HLS manifest endpoint: GET /api/v1/manifest/{id}
+    // DASH MPD manifest endpoint: GET /api/v1/manifest/dash/{id}
+    // ExoPlayer parses the MPD and fetches encrypted segments from
+    // /api/v1/proxy/dash/{id}/{segmentIdx}?t=… which are routed through
+    // AesGcmDecryptingDataSource (AES-128-GCM) by the player's RoutingDataSource.
     // Requires Authorization + X-Session-Token headers (injected by the player layer).
-    // DASH is served at /manifest/dash/{id} but requires license.dash.enabled=true on the server.
-    streamUrl    = "${if (config.useHttps) "https" else "http"}://$apiHost:${config.apiPort}/${config.apiBasePath}/manifest/$id",
+    streamUrl    = "${if (config.useHttps) "https" else "http"}://$apiHost:${config.apiPort}/${config.apiBasePath}/${config.dashManifestPath}/$id",
     downloadUrl  = downloadUrl ?: "",
     artworkUrl   = artworkUrl ?: "",
     durationMs   = durationMs,

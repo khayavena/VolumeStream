@@ -146,6 +146,7 @@ class Media3Media3PlayerComponentImpl(
         val uri = item.streamUrl
         val mimeType = when {
             uri.contains("/manifest/dash/", ignoreCase = true) -> MimeTypes.APPLICATION_MPD
+            uri.contains("/proxy/dash/", ignoreCase = true)    -> MimeTypes.APPLICATION_MPD
             uri.endsWith(".mpd", ignoreCase = true)            -> MimeTypes.APPLICATION_MPD
             uri.endsWith(".mp4", ignoreCase = true)            -> null
             uri.endsWith(".mp3", ignoreCase = true)            -> null

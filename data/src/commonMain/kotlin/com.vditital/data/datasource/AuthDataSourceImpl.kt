@@ -38,11 +38,19 @@ class AuthDataSourceImpl(
             contentType(ContentType.Application.Json)
             setBody(LoginRequest(email, password))
         }
-        
+
+        if (response.status.value !in 200..299) {
+            val body = runCatching { response.body<String>() }.getOrDefault("")
+            val msg = "HTTP ${response.status.value} ${response.status.description}" +
+                    (if (body.isNotBlank()) ": $body" else "")
+            AppLogger.e("AuthDS", "login failed — $msg")
+            throw IllegalStateException(msg)
+        }
+
         return try {
             response.body()
         } catch (e: Exception) {
-            val responseText = response.body<String>()
+            val responseText = runCatching { response.body<String>() }.getOrDefault("")
             AppLogger.e("AuthDS", "FAILED TO SERIALIZE LOGIN RESPONSE: $responseText", e)
             throw e
         }
@@ -50,7 +58,7 @@ class AuthDataSourceImpl(
 
     override suspend fun register(email: String, password: String): AuthResponse {
         AppLogger.d("AuthDS", "register → $authHost:$port")
-        return httpClient.post {
+        val response = httpClient.post {
             url {
                 protocol = this@AuthDataSourceImpl.protocol
                 host     = authHost
@@ -59,13 +67,23 @@ class AuthDataSourceImpl(
             }
             contentType(ContentType.Application.Json)
             setBody(RegisterRequest(email, password))
-        }.body()
+        }
+
+        if (response.status.value !in 200..299) {
+            val body = runCatching { response.body<String>() }.getOrDefault("")
+            val msg = "HTTP ${response.status.value} ${response.status.description}" +
+                    (if (body.isNotBlank()) ": $body" else "")
+            AppLogger.e("AuthDS", "register failed — $msg")
+            throw IllegalStateException(msg)
+        }
+
+        return response.body()
     }
 
     override suspend fun refreshToken(jwt: String): RefreshTokenResponse {
         // Server expects POST /api/refresh with body {"token":"Bearer <jwt>"}
         AppLogger.d("AuthDS", "refreshToken → $authHost:$port")
-        return httpClient.post {
+        val response = httpClient.post {
             url {
                 protocol = this@AuthDataSourceImpl.protocol
                 host     = authHost
@@ -74,6 +92,16 @@ class AuthDataSourceImpl(
             }
             contentType(ContentType.Application.Json)
             setBody(RefreshTokenRequest("Bearer $jwt"))
-        }.body()
+        }
+
+        if (response.status.value !in 200..299) {
+            val body = runCatching { response.body<String>() }.getOrDefault("")
+            val msg = "HTTP ${response.status.value} ${response.status.description}" +
+                    (if (body.isNotBlank()) ": $body" else "")
+            AppLogger.e("AuthDS", "refreshToken failed — $msg")
+            throw IllegalStateException(msg)
+        }
+
+        return response.body()
     }
 }
