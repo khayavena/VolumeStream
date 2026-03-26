@@ -17,26 +17,30 @@ import androidx.compose.material.Switch
 import androidx.compose.material.SwitchDefaults
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vdigital.volumestream.ui.viewmodel.SettingsViewModel
+import org.koin.compose.viewmodel.koinViewModel
+import org.koin.core.annotation.KoinExperimentalAPI
 
 private val GreenAccent = Color(0xFF00E676)
 
+@OptIn(KoinExperimentalAPI::class)
 @Composable
-fun SettingsScreen() {
-    var autoPlay by remember { mutableStateOf(true) }
-    var wifiOnly by remember { mutableStateOf(true) }
-    var notifications by remember { mutableStateOf(false) }
-    var subtitles by remember { mutableStateOf(false) }
-    var autoQuality by remember { mutableStateOf(true) }
+fun SettingsScreen(
+    viewModel: SettingsViewModel = koinViewModel()
+) {
+    val autoPlay        by viewModel.autoPlay.collectAsState()
+    val wifiOnly        by viewModel.wifiOnly.collectAsState()
+    val notifications   by viewModel.notifications.collectAsState()
+    val subtitles       by viewModel.subtitles.collectAsState()
+    val adaptiveQuality by viewModel.adaptiveQuality.collectAsState()
 
     Column(
         modifier = Modifier
@@ -66,21 +70,21 @@ fun SettingsScreen() {
                     label = "Auto-Play Next",
                     description = "Automatically play the next video",
                     checked = autoPlay,
-                    onCheckedChange = { autoPlay = it }
+                    onCheckedChange = viewModel::setAutoPlay
                 )
                 Divider(color = Color(0xFF2E2E2E), thickness = 0.5.dp)
                 SettingsToggleRow(
                     label = "Adaptive Quality",
                     description = "Adjust quality based on connection speed",
-                    checked = autoQuality,
-                    onCheckedChange = { autoQuality = it }
+                    checked = adaptiveQuality,
+                    onCheckedChange = viewModel::setAdaptiveQuality
                 )
                 Divider(color = Color(0xFF2E2E2E), thickness = 0.5.dp)
                 SettingsToggleRow(
                     label = "Subtitles",
                     description = "Show subtitles when available",
                     checked = subtitles,
-                    onCheckedChange = { subtitles = it }
+                    onCheckedChange = viewModel::setSubtitles
                 )
             }
         }
@@ -98,7 +102,7 @@ fun SettingsScreen() {
                     label = "Wi-Fi Only",
                     description = "Download content only on Wi-Fi",
                     checked = wifiOnly,
-                    onCheckedChange = { wifiOnly = it }
+                    onCheckedChange = viewModel::setWifiOnly
                 )
             }
         }
@@ -116,7 +120,7 @@ fun SettingsScreen() {
                     label = "Push Notifications",
                     description = "Get notified about new content",
                     checked = notifications,
-                    onCheckedChange = { notifications = it }
+                    onCheckedChange = viewModel::setNotifications
                 )
             }
         }
@@ -170,24 +174,16 @@ private fun SettingsToggleRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = label,
-                color = Color.White,
-                fontSize = 15.sp
-            )
+            Text(text = label, color = Color.White, fontSize = 15.sp)
             Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = description,
-                color = Color.Gray,
-                fontSize = 12.sp
-            )
+            Text(text = description, color = Color.Gray, fontSize = 12.sp)
         }
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
-                checkedTrackColor = GreenAccent,
+                checkedThumbColor   = Color.White,
+                checkedTrackColor   = GreenAccent,
                 uncheckedThumbColor = Color.Gray,
                 uncheckedTrackColor = Color(0xFF3E3E3E)
             )
@@ -209,10 +205,6 @@ private fun SettingsInfoRow(label: String, value: String) {
             fontSize = 15.sp,
             modifier = Modifier.weight(1f)
         )
-        Text(
-            text = value,
-            color = Color.Gray,
-            fontSize = 14.sp
-        )
+        Text(text = value, color = Color.Gray, fontSize = 14.sp)
     }
 }

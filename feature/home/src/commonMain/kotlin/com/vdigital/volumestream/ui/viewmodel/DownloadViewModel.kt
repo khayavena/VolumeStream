@@ -7,6 +7,7 @@ import com.vdigital.volumestream.core.player.download.DownloadController
 import com.vdigital.volumestream.core.player.download.DownloadItem
 import com.vdigital.volumestream.core.player.download.DownloadState
 import com.vditital.data.model.PlaybackMediaItem
+import com.vditital.data.security.SettingsStore
 import com.vditital.data.util.AppLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -22,7 +23,8 @@ import kotlinx.coroutines.withContext
 
 class DownloadViewModel(
     private val downloadController: DownloadController,
-    private val selectedMediaItemHolder: SelectedMediaItemHolder
+    private val selectedMediaItemHolder: SelectedMediaItemHolder,
+    private val settingsStore: SettingsStore,
 ) : ViewModel() {
 
     private val _allDownloads = MutableStateFlow<List<DownloadItem>>(emptyList())
@@ -65,7 +67,10 @@ class DownloadViewModel(
         viewModelScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    downloadController.download(item.id, url, item.title, item.artworkUrl)
+                    downloadController.download(
+                        item.id, url, item.title, item.artworkUrl,
+                        wifiOnly = settingsStore.isWifiOnlyDownloads()
+                    )
                 }
                 // Wait for terminal state — Idle covers the "cancelled" path so
                 // this coroutine always unblocks and refreshDownloads() always fires.

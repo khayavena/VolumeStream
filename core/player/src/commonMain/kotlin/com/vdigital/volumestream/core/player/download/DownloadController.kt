@@ -3,7 +3,14 @@ package com.vdigital.volumestream.core.player.download
 import kotlinx.coroutines.flow.Flow
 
 expect class DownloadController {
-    fun download(id: String, url: String, title: String, artworkUrl: String)
+    /**
+     * Enqueues a download for [id].
+     *
+     * @param wifiOnly When true the download is restricted to unmetered/Wi-Fi networks.
+     *                 Android: WorkManager constraint NetworkType.UNMETERED.
+     *                 iOS:     NSURLSession with allowsCellularAccess = false.
+     */
+    fun download(id: String, url: String, title: String, artworkUrl: String, wifiOnly: Boolean = false)
     fun cancel(id: String)
     fun remove(id: String)
     fun observeState(id: String): Flow<DownloadState>

@@ -19,7 +19,8 @@ private const val TAG = "VS_DL_Controller"
 
 actual class DownloadController(private val context: Context) {
 
-    actual fun download(id: String, url: String, title: String, artworkUrl: String) {
+    actual fun download(id: String, url: String, title: String, artworkUrl: String, wifiOnly: Boolean) {
+        val networkType = if (wifiOnly) NetworkType.UNMETERED else NetworkType.CONNECTED
         val request = OneTimeWorkRequestBuilder<DownloadWorker>()
             .setInputData(
                 workDataOf(
@@ -29,7 +30,7 @@ actual class DownloadController(private val context: Context) {
                     DownloadWorker.KEY_ARTWORK to artworkUrl
                 )
             )
-            .setConstraints(Constraints(requiredNetworkType = NetworkType.CONNECTED))
+            .setConstraints(Constraints(requiredNetworkType = networkType))
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
             .build()
         WorkManager.getInstance(context)

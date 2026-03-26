@@ -70,15 +70,27 @@ actual class DownloadController {
         return try { block() } finally { lock.unlock() }
     }
 
-    // -------------------------------------------------------------------------
-    // Delegate queue: use a dedicated background serial queue instead of
-    // mainQueue so that file-system operations (moveItemAtURL) inside
-    // onFinished run off the Main thread and do not cause UI jank / ANRs.
-    // -------------------------------------------------------------------------
     private val delegateQueue: NSOperationQueue = NSOperationQueue().apply {
         maxConcurrentOperationCount = 1   // serial
         name = "com.vdigital.volumestream.download.delegate"
     }
+
+    // ---- session management -------------------------------------------------
+    /** true = allow cellular, false = Wi-Fi only */
+    private var currentAllowsCellular: Boolean = true
+
+    private fun makeSession(allowCellular: Boolean): NSURLSession {
+        val config = NSURLSessionConfiguration.defaultSessionConfiguration()
+        config.allowsCellularAccess = allowCellular
+        return NSURLSession.sessionWithConfiguration(
+            configuration = config,
+            delegate      = delegate,
+            delegateQueue = delegateQueue
+        )
+    }
+
+    private var session: NSURLSession = makeSession(allowCellular = true)
+    // -------------------------------------------------------------------------    }
 
     private val delegate = VsDownloadDelegate(
         onFinished = { taskId, tmpUrl, error ->
@@ -125,12 +137,6 @@ actual class DownloadController {
         }
     )
 
-    private val session: NSURLSession = NSURLSession.sessionWithConfiguration(
-        configuration = NSURLSessionConfiguration.defaultSessionConfiguration(),
-        delegate = delegate,
-        delegateQueue = delegateQueue           // ← background, NOT mainQueue
-    )
-
     private fun prefKey(id: String) = "vs_dl_$id"
 
     @Suppress("UNCHECKED_CAST")
@@ -150,7 +156,7 @@ actual class DownloadController {
             }
         }
 
-    actual fun download(id: String, url: String, title: String, artworkUrl: String) {
+    actual fun download(id: String, url: String, title: String, artworkUrl: String, wifiOnly: Boolean) {
         val flow = flowFor(id)
         if (flow.value == DownloadState.Completed ||
             flow.value is DownloadState.Downloading ||
@@ -159,10 +165,21 @@ actual class DownloadController {
         val nsUrl = NSURL.URLWithString(url) ?: run {
             flow.value = DownloadState.Failed("Invalid URL"); return
         }
+        // Recreate the NSURLSession only when the cellular policy changes AND no
+        // downloads are currently active (to avoid disrupting in-flight tasks).
+        val needCellular = !wifiOnly
+        withLock {
+            if (needCellular != currentAllowsCellular && idToTask.isEmpty()) {
+                currentAllowsCellular = needCellular
+                session.finishTasksAndInvalidate()
+                session = makeSession(needCellular)
+            }
+        }
         prefs.setObject(title, forKey = "vs_dl_t_$id")
         prefs.setObject(artworkUrl, forKey = "vs_dl_a_$id")
         flow.value = DownloadState.Downloading(0f)
-        val task = session.downloadTaskWithURL(nsUrl)
+        val currentSession = withLock { session }
+        val task = currentSession.downloadTaskWithURL(nsUrl)
         withLock {
             taskIdToId[task.taskIdentifier] = id
             idToTask[id] = task
