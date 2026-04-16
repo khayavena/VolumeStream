@@ -4,6 +4,7 @@ import android.app.Application
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.core.content.ContextCompat
+import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -55,10 +56,25 @@ class Media3Media3PlayerComponentImpl(
             .setLoadControl(loadControl)
             .build()
             .also { player ->
-                // Scale video to fit the surface exactly — avoids a stretch/crop step
-                // in the video renderer that would otherwise run per-frame.
-                player.setVideoScalingMode(C.VIDEO_SCALING_MODE_SCALE_TO_FIT)
-                Log.d("VolumeStream", "ExoPlayer built with hardware-preferred renderer")
+                // Tell ExoPlayer this is movie/TV content so the system uses the
+                // correct audio focus behaviour (AUDIOFOCUS_GAIN) and audio session.
+                // handleAudioBecomingNoisy = true pauses playback when headphones
+                // are unplugged, preventing audio from blasting from the speaker.
+                player.setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(C.USAGE_MEDIA)
+                        .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                        .build(),
+                    /* handleAudioFocus = */ true
+                )
+                player.setHandleAudioBecomingNoisy(true)
+                // NOTE: do NOT call setVideoScalingMode() here.
+                // VIDEO_SCALING_MODE_SCALE_TO_FIT instructs the codec to scale
+                // every output frame itself. On MediaTek hardware (c2.mtk.avc.decoder)
+                // this triggers "stream data corrupt" telemetry on every decoded frame.
+                // PlayerView + RESIZE_MODE_FIT already handles aspect-ratio scaling
+                // at the SurfaceView layer without touching the codec pipeline.
+                Log.d("VolumeStream", "ExoPlayer built with AudioAttributes + hardware-preferred renderer")
             }
     }
 
@@ -129,7 +145,11 @@ class Media3Media3PlayerComponentImpl(
         mediaSession = null
         playerReleased = true
         player.release()
-        cachedPlaybackDataSourceFactory.clearCache()
+        // NOTE: do NOT call cachedPlaybackDataSourceFactory.clearCache() here.
+        // Clearing the 500 MB disk cache on every player release forces ExoPlayer
+        // to re-download all segments from scratch on the next play, causing a
+        // long buffering stall. The cache is intentionally kept alive across
+        // player release/init cycles. Only clear it on explicit user logout.
     }
 
     override fun getMediaController(): MediaController? = mediaController

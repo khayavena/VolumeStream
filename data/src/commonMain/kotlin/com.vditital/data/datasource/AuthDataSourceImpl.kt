@@ -33,7 +33,7 @@ class AuthDataSourceImpl(
                 protocol = this@AuthDataSourceImpl.protocol
                 host     = authHost
                 port     = this@AuthDataSourceImpl.port
-                path("$base/login")
+                path(base, "login")
             }
             contentType(ContentType.Application.Json)
             setBody(LoginRequest(email, password))
@@ -63,7 +63,7 @@ class AuthDataSourceImpl(
                 protocol = this@AuthDataSourceImpl.protocol
                 host     = authHost
                 port     = this@AuthDataSourceImpl.port
-                path("$base/register")
+                path(base, "register")
             }
             contentType(ContentType.Application.Json)
             setBody(RegisterRequest(email, password))
@@ -88,7 +88,7 @@ class AuthDataSourceImpl(
                 protocol = this@AuthDataSourceImpl.protocol
                 host     = authHost
                 port     = this@AuthDataSourceImpl.port
-                path("$base/refresh")
+                path(base, "refresh")
             }
             contentType(ContentType.Application.Json)
             setBody(RefreshTokenRequest("Bearer $jwt"))

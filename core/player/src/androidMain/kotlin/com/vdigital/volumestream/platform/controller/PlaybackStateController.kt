@@ -8,6 +8,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Player.Listener
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.session.MediaController
 import com.vdigital.volumestream.compnent.Media3PlayerComponent
@@ -153,7 +154,11 @@ actual class PlaybackStateController(private val media3PlayerComponent: Media3Pl
             // the Ktor HTTP interceptor: clear the JWT and signal re-login so the
             // player doesn't keep fetching segments with the dead token, which
             // caused the "Connection reset by peer" and the segment-gap in the logs.
-            if (error.errorCode == PlaybackException.ERROR_CODE_AUTHENTICATION_EXPIRED) {
+            //
+            // NOTE: ExoPlayer typically raises ERROR_CODE_IO_BAD_HTTP_STATUS (not
+            // ERROR_CODE_AUTHENTICATION_EXPIRED) for 401 responses, so we also walk
+            // the cause chain for an InvalidResponseCodeException with responseCode 401.
+            if (error.errorCode == PlaybackException.ERROR_CODE_AUTHENTICATION_EXPIRED || error.is401()) {
                 com.vditital.data.security.SessionRevokedBus.emit()
                 playbackState(PlaybackState.SessionExpired)
             } else {
@@ -168,3 +173,20 @@ actual class PlaybackStateController(private val media3PlayerComponent: Media3Pl
         }
     }
 }
+
+/**
+ * Walks the [Throwable] cause chain looking for an
+ * [HttpDataSource.InvalidResponseCodeException] with HTTP 401.
+ * ExoPlayer raises [PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS] for 401s
+ * (not [PlaybackException.ERROR_CODE_AUTHENTICATION_EXPIRED]), so the raw
+ * response code must be checked in the cause chain.
+ */
+private fun PlaybackException.is401(): Boolean {
+    var t: Throwable? = cause
+    while (t != null) {
+        if (t is HttpDataSource.InvalidResponseCodeException && t.responseCode == 401) return true
+        t = t.cause
+    }
+    return false
+}
+

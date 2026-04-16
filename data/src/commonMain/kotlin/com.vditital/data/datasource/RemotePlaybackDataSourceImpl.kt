@@ -13,7 +13,7 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.URLProtocol
-import io.ktor.http.path
+import io.ktor.http.appendPathSegments
 import kotlinx.serialization.json.Json
 
 class RemotePlaybackDataSourceImpl(
@@ -42,7 +42,7 @@ class RemotePlaybackDataSourceImpl(
                 protocol = this@RemotePlaybackDataSourceImpl.protocol
                 host     = apiHost
                 port     = this@RemotePlaybackDataSourceImpl.port
-                path(feedPath)
+                appendPathSegments(feedPath.split("/"))
             }
             if (jwt != null) bearerAuth(jwt)
             headers.append(HttpHeaders.Accept, "application/json")

@@ -17,6 +17,7 @@ import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.vdigital.volumestream.config.PlayerConfig
 import java.io.File
+import java.io.IOException
 
 @OptIn(UnstableApi::class)
 class CachedPlaybackDataSourceFactoryImpl(
@@ -76,7 +77,13 @@ class CachedPlaybackDataSourceFactoryImpl(
                 .setUpstreamDataSourceFactory(routingFactory)
                 .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
         )
-        return DefaultMediaSourceFactory(context).setDataSourceFactory(dataSourceFactory)
+        return DefaultMediaSourceFactory(context)
+            .setDataSourceFactory(dataSourceFactory)
+            // Stop retrying immediately on HTTP 401 instead of the default exponential
+            // back-off. Without this, ExoPlayer hammers the server with the same revoked
+            // token for tens of seconds, flooding the server log with TOKEN_INVALID warnings
+            // and causing "Connection reset / Broken pipe" on segment responses.
+            .setLoadErrorHandlingPolicy(Http401LoadErrorHandlingPolicy())
     }
 
     override fun clearCache() {
@@ -109,15 +116,24 @@ private class RoutingDataSource(
     override fun open(dataSpec: DataSpec): Long {
         val uri = dataSpec.uri.toString()
         val key = aesKeyProvider()
-        delegate = if (key != null && isDashProxySegment(uri)) {
-            // DASH media/init segment — decrypt with AES-128-GCM
-            AesGcmDecryptingDataSource(
-                aesKey      = key,
-                httpFactory = httpFactory
-            )
-        } else {
-            // Manifest, key-delivery, HLS segments, or anything else — plain HTTP
-            httpFactory.createDataSource()
+        delegate = when {
+            isDashProxySegment(uri) && key != null -> {
+                // DASH media/init segment — decrypt with AES-128-GCM
+                AesGcmDecryptingDataSource(aesKey = key, httpFactory = httpFactory)
+            }
+            isDashProxySegment(uri) && key == null -> {
+                // Key not yet delivered — throw so ExoPlayer retries after key arrival.
+                // Silently falling through to plain HTTP would feed raw ciphertext to
+                // the hardware H.264 decoder, causing "stream data corrupt" on every
+                // frame while the codec does error-concealment on encrypted bytes.
+                throw IOException(
+                    "AES-128-GCM key not yet available for DASH segment — ExoPlayer will retry: $uri"
+                )
+            }
+            else -> {
+                // Manifest, key-delivery, HLS segments, or anything non-DASH-proxy — plain HTTP
+                httpFactory.createDataSource()
+            }
         }
         return delegate!!.open(dataSpec)
     }

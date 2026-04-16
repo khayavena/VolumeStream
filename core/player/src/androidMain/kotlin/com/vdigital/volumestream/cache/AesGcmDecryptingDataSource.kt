@@ -73,7 +73,7 @@ internal class AesGcmDecryptingDataSource(
             throw IOException("AES-128-GCM decryption failed for ${dataSpec.uri}", e)
         }
 
-        readPos = dataSpec.position.toInt().coerceAtMost(decryptedBuf!!.size)
+        readPos = dataSpec.position.coerceIn(0L, decryptedBuf!!.size.toLong()).toInt()
         return (decryptedBuf!!.size - readPos).toLong()
     }
 
