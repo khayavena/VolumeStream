@@ -10,4 +10,5 @@ interface PlaybackMediaItemRepository {
     suspend fun getMediaItemsState(): ResultState<MutableList<PlaybackMediaItem>>
     suspend fun getMediaItemsByCategoryState(): ResultState<Map<String, MutableList<PlaybackMediaItem>>>
     suspend fun fetchDataModel(): DataModel
+    suspend fun fetchAndSaveMediaItems()
 }

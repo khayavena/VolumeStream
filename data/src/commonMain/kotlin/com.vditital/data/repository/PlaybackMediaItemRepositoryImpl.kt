@@ -12,6 +12,7 @@ import kotlin.time.TimeSource
 
 class PlaybackMediaItemRepositoryImpl(private val dataSource: RemotePlaybackDataSource) :
     PlaybackMediaItemRepository {
+    private val remoteDataSourceData = mutableListOf<PlaybackMediaItem>()
 
     // ── In-memory cache ───────────────────────────────────────────────────────
     private val cacheMutex = Mutex()
@@ -74,4 +75,9 @@ class PlaybackMediaItemRepositoryImpl(private val dataSource: RemotePlaybackData
         return dataSource.fetchDataModel()
     }
 
+    override suspend fun fetchAndSaveMediaItems() {
+        val mediaItems = dataSource.fetchData()
+        remoteDataSourceData.clear()
+        remoteDataSourceData.addAll(mediaItems)
+    }
 }

@@ -27,13 +27,13 @@ val internalDataModule = module {
 
     // Data sources — all receive the config so no values are hardcoded
     single<RemotePlaybackDataSource> {
-        RemotePlaybackDataSourceImpl(get(), get(named("apiHost")), get(), get())
+        RemotePlaybackDataSourceImpl(get(), "192.168.0.113", get(), get())
     }
     single<AuthDataSource> {
-        AuthDataSourceImpl(get(), get(named("authHost")), get())
+        AuthDataSourceImpl(get(), "192.168.0.113", get())
     }
     single<SessionDataSource> {
-        SessionDataSourceImpl(get(), get(named("apiHost")), get(), get(), get())
+        SessionDataSourceImpl(get(), "192.168.0.113", get(), get(), get())
     }
 
     // Repositories

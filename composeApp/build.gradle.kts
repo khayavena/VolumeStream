@@ -75,6 +75,7 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.koin.android)
             implementation(libs.android.splashscreen)
+            implementation(libs.androidx.media3.exoplayer.dash)
         }
         commonMain.dependencies {
             implementation(project(":data"))
@@ -154,4 +155,3 @@ dependencies {
 tasks.matching { it.name.startsWith("compileKotlinIos") }.configureEach {
     dependsOn(generateIosAppConfig)
 }
-
