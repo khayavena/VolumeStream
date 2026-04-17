@@ -297,23 +297,9 @@ class PlaybackViewModel(
     // bugs by cancelling the scope before super.onCleared() runs.
     override fun onCleared() {
         super.onCleared()
-        // viewModelScope is cancelled immediately after onCleared() — use cleanupScope
-        // to guarantee the DELETE /session request is dispatched before the process exits.
-        val sid = activeSessionId
-        val jwt = activeJwt
-        if (sid != null && jwt != null) {
-            cleanupScope.launch {
-                AppLogger.d("PlaybackVM", "onCleared — ending session $sid")
-                try {
-                    withTimeout(5_000L) { sessionRepository.endSession(jwt, sid) }
-                } catch (e: Exception) {
-                    AppLogger.e("PlaybackVM", "endSession timed out or failed", e)
-                } finally {
-                    cleanupScope.cancel()
-                }
-            }
-        } else {
-            cleanupScope.cancel()
-        }
+        // Session is intentionally kept alive when the player closes so the user
+        // can return to playback without a fresh authentication round-trip.
+        // The session will expire naturally on the server via its TTL.
+        cleanupScope.cancel()
     }
 }
