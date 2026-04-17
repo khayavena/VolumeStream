@@ -31,7 +31,6 @@ class Media3Media3PlayerComponentImpl(
     private var player: ExoPlayer = buildPlayer()
     private var mediaController: MediaController? = null
     private var mediaSession: MediaSession? = null
-    private var playerReleased = false
     private var controllerListener: PlaybackStateController.PlaybackControllerListener? = null
 
     @OptIn(UnstableApi::class)
@@ -93,20 +92,11 @@ class Media3Media3PlayerComponentImpl(
         mediaSession?.release()
         mediaSession = null
 
-        // IMPORTANT: do NOT release + rebuild the ExoPlayer here.
-        // Rebuilding detaches the player from PlayerView's video surface, producing
-        // black video with audio-only playback. Instead, stop/clear the existing
-        // player so it is ready for a fresh media item.
-        // The httpFactory's request properties (auth headers) are updated live via
-        // setDefaultHeaders() — no ExoPlayer rebuild is needed to pick them up.
-        // We only rebuild if the player was explicitly released via releasePlayer().
-        if (playerReleased) {
-            player = buildPlayer()
-            playerReleased = false
-        } else {
-            player.stop()
-            player.clearMediaItems()
-        }
+        // The same ExoPlayer instance is always reused (never released while the
+        // component is alive — see releasePlayer()).  Just stop and clear it so it
+        // is ready for new media items without detaching the video surface.
+        player.stop()
+        player.clearMediaItems()
 
         mediaSession = MediaSession.Builder(context, player).setCallback(MediaSessionCallback()).build()
         val future = MediaController.Builder(context, mediaSession!!.token).buildAsync()
@@ -128,8 +118,12 @@ class Media3Media3PlayerComponentImpl(
     }
 
     override fun addAll(mediaItems: List<PlaybackMediaItem>) {
-        // Clear any previously queued items so a track-switch starts fresh
-        // and doesn't append the new item behind the old one.
+        // stop() guarantees the player is in STATE_IDLE regardless of its current
+        // state (PLAYING, READY, ENDED, etc.) before we reload media.  Without this,
+        // clearMediaItems() on a STATE_ENDED player can leave it in a non-IDLE state
+        // where the subsequent prepare() call silently fails to re-enable the video
+        // renderer — producing audio-only playback on every track after the first.
+        player.stop()
         player.clearMediaItems()
         mediaItems.forEach { player.addMediaItem(buildMediaItem(it)) }
         player.prepare()
@@ -143,13 +137,17 @@ class Media3Media3PlayerComponentImpl(
         mediaController = null
         mediaSession?.release()
         mediaSession = null
-        playerReleased = true
-        player.release()
-        // NOTE: do NOT call cachedPlaybackDataSourceFactory.clearCache() here.
-        // Clearing the 500 MB disk cache on every player release forces ExoPlayer
-        // to re-download all segments from scratch on the next play, causing a
-        // long buffering stall. The cache is intentionally kept alive across
-        // player release/init cycles. Only clear it on explicit user logout.
+        // Stop the player but do NOT call player.release() and do NOT set playerReleased.
+        // Media3PlayerComponent is a singleton (single DI scope), so the ExoPlayer
+        // instance lives for the entire app session.  Releasing it forces a rebuild on
+        // the next initPlayer() call.  The rebuilt player has no video surface until the
+        // NEXT Compose recomposition runs the AndroidView update block — but addAll()
+        // calls player.prepare() in the same coroutine tick, before that recomposition,
+        // so the video decoder starts with no surface → audio-only for the second video.
+        // By stopping (not releasing) we keep the same ExoPlayer instance alive and its
+        // surface already registered with PlayerView, so the next initPlayer() reuses it
+        // and video renders from the very first frame.
+        player.stop()
     }
 
     override fun getMediaController(): MediaController? = mediaController
