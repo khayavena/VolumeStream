@@ -36,11 +36,16 @@ actual class RemoteApiClientFactory {
             }
         }
 
-        // Same 401 guard as Android: stop the revoked-token retry storm.
+        // Same 401 guard as Android: only signal revocation when the request
+        // already had a Bearer JWT — prevents a failed login (wrong password)
+        // from triggering a forced-logout navigation.
         client.plugin(HttpSend).intercept { request ->
             val call = execute(request)
             if (call.response.status == HttpStatusCode.Unauthorized) {
-                SessionRevokedBus.emit()
+                val hasJwt = request.headers["Authorization"]?.startsWith("Bearer ") == true
+                if (hasJwt) {
+                    SessionRevokedBus.emit()
+                }
             }
             call
         }

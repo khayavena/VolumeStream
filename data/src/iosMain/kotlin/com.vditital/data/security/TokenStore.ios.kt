@@ -1,26 +1,99 @@
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class, kotlinx.cinterop.BetaInteropApi::class)
+
 package com.vditital.data.security
 
-import platform.Foundation.NSUserDefaults
-import platform.Foundation.NSUUID
+import kotlinx.cinterop.*
+import platform.CoreFoundation.*
+import platform.Foundation.*
+import platform.Security.*
 
+/**
+ * Secure token storage for iOS.
+ *
+ * - **JWT & email** → iOS Keychain (kSecClassGenericPassword).
+ *   The Keychain is encrypted at rest, excluded from iCloud backups by default,
+ *   and protected by the device passcode / Secure Enclave.
+ * - **deviceId** → NSUserDefaults (not sensitive; must survive app reinstall via
+ *   iCloud backup so device registration is idempotent).
+ */
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 actual class TokenStore {
 
-    private val defaults = NSUserDefaults.standardUserDefaults
+    // ── Keychain helpers ──────────────────────────────────────────────────────
 
-    actual fun getJwt(): String? = defaults.stringForKey(KEY_JWT)
+    @Suppress("UNCHECKED_CAST")
+    private fun keychainRead(key: String): String? = memScoped {
+        val query = NSMutableDictionary()
+        query.setObject(kSecClassGenericPassword as Any, forKey = kSecClass as NSCopyingProtocol)
+        query.setObject(key,                             forKey = kSecAttrAccount as NSCopyingProtocol)
+        query.setObject(KEYCHAIN_SERVICE,               forKey = kSecAttrService as NSCopyingProtocol)
+        query.setObject(NSNumber.numberWithBool(true),   forKey = kSecReturnData as NSCopyingProtocol)
+        query.setObject(kSecMatchLimitOne as Any,        forKey = kSecMatchLimit as NSCopyingProtocol)
 
-    actual fun setJwt(jwt: String) {
-        defaults.setObject(jwt, forKey = KEY_JWT)
-        defaults.synchronize()
+        val result = alloc<CFTypeRefVar>()
+        val status = SecItemCopyMatching(query as CFDictionaryRef, result.ptr)
+        if (status != errSecSuccess || result.value == null) return null
+        val data = result.value as NSData
+        CFRelease(result.value)
+        NSString.create(data, NSUTF8StringEncoding) as? String
     }
 
-    actual fun clearJwt() {
-        defaults.removeObjectForKey(KEY_JWT)
-        defaults.synchronize()
+    @Suppress("UNCHECKED_CAST")
+    private fun keychainWrite(key: String, value: String) {
+        val data = value.encodeToByteArray().let { bytes ->
+            bytes.usePinned { NSData.create(bytes = it.addressOf(0), length = bytes.size.toULong()) }
+        }
+
+        // Try update first; insert on errSecItemNotFound.
+        val updateQuery = NSMutableDictionary()
+        updateQuery.setObject(kSecClassGenericPassword as Any, forKey = kSecClass as NSCopyingProtocol)
+        updateQuery.setObject(key,              forKey = kSecAttrAccount as NSCopyingProtocol)
+        updateQuery.setObject(KEYCHAIN_SERVICE, forKey = kSecAttrService as NSCopyingProtocol)
+
+        val attrs = NSMutableDictionary()
+        attrs.setObject(data, forKey = kSecValueData as NSCopyingProtocol)
+
+        val status = SecItemUpdate(updateQuery as CFDictionaryRef, attrs as CFDictionaryRef)
+        if (status == errSecItemNotFound) {
+            val addQuery = updateQuery.mutableCopy() as NSMutableDictionary
+            addQuery.setObject(data, forKey = kSecValueData as NSCopyingProtocol)
+            // kSecAttrAccessible = kSecAttrAccessibleWhenUnlockedThisDeviceOnly:
+            //   encrypted, accessible only after first unlock, NOT backed up to iCloud.
+            addQuery.setObject(
+                kSecAttrAccessibleWhenUnlockedThisDeviceOnly as Any,
+                forKey = kSecAttrAccessible as NSCopyingProtocol
+            )
+            SecItemAdd(addQuery as CFDictionaryRef, null)
+        }
     }
 
+    @Suppress("UNCHECKED_CAST")
+    private fun keychainDelete(key: String) {
+        val query = NSMutableDictionary()
+        query.setObject(kSecClassGenericPassword as Any, forKey = kSecClass as NSCopyingProtocol)
+        query.setObject(key,              forKey = kSecAttrAccount as NSCopyingProtocol)
+        query.setObject(KEYCHAIN_SERVICE, forKey = kSecAttrService as NSCopyingProtocol)
+        SecItemDelete(query as CFDictionaryRef)
+    }
+
+    // ── TokenStore API ────────────────────────────────────────────────────────
+
+    actual fun getJwt(): String?      = keychainRead(KEY_JWT)
+    actual fun setJwt(jwt: String)    = keychainWrite(KEY_JWT, jwt)
+    actual fun clearJwt()             = keychainDelete(KEY_JWT)
+
+    actual fun getUserEmail(): String?       = keychainRead(KEY_EMAIL)
+    actual fun setUserEmail(email: String)   = keychainWrite(KEY_EMAIL, email)
+
+    actual fun clearAll() {
+        keychainDelete(KEY_JWT)
+        keychainDelete(KEY_EMAIL)
+        // Keep deviceId in NSUserDefaults — intentionally not cleared
+    }
+
+    /** deviceId is not sensitive and must survive reinstall via backup. */
     actual fun getDeviceId(): String {
+        val defaults = NSUserDefaults.standardUserDefaults
         return defaults.stringForKey(KEY_DEVICE_ID) ?: run {
             val id = NSUUID().UUIDString
             defaults.setObject(id, forKey = KEY_DEVICE_ID)
@@ -29,23 +102,11 @@ actual class TokenStore {
         }
     }
 
-    actual fun getUserEmail(): String? = defaults.stringForKey(KEY_EMAIL)
-
-    actual fun setUserEmail(email: String) {
-        defaults.setObject(email, forKey = KEY_EMAIL)
-        defaults.synchronize()
-    }
-
-    actual fun clearAll() {
-        defaults.removeObjectForKey(KEY_JWT)
-        defaults.removeObjectForKey(KEY_EMAIL)
-        defaults.synchronize()
-    }
-
     private companion object {
-        const val KEY_JWT = "vs_jwt"
+        const val KEYCHAIN_SERVICE = "com.vdigital.volumestream"
+        const val KEY_JWT       = "vs_jwt"
+        const val KEY_EMAIL     = "vs_user_email"
         const val KEY_DEVICE_ID = "vs_device_id"
-        const val KEY_EMAIL = "vs_user_email"
     }
 }
 
