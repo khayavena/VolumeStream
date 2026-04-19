@@ -168,7 +168,14 @@ class Media3Media3PlayerComponentImpl(
             uri.endsWith(".mpd", ignoreCase = true)            -> MimeTypes.APPLICATION_MPD
             uri.endsWith(".mp4", ignoreCase = true)            -> null
             uri.endsWith(".mp3", ignoreCase = true)            -> null
-            // /manifest/{id} — HLS (.m3u8) served by the StreamVault manifest endpoint
+            // HLS master playlist — covers:
+            //   /manifest/hls/{id}           master playlist (multi-quality)
+            //   /manifest/{id}               bare manifest URL from feed (HLS fallback)
+            // ExoPlayer follows variant playlist URLs embedded in the master manifest,
+            // fetching quality-specific segments at /proxy/{id}/{quality}/{seg}?t=… (new)
+            // or the legacy flat path /proxy/{id}/{seg}?t=… automatically.
+            // AES-128-CBC decryption is handled by ExoPlayer via EXT-X-KEY.
+            uri.contains("/manifest/hls/", ignoreCase = true)  -> MimeTypes.APPLICATION_M3U8
             uri.contains("/manifest/", ignoreCase = true)      -> MimeTypes.APPLICATION_M3U8
             uri.startsWith("http")                             -> MimeTypes.APPLICATION_M3U8
             else                                               -> null

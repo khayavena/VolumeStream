@@ -75,7 +75,10 @@ fun PlaybackView(onBack: () -> Unit = {}) {
     // Intercept Android hardware back key and predictive-back gesture.
     PlatformBackHandler(onBack = handleBack)
 
-    DisposableEffect(Unit) { onDispose { controller.release() } }
+    // Release is handled by PlatformMediaPlayerView's own DisposableEffect.
+    // A second DisposableEffect here is redundant — the released-flag in
+    // PlaybackStateController guards against double-release, but removing the
+    // duplicate keeps the lifecycle management in one place.
 
     var showControls      by remember { mutableStateOf(true) }
     var showTrackPanel    by remember { mutableStateOf(false) }

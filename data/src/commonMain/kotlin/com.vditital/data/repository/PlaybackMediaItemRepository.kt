@@ -11,4 +11,6 @@ interface PlaybackMediaItemRepository {
     suspend fun getMediaItemsByCategoryState(): ResultState<Map<String, MutableList<PlaybackMediaItem>>>
     suspend fun fetchDataModel(): DataModel
     suspend fun fetchAndSaveMediaItems()
+    /** Clears the in-memory cache; next call to any fetch method will hit the network. */
+    suspend fun invalidateCache()
 }

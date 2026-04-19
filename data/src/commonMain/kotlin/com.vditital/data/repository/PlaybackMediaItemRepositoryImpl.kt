@@ -28,7 +28,7 @@ class PlaybackMediaItemRepositoryImpl(private val dataSource: RemotePlaybackData
     }
 
     /** Invalidates the cache (e.g. after a pull-to-refresh). */
-    suspend fun invalidateCache() = cacheMutex.withLock {
+    override suspend fun invalidateCache() = cacheMutex.withLock {
         cachedItems = null
         cachedFeed  = null
         cacheStamp  = null

@@ -32,7 +32,7 @@ fun HomeScreen(
         is ResultState.Error -> ErrorScreen(
             title = "Could not load content",
             message = s.exception.message ?: "Please try again.",
-            onRetry = { homaPageViewModel.fetchData() }
+            onRetry = { homaPageViewModel.fetchData(forceRefresh = true) }
         )
         ResultState.Loading -> Box(
             modifier = Modifier.fillMaxSize(),

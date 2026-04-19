@@ -157,6 +157,16 @@ private class RoutingDataSource(
      * Only DASH proxy segments are AES-128-GCM encrypted.
      * Matched against [dashProxyPathFragment] (default "/api/v1/proxy/dash/")
      * so the routing is driven by [PlayerConfig.dashProxyPathFragment].
+     *
+     * This single check covers all encrypted DASH request types:
+     *   - Video init segment:  /api/v1/proxy/dash/{id}/init?t=…
+     *   - Audio init segment:  /api/v1/proxy/dash/{id}/init?t=…&stream=audio
+     *   - Video media segment: /api/v1/proxy/dash/{id}/{N}?t=…
+     *   - Audio media segment: /api/v1/proxy/dash/{id}/{N}?t=…&stream=audio
+     *
+     * HLS segments (/api/v1/proxy/{id}/{seg} and /api/v1/proxy/{id}/{quality}/{seg})
+     * do NOT match this fragment and are served as plain HTTP; ExoPlayer decrypts
+     * them natively via AES-128-CBC using the EXT-X-KEY from the HLS playlist.
      */
     private fun isDashProxySegment(uri: String) =
         uri.contains(dashProxyPathFragment, ignoreCase = true)

@@ -17,6 +17,7 @@ import io.ktor.client.HttpClient
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
+
 val internalDataModule = module {
     // StreamVaultConfig is NOT provided here — it must be registered by the app
     // via configureKoin() (Android: KoinConfig.kt, iOS: KoinConfig.kt) BEFORE
@@ -25,15 +26,15 @@ val internalDataModule = module {
 
     single<HttpClient> { get<RemoteApiClientFactory>().create() }
 
-    // Data sources — all receive the config so no values are hardcoded
+    // Data sources — apiHost injected from configureKoin() (emulator vs physical device)
     single<RemotePlaybackDataSource> {
-        RemotePlaybackDataSourceImpl(get(), "192.168.0.113", get(), get())
+        RemotePlaybackDataSourceImpl(get(), get(named("apiHost")), get(), get())
     }
     single<AuthDataSource> {
-        AuthDataSourceImpl(get(), "192.168.0.113", get())
+        AuthDataSourceImpl(get(), get(named("authHost")), get())
     }
     single<SessionDataSource> {
-        SessionDataSourceImpl(get(), "192.168.0.113", get(), get(), get())
+        SessionDataSourceImpl(get(), get(named("apiHost")), get(), get(), get())
     }
 
     // Repositories

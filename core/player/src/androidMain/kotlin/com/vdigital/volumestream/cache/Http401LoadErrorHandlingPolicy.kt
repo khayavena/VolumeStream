@@ -39,9 +39,10 @@ internal class Http401LoadErrorHandlingPolicy : DefaultLoadErrorHandlingPolicy()
         return super.getRetryDelayMsFor(loadErrorInfo)
     }
 
-    /** Minimum retries is irrelevant once [getRetryDelayMsFor] returns [C.TIME_UNSET], but
-     *  return 0 for 401 to avoid any unnecessary first retry attempt. */
-    override fun getMinimumLoadableRetryCount(dataType: Int): Int = 0
+    /** Only suppress the minimum retry count for 401s. For all other errors
+     *  fall through to the default so transient network failures still retry. */
+    override fun getMinimumLoadableRetryCount(dataType: Int): Int =
+        super.getMinimumLoadableRetryCount(dataType)
 }
 
 /**

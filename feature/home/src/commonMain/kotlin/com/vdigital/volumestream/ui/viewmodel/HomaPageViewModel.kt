@@ -23,9 +23,9 @@ class HomaPageViewModel(
         MutableStateFlow<ResultState<Map<String, MutableList<PlaybackMediaItem>>>>(ResultState.Loading)
     val homeDataUIState = homeDataState.asStateFlow()
 
-    fun fetchData() {
+    fun fetchData(forceRefresh: Boolean = false) {
         viewModelScope.launch {
-            AppLogger.d("HomeVM", "fetchData called")
+            AppLogger.d("HomeVM", "fetchData called (forceRefresh=$forceRefresh)")
 
             // Fire-and-forget: register the device's RSA public key once per install.
             // 409 (already registered) is silently ignored by ensureDeviceRegistered().
@@ -34,6 +34,9 @@ class HomaPageViewModel(
             }
 
             try {
+                if (forceRefresh) {
+                    withContext(Dispatchers.IO) { playbackMediaItemRepository.invalidateCache() }
+                }
                 val result = withContext(Dispatchers.IO) {
                     playbackMediaItemRepository.getMediaItemsByCategoryState()
                 }
