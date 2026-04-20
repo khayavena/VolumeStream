@@ -37,8 +37,6 @@ kotlin {
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.client.encoding)
-            implementation(libs.koin.compose)
-            implementation(libs.koin.composeVM)
             implementation(libs.koin.core)
         }
         iosMain.dependencies {

@@ -1,27 +1,6 @@
 import java.util.Properties
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.gradle.api.attributes.AttributeCompatibilityRule
-import org.gradle.api.attributes.CompatibilityCheckDetails
-
-/**
- * Allows dependency resolution to fall back from a tvOS consumer variant to
- * the equivalent iOS producer variant (e.g. tvos_x64 → ios_x64).
- *
- * Compose Multiplatform publishes only iOS klibs; tvOS shares the same
- * Kotlin/Native stdlib so this is safe for both compilation and IDE metadata.
- */
-abstract class TvosToIosKlibCompatibilityRule : AttributeCompatibilityRule<String> {
-    override fun execute(details: CompatibilityCheckDetails<String>) {
-        val consumer = details.consumerValue ?: return
-        val producer = details.producerValue ?: return
-        if (consumer.startsWith("tvos_") && producer.startsWith("ios_") &&
-            consumer.removePrefix("tvos_") == producer.removePrefix("ios_")
-        ) {
-            details.compatible()
-        }
-    }
-}
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -194,14 +173,6 @@ android {
 }
 dependencies {
     implementation(libs.androidx.lifecycle.common.jvm)
-
-    // Register tvOS → iOS klib compatibility so IDE metadata tasks can resolve
-    // Compose Multiplatform dependencies (which only publish iOS klib variants).
-    attributesSchema {
-        attribute(Attribute.of("org.jetbrains.kotlin.native.target", String::class.java)) {
-            compatibilityRules.add(TvosToIosKlibCompatibilityRule::class.java)
-        }
-    }
 }
 
 // Keep AppConfig.kt up to date whenever any iOS Kotlin target is compiled.

@@ -9,6 +9,7 @@ plugins {
 }
 
 kotlin {
+    applyDefaultHierarchyTemplate()
     androidTarget {
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         compilerOptions {
