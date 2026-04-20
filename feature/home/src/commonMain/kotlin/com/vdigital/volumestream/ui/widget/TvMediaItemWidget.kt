@@ -2,6 +2,7 @@ package com.vdigital.volumestream.ui.widget
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
@@ -22,11 +23,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -50,15 +57,27 @@ fun TvMediaItemWidget(
     downloadViewModel: DownloadViewModel,
     onClick: () -> Unit,
 ) {
+    var isFocused by remember { mutableStateOf(false) }
+    val focusBorderColor by animateColorAsState(
+        targetValue = if (isFocused) GreenAccent else Color.Transparent,
+        label = "tvCardFocusBorder"
+    )
     val downloadState = downloadViewModel.observeState(playbackMediaItem.id).collectAsState()
     Column(
         modifier = Modifier
+            .onFocusChanged { isFocused = it.isFocused }
             .focusable()
             .clickable(onClick = onClick)
-            .padding(8.dp)
-            .width(240.dp)
+            .padding(horizontal = 8.dp, vertical = 6.dp)
+            .width(240.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .border(width = 2.dp, color = focusBorderColor, shape = RoundedCornerShape(10.dp))
+        ) {
             Image(
                 painter = rememberImagePainter(playbackMediaItem.artworkUrl),
                 contentDescription = playbackMediaItem.title,

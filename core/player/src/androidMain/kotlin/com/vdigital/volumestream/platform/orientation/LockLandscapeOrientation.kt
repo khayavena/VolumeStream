@@ -13,7 +13,9 @@ actual fun LockLandscapeOrientation() {
         val activity = context as? Activity
         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         onDispose {
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            // Restore host activity policy (manifest/default) instead of forcing portrait.
+            // For TV this keeps landscape, and for phone it follows the activity's config.
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
     }
 }

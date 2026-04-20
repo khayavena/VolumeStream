@@ -15,56 +15,47 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavHostController
-import com.vdigital.volumestream.core.player.SelectedMediaItemHolder
-import com.vdigital.volumestream.navigation.Screen
 import com.vdigital.volumestream.ui.viewmodel.DownloadViewModel
 import com.vditital.data.model.PlaybackMediaItem
-import org.koin.compose.koinInject
 
 private val GreenAccent = Color(0xFF00E676)
 
 @Composable
-fun PlaybackCategoryCarousel(
+fun TvPlaybackCategoryCarousel(
     category: String,
     playbackMediaItems: List<PlaybackMediaItem>,
-    navController: NavHostController,
     downloadViewModel: DownloadViewModel,
+    onPlayItem: (PlaybackMediaItem) -> Unit,
 ) {
-    val holder: SelectedMediaItemHolder = koinInject()
-
-    val vertPad = 8.dp
-    val titleSize = 16.sp
-    val rowPad = 8.dp
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = vertPad)
+            .padding(vertical = 16.dp)
     ) {
         Text(
             color = GreenAccent,
             text = category,
             style = MaterialTheme.typography.h6.copy(
-                fontSize = titleSize,
+                fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
             ),
-            modifier = Modifier.padding(start = rowPad, end = rowPad, bottom = 4.dp)
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
         )
+
         LazyRow(
             state = rememberLazyListState(),
             modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = rowPad)
+            contentPadding = PaddingValues(horizontal = 16.dp)
         ) {
             items(playbackMediaItems, key = { "${category}_${it.id}" }) { mediaItem ->
-                MediaItemWidget(
+                TvMediaItemWidget(
                     playbackMediaItem = mediaItem,
-                    downloadViewModel = downloadViewModel
+                    downloadViewModel = downloadViewModel,
                 ) {
-                    holder.select(mediaItem)
-                    navController.navigate(Screen.Play.route)
+                    onPlayItem(mediaItem)
                 }
             }
         }
     }
 }
+

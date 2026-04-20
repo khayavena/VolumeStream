@@ -63,6 +63,8 @@ private val FieldBg      = Color(0xFF1E1E1E)
 @Composable
 fun SearchScreen(
     navController: NavHostController,
+    isTvLayout: Boolean = false,
+    onPlay: () -> Unit = {},
     viewModel: SearchViewModel = koinViewModel(),
 ) {
     val query     by viewModel.query.collectAsState()
@@ -146,7 +148,11 @@ fun SearchScreen(
                 onItemClick = { item ->
                     keyboard?.hide()
                     holder.select(item)
-                    navController.navigate(Screen.Play.route)
+                    if (isTvLayout) {
+                        onPlay()
+                    } else {
+                        navController.navigate(Screen.Play.route)
+                    }
                 }
             )
         }

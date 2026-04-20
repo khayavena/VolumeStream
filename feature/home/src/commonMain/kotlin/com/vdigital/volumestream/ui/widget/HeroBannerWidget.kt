@@ -3,12 +3,13 @@ package com.vdigital.volumestream.ui.widget
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -40,39 +41,42 @@ import com.vditital.data.model.PlaybackMediaItem
 
 private val GreenAccent = Color(0xFF00E676)
 
+/**
+ * Full-width hero banner for featured content.
+ *
+ * On TV this is a full-bleed 480dp-high hero that can be controlled with a
+ * D-pad. On mobile it's a smaller 280dp banner with touch-friendly buttons.
+ */
 @Composable
 fun HeroBannerWidget(
     item: PlaybackMediaItem,
     downloadViewModel: DownloadViewModel,
+    isTvLayout: Boolean = false,
     onPlay: () -> Unit,
 ) {
     val downloadState = downloadViewModel.observeState(item.id).collectAsState()
 
+    val height = if (isTvLayout) 360.dp else 280.dp
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(280.dp)
+            .height(height)
     ) {
-        // Background artwork
         if (item.artworkUrl.isNotBlank()) {
             Image(
                 painter = rememberImagePainter(item.artworkUrl),
                 contentDescription = item.title,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxWidth().fillMaxHeight()
             )
         } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xFF1A1A1A))
-            )
+            Box(modifier = Modifier.fillMaxWidth().fillMaxHeight().background(Color(0xFF1A1A1A)))
         }
 
-        // Bottom gradient scrim — starts fading at 35 % of the banner height
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
+                .fillMaxHeight()
                 .background(
                     Brush.verticalGradient(
                         colorStops = arrayOf(
@@ -85,115 +89,64 @@ fun HeroBannerWidget(
                 )
         )
 
-        // "FEATURED" chip
         Box(
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(12.dp)
+                .padding(start = if (isTvLayout) 52.dp else 12.dp, top = 12.dp)
                 .background(GreenAccent, RoundedCornerShape(4.dp))
                 .padding(horizontal = 8.dp, vertical = 3.dp)
         ) {
-            Text(
-                text = "FEATURED",
-                color = Color.Black,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp
-            )
+            Text("FEATURED", color = Color.Black, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
         }
 
-        // Bottom info
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-        ) {
-            Text(
-                text = item.title,
-                color = Color.White,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            if (item.description.isNotBlank()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = item.description,
-                    color = Color.White.copy(alpha = 0.75f),
-                    fontSize = 12.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                .padding(
+                    horizontal = if (isTvLayout) 52.dp else 16.dp,
+                    vertical = if (isTvLayout) 32.dp else 12.dp
                 )
+        ) {
+            Text(item.title, color = Color.White, fontSize = if (isTvLayout) 32.sp else 22.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (item.description.isNotBlank()) {
+                Spacer(Modifier.height(if (isTvLayout) 8.dp else 4.dp))
+                Text(item.description, color = Color.White.copy(alpha = 0.75f), fontSize = if (isTvLayout) 14.sp else 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
+            Spacer(Modifier.height(if (isTvLayout) 20.dp else 12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                // Play button
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
                         .background(GreenAccent)
                         .clickable(onClick = onPlay)
-                        .padding(horizontal = 18.dp, vertical = 8.dp),
+                        .focusable()
+                        .padding(horizontal = 18.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = "Play",
-                        tint = Color.Black,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "Play",
-                        color = Color.Black,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Icon(Icons.Default.PlayArrow, "Play", tint = Color.Black, modifier = Modifier.size(if (isTvLayout) 20.dp else 18.dp))
+                    Spacer(Modifier.width(if (isTvLayout) 6.dp else 4.dp))
+                    Text("Play", color = Color.Black, fontSize = if (isTvLayout) 15.sp else 14.sp, fontWeight = FontWeight.Bold)
                 }
-
-                // Download / My List button
                 val isDownloaded = downloadState.value is DownloadState.Completed
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
                         .background(Color.White.copy(alpha = 0.15f))
-                        .clickable {
-                            if (isDownloaded) downloadViewModel.remove(item.id)
-                            else downloadViewModel.download(item)
-                        }
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                        .clickable { if (isDownloaded) downloadViewModel.remove(item.id) else downloadViewModel.download(item) }
+                        .focusable()
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
-                        modifier = Modifier
-                            .size(18.dp)
-                            .background(
-                                if (isDownloaded) GreenAccent else Color.White,
-                                CircleShape
-                            ),
+                        modifier = Modifier.size(if (isTvLayout) 20.dp else 18.dp).background(if (isDownloaded) GreenAccent else Color.White, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = if (isDownloaded) Icons.Default.PlayArrow else Icons.Default.Add,
-                            contentDescription = if (isDownloaded) "Downloaded" else "Add",
-                            tint = Color.Black,
-                            modifier = Modifier.size(12.dp)
-                        )
+                        Icon(if (isDownloaded) Icons.Default.PlayArrow else Icons.Default.Add, null, tint = Color.Black, modifier = Modifier.size(if (isTvLayout) 14.dp else 12.dp))
                     }
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = if (isDownloaded) "Downloaded" else "My List",
-                        color = Color.White,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium
-                    )
+                    Spacer(Modifier.width(if (isTvLayout) 8.dp else 6.dp))
+                    Text(if (isDownloaded) "Downloaded" else "My List", color = Color.White, fontSize = if (isTvLayout) 14.sp else 13.sp, fontWeight = FontWeight.Medium)
                 }
             }
         }
     }
 }
-

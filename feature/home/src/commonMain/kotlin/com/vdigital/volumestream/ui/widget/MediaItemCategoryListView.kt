@@ -21,25 +21,25 @@ fun MediaItemCategoryListView(
     mediaItemCategories: Map<String, MutableList<PlaybackMediaItem>>,
     navController: NavHostController,
     downloadViewModel: DownloadViewModel,
-    isTvLayout: Boolean = false,
 ) {
     val holder: SelectedMediaItemHolder = koinInject()
     val listState = rememberLazyListState()
 
-    // Pick the very first item across all categories as the hero feature
     val featuredItem: PlaybackMediaItem? = mediaItemCategories.values.firstOrNull()?.firstOrNull()
 
     LazyColumn(
         state = listState,
-        modifier = Modifier.background(Color.Black).fillMaxSize(),
+        modifier = Modifier
+            .background(Color.Black)
+            .fillMaxSize(),
         contentPadding = PaddingValues(bottom = 8.dp)
     ) {
-        // Hero banner
         if (featuredItem != null) {
             item(key = "hero_banner") {
                 HeroBannerWidget(
                     item = featuredItem,
                     downloadViewModel = downloadViewModel,
+                    isTvLayout = false,
                     onPlay = {
                         holder.select(featuredItem)
                         navController.navigate(Screen.Play.route)
@@ -47,7 +47,6 @@ fun MediaItemCategoryListView(
                 )
             }
         }
-
         mediaItemCategories.forEach { (category, items) ->
             item(key = category) {
                 PlaybackCategoryCarousel(
@@ -55,7 +54,6 @@ fun MediaItemCategoryListView(
                     category = category,
                     playbackMediaItems = items,
                     downloadViewModel = downloadViewModel,
-                    isTvLayout = isTvLayout
                 )
             }
         }

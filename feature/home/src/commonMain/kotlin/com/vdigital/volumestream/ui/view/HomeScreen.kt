@@ -12,6 +12,7 @@ import androidx.navigation.NavHostController
 import com.vdigital.volumestream.ui.viewmodel.DownloadViewModel
 import com.vdigital.volumestream.ui.viewmodel.HomaPageViewModel
 import com.vdigital.volumestream.ui.widget.MediaItemCategoryListView
+import com.vdigital.volumestream.ui.widget.TvMediaItemCategoryListView
 import com.vditital.data.model.PlaybackMediaItem
 import com.vditital.data.repository.state.ResultState
 import org.koin.compose.viewmodel.koinViewModel
@@ -24,6 +25,7 @@ fun HomeScreen(
     downloadViewModel: DownloadViewModel = koinViewModel(),
     navController: NavHostController,
     isTvLayout: Boolean = false,
+    onPlay: () -> Unit = {},
 ) {
     // Trigger fetch on first composition
     LaunchedEffect(Unit) { homaPageViewModel.fetchData() }
@@ -50,12 +52,19 @@ fun HomeScreen(
                     onRetry = { homaPageViewModel.fetchData() }
                 )
             } else {
-                MediaItemCategoryListView(
-                    mediaItemCategories = data,
-                    navController = navController,
-                    downloadViewModel = downloadViewModel,
-                    isTvLayout = isTvLayout
-                )
+                if (isTvLayout) {
+                    TvMediaItemCategoryListView(
+                        mediaItemCategories = data,
+                        downloadViewModel = downloadViewModel,
+                        onPlay = onPlay,
+                    )
+                } else {
+                    MediaItemCategoryListView(
+                        mediaItemCategories = data,
+                        navController = navController,
+                        downloadViewModel = downloadViewModel,
+                    )
+                }
             }
         }
     }
