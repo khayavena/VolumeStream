@@ -22,7 +22,8 @@ import org.koin.core.annotation.KoinExperimentalAPI
 fun HomeScreen(
     homaPageViewModel: HomaPageViewModel = koinViewModel(),
     downloadViewModel: DownloadViewModel = koinViewModel(),
-    navController: NavHostController
+    navController: NavHostController,
+    isTvLayout: Boolean = false,
 ) {
     // Trigger fetch on first composition
     LaunchedEffect(Unit) { homaPageViewModel.fetchData() }
@@ -52,7 +53,8 @@ fun HomeScreen(
                 MediaItemCategoryListView(
                     mediaItemCategories = data,
                     navController = navController,
-                    downloadViewModel = downloadViewModel
+                    downloadViewModel = downloadViewModel,
+                    isTvLayout = isTvLayout
                 )
             }
         }

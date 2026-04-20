@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    TV launcher banner — 320 × 180 dp (xhdpi → 640 × 360 px).
+    Replace with a branded PNG (res/drawable-xhdpi/tv_banner.png) before release.
+    The Android TV home screen displays this as the app tile in the launcher grid.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Dark background -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#141414" />
+        </shape>
+    </item>
+    <!-- Subtle green gradient accent on the left edge (brand colour) -->
+    <item android:width="8dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#00E676" />
+        </shape>
+    </item>
+    <!-- App name text rendered via a centred text drawable -->
+    <item android:gravity="center">
+        <inset android:insetLeft="20dp">
+            <shape android:shape="rectangle">
+                <solid android:color="#00000000" />
+            </shape>
+        </inset>
+    </item>
+</layer-list>
+

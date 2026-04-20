@@ -9,6 +9,7 @@ plugins {
 }
 
 kotlin {
+    applyDefaultHierarchyTemplate()
     androidTarget {
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         compilerOptions {
@@ -18,6 +19,9 @@ kotlin {
     iosX64()
     iosArm64()
     iosSimulatorArm64()
+    tvosX64()
+    tvosArm64()
+    tvosSimulatorArm64()
 
     sourceSets {
         commonMain.dependencies {
@@ -38,13 +42,12 @@ kotlin {
             // BackHandler for intercepting the hardware/gesture back button on Android
             implementation(libs.androidx.activity.compose)
         }
-        // Shared source set for all iOS targets (x64, arm64, simulatorArm64)
-        val iosMain by creating {
-            dependsOn(commonMain.get())
+        // Shared source set for all iOS targets — hierarchy template creates it automatically.
+        val iosMain by getting
+        // tvOS: PlatformBackHandler is a no-op on iOS and likewise on tvOS
+        val tvosMain by getting {
+            kotlin.srcDirs("src/iosMain/kotlin")
         }
-        val iosX64Main by getting { dependsOn(iosMain) }
-        val iosArm64Main by getting { dependsOn(iosMain) }
-        val iosSimulatorArm64Main by getting { dependsOn(iosMain) }
     }
 }
 

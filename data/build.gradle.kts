@@ -8,7 +8,7 @@ plugins {
 }
 
 kotlin {
-
+    applyDefaultHierarchyTemplate()
     androidTarget {
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         compilerOptions {
@@ -19,6 +19,9 @@ kotlin {
     iosX64()
     iosArm64()
     iosSimulatorArm64()
+    tvosX64()
+    tvosArm64()
+    tvosSimulatorArm64()
 
 
     sourceSets {
@@ -41,6 +44,15 @@ kotlin {
         iosMain.dependencies {
             implementation(libs.koin.core)
             implementation(libs.ktor.client.darwin)
+        }
+        // tvOS shares the same Keychain / NSUserDefaults / Ktor-Darwin
+        // implementations as iOS — no separate source files needed.
+        val tvosMain by getting {
+            kotlin.srcDirs("src/iosMain/kotlin")
+            dependencies {
+                implementation(libs.koin.core)
+                implementation(libs.ktor.client.darwin)
+            }
         }
     }
 }

@@ -27,6 +27,7 @@ fun PlaybackCategoryCarousel(
     playbackMediaItems: List<PlaybackMediaItem>,
     navController: NavHostController,
     downloadViewModel: DownloadViewModel,
+    isTvLayout: Boolean = false,
 ) {
     val holder: SelectedMediaItemHolder = koinInject()
     Column(
@@ -42,12 +43,22 @@ fun PlaybackCategoryCarousel(
         )
         LazyRow(state = rememberLazyListState()) {
             items(playbackMediaItems, key = { "${category}_${it.id}" }) { mediaItem ->
-                MediaItemWidget(
-                    playbackMediaItem = mediaItem,
-                    downloadViewModel = downloadViewModel
-                ) {
-                    holder.select(mediaItem)
-                    navController.navigate(Screen.Play.route)
+                if (isTvLayout) {
+                    TvMediaItemWidget(
+                        playbackMediaItem = mediaItem,
+                        downloadViewModel = downloadViewModel
+                    ) {
+                        holder.select(mediaItem)
+                        navController.navigate(Screen.Play.route)
+                    }
+                } else {
+                    MediaItemWidget(
+                        playbackMediaItem = mediaItem,
+                        downloadViewModel = downloadViewModel
+                    ) {
+                        holder.select(mediaItem)
+                        navController.navigate(Screen.Play.route)
+                    }
                 }
             }
         }

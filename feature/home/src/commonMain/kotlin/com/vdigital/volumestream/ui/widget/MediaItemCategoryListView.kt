@@ -21,6 +21,7 @@ fun MediaItemCategoryListView(
     mediaItemCategories: Map<String, MutableList<PlaybackMediaItem>>,
     navController: NavHostController,
     downloadViewModel: DownloadViewModel,
+    isTvLayout: Boolean = false,
 ) {
     val holder: SelectedMediaItemHolder = koinInject()
     val listState = rememberLazyListState()
@@ -53,7 +54,8 @@ fun MediaItemCategoryListView(
                     navController = navController,
                     category = category,
                     playbackMediaItems = items,
-                    downloadViewModel = downloadViewModel
+                    downloadViewModel = downloadViewModel,
+                    isTvLayout = isTvLayout
                 )
             }
         }

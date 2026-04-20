@@ -9,6 +9,7 @@ plugins {
 }
 
 kotlin {
+    applyDefaultHierarchyTemplate()
     androidTarget {
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         compilerOptions {
@@ -18,6 +19,9 @@ kotlin {
     iosX64()
     iosArm64()
     iosSimulatorArm64()
+    tvosX64()
+    tvosArm64()
+    tvosSimulatorArm64()
 
     sourceSets {
         commonMain.dependencies {
@@ -40,6 +44,12 @@ kotlin {
         }
         iosMain.dependencies {
             implementation(libs.koin.core)
+        }
+        // tvOS uses the same AVKit/Foundation/Security implementations as iOS.
+        // Sharing iosMain/kotlin as srcDirs avoids duplicating every actual file.
+        val tvosMain by getting {
+            kotlin.srcDirs("src/iosMain/kotlin")
+            dependencies { implementation(libs.koin.core) }
         }
     }
 }
