@@ -49,13 +49,20 @@ class RemotePlaybackDataSourceImpl(
         }
 
         val rawBody = response.bodyAsText()
-        AppLogger.d("DataSource", "HTTP ${response.status}  body=${rawBody.take(200)}")
+        AppLogger.d("DataSource", "HTTP ${response.status} feedBodyPreview=${rawBody.take(1200)}")
 
         val feedResponse = json.decodeFromString<MediaFeedResponse>(rawBody)
         AppLogger.d("DataSource", "Parsed ${feedResponse.categories.size} categories")
 
-        return feedResponse.categories.mapValues { (_, items) ->
-            items.map { it.toPlaybackMediaItem(apiHost, config) }.toMutableList()
+        return feedResponse.categories.mapValues { (category, items) ->
+            items.map { dto ->
+                val mapped = dto.toPlaybackMediaItem(apiHost, config)
+                AppLogger.d(
+                    "ArtworkMap",
+                    "category=$category id=${dto.id} raw='${dto.artworkUrl.orEmpty()}' -> mapped='${mapped.artworkUrl}'"
+                )
+                mapped
+            }.toMutableList()
         }
     }
 

@@ -41,6 +41,46 @@ data class MediaItemDto(
     val qualities: List<String> = emptyList()
 )
 
+private val absoluteUrlRegex = Regex("^(https?)://(\\[[^\\]]+]|[^/:]+)(:\\d+)?(.*)$", RegexOption.IGNORE_CASE)
+private const val sampleArtworkPrefix = "https://storage.googleapis.com/gtv-videos-bucket/sample/images/"
+
+private fun remapArtworkSource(rawArtworkUrl: String?, mediaId: String, config: StreamVaultConfig): String {
+    val raw = rawArtworkUrl?.trim().orEmpty()
+    if (raw.isBlank()) return raw
+
+    return if (raw.startsWith(sampleArtworkPrefix, ignoreCase = true)) {
+        // Route sample catalog artwork through local API by media id.
+        "http://localhost:${config.apiPort}/art/tv/$mediaId.svg"
+    } else {
+        raw
+    }
+}
+
+private fun normalizeMediaUrl(rawUrl: String?, apiHost: String, config: StreamVaultConfig): String {
+    val raw = rawUrl?.trim().orEmpty()
+    if (raw.isBlank()) return ""
+
+    val preferredScheme = if (config.useHttps) "https" else "http"
+
+    // Supports backend values like "art/mobile/..." (without a leading slash).
+    if (!raw.startsWith("http://", ignoreCase = true) && !raw.startsWith("https://", ignoreCase = true)) {
+        val normalizedPath = "/${raw.removePrefix("/")}"
+        return "$preferredScheme://$apiHost:${config.apiPort}$normalizedPath"
+    }
+
+    val match = absoluteUrlRegex.matchEntire(raw) ?: return raw
+    val scheme = match.groupValues[1]
+    val host = match.groupValues[2].removePrefix("[").removeSuffix("]").lowercase()
+    val port = match.groupValues[3]
+    val suffix = match.groupValues[4]
+
+    val isLoopbackHost = host == "localhost" || host == "127.0.0.1" || host == "::1"
+    if (!isLoopbackHost) return raw
+
+    val finalPort = if (port.isNotBlank()) port else ":${config.apiPort}"
+    return "$scheme://$apiHost$finalPort$suffix"
+}
+
 fun MediaItemDto.toPlaybackMediaItem(apiHost: String, config: StreamVaultConfig = StreamVaultConfig()) = PlaybackMediaItem(
     id           = id,
     title        = title,
@@ -51,11 +91,8 @@ fun MediaItemDto.toPlaybackMediaItem(apiHost: String, config: StreamVaultConfig 
     // AesGcmDecryptingDataSource (AES-128-GCM) by the player's RoutingDataSource.
     // Requires Authorization + X-Session-Token headers (injected by the player layer).
     streamUrl    = "${if (config.useHttps) "https" else "http"}://$apiHost:${config.apiPort}/${config.apiBasePath}/${config.dashManifestPath}/$id",
-    downloadUrl  = run {
-        val raw = downloadUrl ?: ""
-        if (raw.startsWith("/")) "${if (config.useHttps) "https" else "http"}://$apiHost:${config.apiPort}$raw" else raw
-    },
-    artworkUrl   = artworkUrl ?: "",
+    downloadUrl  = normalizeMediaUrl(downloadUrl, apiHost, config),
+    artworkUrl   = normalizeMediaUrl(remapArtworkSource(artworkUrl, id, config), apiHost, config),
     durationMs   = durationMs,
     description  = description ?: ""
 )

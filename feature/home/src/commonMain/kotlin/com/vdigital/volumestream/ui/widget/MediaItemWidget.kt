@@ -49,6 +49,7 @@ fun MediaItemWidget(
     downloadViewModel: DownloadViewModel,
     onClick: () -> Unit
 ) {
+    val hasArtwork = playbackMediaItem.artworkUrl.isNotBlank()
     val downloadState = downloadViewModel.observeState(playbackMediaItem.id).collectAsState()
     Column(
         modifier = Modifier
@@ -57,7 +58,7 @@ fun MediaItemWidget(
             .width(120.dp)
     ) {
         Box {
-            if (playbackMediaItem.artworkUrl.isNotBlank()) {
+            if (hasArtwork) {
                 Image(
                     painter = rememberImagePainter(playbackMediaItem.artworkUrl),
                     contentDescription = playbackMediaItem.title,
@@ -154,13 +155,15 @@ fun MediaItemWidget(
                 }
             }
         }
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = playbackMediaItem.title,
-            color = Color.White,
-            style = MaterialTheme.typography.body1,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        if (!hasArtwork) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = playbackMediaItem.title,
+                color = Color.White,
+                style = MaterialTheme.typography.body1,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }

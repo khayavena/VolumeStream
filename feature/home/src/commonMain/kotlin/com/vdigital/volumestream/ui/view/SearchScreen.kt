@@ -188,6 +188,7 @@ private fun SearchResultsGrid(
 
 @Composable
 private fun SearchResultCard(item: PlaybackMediaItem, onClick: () -> Unit) {
+    val hasArtwork = item.artworkUrl.isNotBlank()
     Column(
         modifier = Modifier
             .clickable(onClick = onClick)
@@ -200,7 +201,7 @@ private fun SearchResultCard(item: PlaybackMediaItem, onClick: () -> Unit) {
                 .clip(RoundedCornerShape(8.dp)),
             contentAlignment = Alignment.Center
         ) {
-            if (item.artworkUrl.isNotBlank()) {
+            if (hasArtwork) {
                 Image(
                     painter = rememberImagePainter(item.artworkUrl),
                     contentDescription = item.title,
@@ -246,15 +247,17 @@ private fun SearchResultCard(item: PlaybackMediaItem, onClick: () -> Unit) {
             }
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = item.title,
-            color = Color.White,
-            fontSize = 11.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 2.dp)
-        )
+        if (!hasArtwork) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = item.title,
+                color = Color.White,
+                fontSize = 11.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 2.dp)
+            )
+        }
     }
 }
 

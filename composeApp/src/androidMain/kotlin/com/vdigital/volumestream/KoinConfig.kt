@@ -25,14 +25,25 @@ private fun isEmulator(): Boolean =
 /** Host used when running on a physical device (from local.properties). */
 private const val PHYSICAL_HOST = BuildConfig.API_HOST
 
-/** Host used when running inside the Android emulator. */
-private const val EMULATOR_HOST = "10.0.2.2"
+/** Host used when running inside the Android Studio emulator (AOSP/AVD). */
+private const val EMULATOR_HOST_AVD = "10.0.2.2"
+
+/** Host used when running inside Genymotion emulator. */
+private const val EMULATOR_HOST_GENYMOTION = "10.0.3.2"
+
+private fun emulatorHost(): String =
+    if (Build.MANUFACTURER.contains("Genymotion", ignoreCase = true)) {
+        EMULATOR_HOST_GENYMOTION
+    } else {
+        EMULATOR_HOST_AVD
+    }
 
 actual fun KoinApplication.configureKoin() {
     androidContext(AndroidApp.getAppInstance())
+    val runtimeHost = if (isEmulator()) emulatorHost() else PHYSICAL_HOST
     modules(module {
-        single<String>(named("apiHost"))  { if (isEmulator()) EMULATOR_HOST else PHYSICAL_HOST }
-        single<String>(named("authHost")) { if (isEmulator()) EMULATOR_HOST else PHYSICAL_HOST }
+        single<String>(named("apiHost"))  { runtimeHost }
+        single<String>(named("authHost")) { runtimeHost }
         single {
             StreamVaultConfig(
                 authPort = BuildConfig.AUTH_PORT,
