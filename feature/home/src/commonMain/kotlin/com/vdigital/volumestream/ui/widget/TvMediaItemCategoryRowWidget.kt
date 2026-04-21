@@ -25,6 +25,7 @@ fun TvPlaybackCategoryCarousel(
     category: String,
     playbackMediaItems: List<PlaybackMediaItem>,
     downloadViewModel: DownloadViewModel,
+    downloadsEnabled: Boolean = true,
     onPlayItem: (PlaybackMediaItem) -> Unit,
 ) {
     Column(
@@ -51,6 +52,7 @@ fun TvPlaybackCategoryCarousel(
                 TvMediaItemWidget(
                     playbackMediaItem = mediaItem,
                     downloadViewModel = downloadViewModel,
+                    downloadsEnabled = downloadsEnabled,
                 ) {
                     onPlayItem(mediaItem)
                 }

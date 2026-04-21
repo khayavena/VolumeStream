@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -34,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -44,6 +46,8 @@ import com.vdigital.volumestream.ui.viewmodel.DownloadViewModel
 import com.vditital.data.model.PlaybackMediaItem
 
 private val GreenAccent = Color(0xFF00E676)
+private val TvCardPlaceholderTop = Color(0xFF2D4438)
+private val TvCardPlaceholderBottom = Color(0xFF161B18)
 
 /**
  * TV-optimised media item card. Larger artwork (16:9 ratio), bigger text,
@@ -55,6 +59,7 @@ private val GreenAccent = Color(0xFF00E676)
 fun TvMediaItemWidget(
     playbackMediaItem: PlaybackMediaItem,
     downloadViewModel: DownloadViewModel,
+    downloadsEnabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     var isFocused by remember { mutableStateOf(false) }
@@ -78,6 +83,25 @@ fun TvMediaItemWidget(
                 .clip(RoundedCornerShape(10.dp))
                 .border(width = 2.dp, color = focusBorderColor, shape = RoundedCornerShape(10.dp))
         ) {
+            Box(
+                modifier = Modifier
+                    .height(135.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(TvCardPlaceholderTop, TvCardPlaceholderBottom)
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.42f),
+                    modifier = Modifier.size(30.dp)
+                )
+            }
             Image(
                 painter = rememberImagePainter(playbackMediaItem.artworkUrl),
                 contentDescription = playbackMediaItem.title,
@@ -87,58 +111,60 @@ fun TvMediaItemWidget(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(10.dp))
             )
-            // Download overlay (bottom-right corner)
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(8.dp)
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(Color.Black.copy(alpha = 0.70f))
-                    .clickable {
-                        when (downloadState.value) {
-                            is DownloadState.Idle, is DownloadState.Failed ->
-                                downloadViewModel.download(playbackMediaItem)
-                            is DownloadState.Queued, is DownloadState.Downloading ->
-                                downloadViewModel.cancel(playbackMediaItem.id)
-                            is DownloadState.Completed ->
-                                downloadViewModel.remove(playbackMediaItem.id)
-                        }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                when (val s = downloadState.value) {
-                    is DownloadState.Idle, is DownloadState.Failed -> Icon(
-                        imageVector = Icons.Default.FileDownload,
-                        contentDescription = "Download",
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    is DownloadState.Queued -> CircularProgressIndicator(
-                        modifier = Modifier.size(22.dp),
-                        strokeWidth = 2.dp,
-                        color = Color.White
-                    )
-                    is DownloadState.Downloading -> Box(contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(
-                            progress = s.progress,
-                            modifier = Modifier.size(32.dp),
-                            strokeWidth = 2.dp,
-                            color = GreenAccent
-                        )
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Cancel",
+            if (downloadsEnabled) {
+                // Download overlay (bottom-right corner)
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(8.dp)
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(alpha = 0.70f))
+                        .clickable {
+                            when (downloadState.value) {
+                                is DownloadState.Idle, is DownloadState.Failed ->
+                                    downloadViewModel.download(playbackMediaItem)
+                                is DownloadState.Queued, is DownloadState.Downloading ->
+                                    downloadViewModel.cancel(playbackMediaItem.id)
+                                is DownloadState.Completed ->
+                                    downloadViewModel.remove(playbackMediaItem.id)
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    when (val s = downloadState.value) {
+                        is DownloadState.Idle, is DownloadState.Failed -> Icon(
+                            imageVector = Icons.Default.FileDownload,
+                            contentDescription = "Download",
                             tint = Color.White,
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(20.dp)
+                        )
+                        is DownloadState.Queued -> CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            strokeWidth = 2.dp,
+                            color = Color.White
+                        )
+                        is DownloadState.Downloading -> Box(contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(
+                                progress = s.progress,
+                                modifier = Modifier.size(32.dp),
+                                strokeWidth = 2.dp,
+                                color = GreenAccent
+                            )
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Cancel",
+                                tint = Color.White,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                        is DownloadState.Completed -> Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Downloaded",
+                            tint = GreenAccent,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
-                    is DownloadState.Completed -> Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "Downloaded",
-                        tint = GreenAccent,
-                        modifier = Modifier.size(20.dp)
-                    )
                 }
             }
         }

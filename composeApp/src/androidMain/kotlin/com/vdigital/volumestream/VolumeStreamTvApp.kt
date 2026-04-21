@@ -30,7 +30,7 @@ private val TvDarkColors = darkColors(
 fun VolumeStreamTvApp() {
     KoinContext {
         MaterialTheme(colors = TvDarkColors) {
-            TvNavigationShell()
+            TvNavigationShell(downloadsEnabled = false)
         }
     }
 }

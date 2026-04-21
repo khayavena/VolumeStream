@@ -25,6 +25,7 @@ fun HomeScreen(
     downloadViewModel: DownloadViewModel = koinViewModel(),
     navController: NavHostController,
     isTvLayout: Boolean = false,
+    downloadsEnabled: Boolean = true,
     onPlay: () -> Unit = {},
 ) {
     // Trigger fetch on first composition
@@ -56,6 +57,7 @@ fun HomeScreen(
                     TvMediaItemCategoryListView(
                         mediaItemCategories = data,
                         downloadViewModel = downloadViewModel,
+                        downloadsEnabled = downloadsEnabled,
                         onPlay = onPlay,
                     )
                 } else {

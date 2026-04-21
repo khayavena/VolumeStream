@@ -42,6 +42,7 @@ private val GreenAccent = Color(0xFF00E676)
 @Composable
 fun ProfileScreen(
     navController: NavHostController,
+    showDownloadItems: Boolean = true,
     viewModel: ProfileViewModel = koinViewModel()
 ) {
     val signedOut by viewModel.signedOut.collectAsState()
@@ -134,7 +135,9 @@ fun ProfileScreen(
                 ) {
                     WatchStatItem(value = "24", label = "Videos Watched")
                     WatchStatItem(value = "18h", label = "Watch Time")
-                    WatchStatItem(value = "6",   label = "Downloads")
+                    if (showDownloadItems) {
+                        WatchStatItem(value = "6", label = "Downloads")
+                    }
                 }
             }
         }
@@ -148,16 +151,18 @@ fun ProfileScreen(
             backgroundColor = Color(0xFF1E1E1E)
         ) {
             Column {
-                ProfileMenuItem(
-                    label   = "Watch History",
-                    onClick = { navController.navigate(Screen.Downloads.route) }
-                )
-                Divider(color = Color(0xFF2E2E2E), thickness = 0.5.dp)
-                ProfileMenuItem(
-                    label   = "My Downloads",
-                    onClick = { navController.navigate(Screen.Downloads.route) }
-                )
-                Divider(color = Color(0xFF2E2E2E), thickness = 0.5.dp)
+                if (showDownloadItems) {
+                    ProfileMenuItem(
+                        label   = "Watch History",
+                        onClick = { navController.navigate(Screen.Downloads.route) }
+                    )
+                    Divider(color = Color(0xFF2E2E2E), thickness = 0.5.dp)
+                    ProfileMenuItem(
+                        label   = "My Downloads",
+                        onClick = { navController.navigate(Screen.Downloads.route) }
+                    )
+                    Divider(color = Color(0xFF2E2E2E), thickness = 0.5.dp)
+                }
                 ProfileMenuItem(label = "Manage Account")
                 Divider(color = Color(0xFF2E2E2E), thickness = 0.5.dp)
                 ProfileMenuItem(

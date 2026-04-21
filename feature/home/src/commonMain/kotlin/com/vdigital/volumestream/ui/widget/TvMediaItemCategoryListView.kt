@@ -26,6 +26,7 @@ private val TvHeroHeight = 360.dp
 fun TvMediaItemCategoryListView(
     mediaItemCategories: Map<String, MutableList<PlaybackMediaItem>>,
     downloadViewModel: DownloadViewModel,
+    downloadsEnabled: Boolean = true,
     onPlay: () -> Unit,
 ) {
     val holder: SelectedMediaItemHolder = koinInject()
@@ -49,6 +50,7 @@ fun TvMediaItemCategoryListView(
                 item = featuredItem,
                 downloadViewModel = downloadViewModel,
                 isTvLayout = true,
+                showDownloadAction = downloadsEnabled,
                 onPlay = {
                     holder.select(featuredItem)
                     onPlay()
@@ -69,6 +71,7 @@ fun TvMediaItemCategoryListView(
                         category = category,
                         playbackMediaItems = items,
                         downloadViewModel = downloadViewModel,
+                        downloadsEnabled = downloadsEnabled,
                         onPlayItem = { item ->
                             holder.select(item)
                             onPlay()

@@ -40,23 +40,27 @@ import com.vdigital.volumestream.ui.viewmodel.DownloadViewModel
 import com.vditital.data.model.PlaybackMediaItem
 
 private val GreenAccent = Color(0xFF00E676)
+private val FeaturedBadgeStart = Color(0xFF00E676)
+private val FeaturedBadgeEnd = Color(0xFF43A047)
+private val HeroPlayButton = Color(0xFF66BB6A)
 
 /**
  * Full-width hero banner for featured content.
  *
- * On TV this is a full-bleed 480dp-high hero that can be controlled with a
- * D-pad. On mobile it's a smaller 280dp banner with touch-friendly buttons.
+ * On TV this is a full-bleed 320dp hero that can be controlled with a
+ * D-pad. On mobile it's a 240dp banner with touch-friendly buttons.
  */
 @Composable
 fun HeroBannerWidget(
     item: PlaybackMediaItem,
     downloadViewModel: DownloadViewModel,
     isTvLayout: Boolean = false,
+    showDownloadAction: Boolean = true,
     onPlay: () -> Unit,
 ) {
     val downloadState = downloadViewModel.observeState(item.id).collectAsState()
 
-    val height = if (isTvLayout) 360.dp else 280.dp
+    val height = if (isTvLayout) 320.dp else 240.dp
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -70,7 +74,16 @@ fun HeroBannerWidget(
                 modifier = Modifier.fillMaxWidth().fillMaxHeight()
             )
         } else {
-            Box(modifier = Modifier.fillMaxWidth().fillMaxHeight().background(Color(0xFF1A1A1A)))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color(0xFF2D4538), Color(0xFF171C19))
+                        )
+                    )
+            )
         }
 
         Box(
@@ -93,7 +106,12 @@ fun HeroBannerWidget(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(start = if (isTvLayout) 52.dp else 12.dp, top = 12.dp)
-                .background(GreenAccent, RoundedCornerShape(4.dp))
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(FeaturedBadgeStart, FeaturedBadgeEnd)
+                    ),
+                    RoundedCornerShape(4.dp)
+                )
                 .padding(horizontal = 8.dp, vertical = 3.dp)
         ) {
             Text("FEATURED", color = Color.Black, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
@@ -117,7 +135,7 @@ fun HeroBannerWidget(
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
-                        .background(GreenAccent)
+                        .background(HeroPlayButton)
                         .clickable(onClick = onPlay)
                         .focusable()
                         .padding(horizontal = 18.dp, vertical = 10.dp),
@@ -127,24 +145,26 @@ fun HeroBannerWidget(
                     Spacer(Modifier.width(if (isTvLayout) 6.dp else 4.dp))
                     Text("Play", color = Color.Black, fontSize = if (isTvLayout) 15.sp else 14.sp, fontWeight = FontWeight.Bold)
                 }
-                val isDownloaded = downloadState.value is DownloadState.Completed
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(Color.White.copy(alpha = 0.15f))
-                        .clickable { if (isDownloaded) downloadViewModel.remove(item.id) else downloadViewModel.download(item) }
-                        .focusable()
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier.size(if (isTvLayout) 20.dp else 18.dp).background(if (isDownloaded) GreenAccent else Color.White, CircleShape),
-                        contentAlignment = Alignment.Center
+                if (showDownloadAction) {
+                    val isDownloaded = downloadState.value is DownloadState.Completed
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color.White.copy(alpha = 0.15f))
+                            .clickable { if (isDownloaded) downloadViewModel.remove(item.id) else downloadViewModel.download(item) }
+                            .focusable()
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(if (isDownloaded) Icons.Default.PlayArrow else Icons.Default.Add, null, tint = Color.Black, modifier = Modifier.size(if (isTvLayout) 14.dp else 12.dp))
+                        Box(
+                            modifier = Modifier.size(if (isTvLayout) 20.dp else 18.dp).background(if (isDownloaded) GreenAccent else Color.White, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(if (isDownloaded) Icons.Default.PlayArrow else Icons.Default.Add, null, tint = Color.Black, modifier = Modifier.size(if (isTvLayout) 14.dp else 12.dp))
+                        }
+                        Spacer(Modifier.width(if (isTvLayout) 8.dp else 6.dp))
+                        Text(if (isDownloaded) "Downloaded" else "My List", color = Color.White, fontSize = if (isTvLayout) 14.sp else 13.sp, fontWeight = FontWeight.Medium)
                     }
-                    Spacer(Modifier.width(if (isTvLayout) 8.dp else 6.dp))
-                    Text(if (isDownloaded) "Downloaded" else "My List", color = Color.White, fontSize = if (isTvLayout) 14.sp else 13.sp, fontWeight = FontWeight.Medium)
                 }
             }
         }

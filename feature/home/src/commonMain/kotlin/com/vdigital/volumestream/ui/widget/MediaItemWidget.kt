@@ -21,12 +21,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.seiko.imageloader.rememberImagePainter
@@ -35,6 +38,8 @@ import com.vdigital.volumestream.ui.viewmodel.DownloadViewModel
 import com.vditital.data.model.PlaybackMediaItem
 
 private val GreenAccent = Color(0xFF00E676)
+private val CardPlaceholderTop = Color(0xFF2A3D33)
+private val CardPlaceholderBottom = Color(0xFF161A18)
 
 @Composable
 fun MediaItemWidget(
@@ -50,9 +55,29 @@ fun MediaItemWidget(
             .width(120.dp)
     ) {
         Box {
+            Box(
+                modifier = Modifier
+                    .height(180.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(CardPlaceholderTop, CardPlaceholderBottom)
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.45f),
+                    modifier = Modifier.size(28.dp)
+                )
+            }
             Image(
                 painter = rememberImagePainter(playbackMediaItem.artworkUrl),
                 contentDescription = playbackMediaItem.title,
+                contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .height(180.dp)
                     .fillMaxWidth()

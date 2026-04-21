@@ -81,13 +81,15 @@ private data class TvNavItem(
     val icon: ImageVector,
 )
 
-private val NAV_ITEMS = listOf(
-    TvNavItem("Home",      Screen.Home.route,      Icons.Default.Home),
-    TvNavItem("Search",    Screen.Search.route,     Icons.Default.Search),
-    TvNavItem("Downloads", Screen.Downloads.route,  Icons.AutoMirrored.Filled.List),
-    TvNavItem("Profile",   Screen.Profile.route,    Icons.Default.Person),
-    TvNavItem("Settings",  Screen.Settings.route,   Icons.Default.Settings),
-)
+private fun navItems(downloadsEnabled: Boolean): List<TvNavItem> = buildList {
+    add(TvNavItem("Home",    Screen.Home.route,    Icons.Default.Home))
+    add(TvNavItem("Search",  Screen.Search.route,  Icons.Default.Search))
+    if (downloadsEnabled) {
+        add(TvNavItem("Downloads", Screen.Downloads.route, Icons.AutoMirrored.Filled.List))
+    }
+    add(TvNavItem("Profile", Screen.Profile.route, Icons.Default.Person))
+    add(TvNavItem("Settings", Screen.Settings.route, Icons.Default.Settings))
+}
 
 /**
  * DStv / Leanback-style TV navigation shell.
@@ -103,7 +105,9 @@ private val NAV_ITEMS = listOf(
  */
 @OptIn(KoinExperimentalAPI::class)
 @Composable
-fun TvNavigationShell() {
+fun TvNavigationShell(
+    downloadsEnabled: Boolean = true,
+) {
     val navController = rememberNavController()
     val authViewModel: AuthViewModel = koinViewModel()
     val authState by authViewModel.uiState.collectAsState()
@@ -148,6 +152,8 @@ fun TvNavigationShell() {
     val onPlay: () -> Unit = { showPlayer = true }
     val onBackFromPlayer: () -> Unit = { showPlayer = false }
 
+    val items = remember(downloadsEnabled) { navItems(downloadsEnabled) }
+
     val navHost: @Composable () -> Unit = {
         NavHost(
             navController    = navController,
@@ -157,7 +163,14 @@ fun TvNavigationShell() {
             composable(Screen.Splash.route)    { SplashScreen(navController = navController) }
             composable(Screen.Login.route)     { LoginScreen(navController = navController) }
             composable(Screen.Register.route)  { RegisterScreen(navController = navController) }
-            composable(Screen.Home.route)      { HomeScreen(navController = navController, isTvLayout = true, onPlay = onPlay) }
+            composable(Screen.Home.route)      {
+                HomeScreen(
+                    navController = navController,
+                    isTvLayout = true,
+                    downloadsEnabled = downloadsEnabled,
+                    onPlay = onPlay,
+                )
+            }
             composable(Screen.Search.route)    {
                 SearchScreen(
                     navController = navController,
@@ -165,8 +178,15 @@ fun TvNavigationShell() {
                     onPlay = onPlay,
                 )
             }
-            composable(Screen.Downloads.route) { DownloadsScreen(navController = navController) }
-            composable(Screen.Profile.route)   { ProfileScreen(navController = navController) }
+            if (downloadsEnabled) {
+                composable(Screen.Downloads.route) { DownloadsScreen(navController = navController) }
+            }
+            composable(Screen.Profile.route)   {
+                ProfileScreen(
+                    navController = navController,
+                    showDownloadItems = downloadsEnabled,
+                )
+            }
             composable(Screen.Settings.route)  { SettingsScreen() }
         }
     }
@@ -228,7 +248,7 @@ fun TvNavigationShell() {
 
                     Spacer(Modifier.height(16.dp))
 
-                    NAV_ITEMS.forEach { item ->
+                    items.forEach { item ->
                         val selected = currentRoute == item.route
                         TvSideNavItem(
                             item     = item,
