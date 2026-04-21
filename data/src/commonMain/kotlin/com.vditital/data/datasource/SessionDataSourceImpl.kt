@@ -9,6 +9,10 @@ import com.vditital.data.security.TokenStore
 import com.vditital.data.util.AppLogger
 import com.vditital.data.util.currentEpochMillis
 import com.vditital.data.util.extractUserIdFromJwt
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.bearerAuth
@@ -50,9 +54,14 @@ class SessionDataSourceImpl(
     }
 
     override suspend fun startSession(jwt: String, videoId: String): SessionStartResponse {
-        val userId        = extractUserIdFromJwt(jwt)
-        val deviceId      = tokenStore.getDeviceId()
-        val certTimestamp = currentEpochMillis()
+        val userId   = extractUserIdFromJwt(jwt)
+        val deviceId = tokenStore.getDeviceId()
+
+        // Use server time to sign — guards against emulator/device clock drift
+        // that would cause CERT_PIN_FAILED (stale timestamp) on the server.
+        val certTimestamp = fetchServerEpochMillis()
+        AppLogger.d("SessionDS", "certTimestamp=server:$certTimestamp  device:${currentEpochMillis()}  skew:${currentEpochMillis() - certTimestamp}ms")
+
         val payload       = "$userId|$videoId|$certTimestamp"
         val certSignature = deviceCrypto.signPayload(payload)
 
@@ -93,5 +102,21 @@ class SessionDataSourceImpl(
         }
         AppLogger.d("SessionDS", "fetchAesKey OK — 16 bytes received")
         return bytes
+    }
+
+    /**
+     * Fetches the server's current epoch millis from GET /api/v1/server/time (no auth required).
+     * Falls back to the device clock if the request fails, so playback is not blocked
+     * on a network error — though the server's skew window will still apply.
+     */
+    private suspend fun fetchServerEpochMillis(): Long {
+        return try {
+            val response = httpClient.get("${protocol.name.lowercase()}://$apiHost:$port/api/v1/server/time")
+            val json = Json.parseToJsonElement(response.body<String>()).jsonObject
+            json["epochMillis"]!!.jsonPrimitive.long
+        } catch (e: Exception) {
+            AppLogger.w("SessionDS", "fetchServerTime failed, falling back to device clock: ${e.message}")
+            currentEpochMillis()
+        }
     }
 }

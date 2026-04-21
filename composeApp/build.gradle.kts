@@ -1,4 +1,6 @@
 import java.util.Properties
+import java.net.NetworkInterface
+import java.util.Collections
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -21,6 +23,60 @@ val localProps = Properties().also { props: Properties ->
 val apiHostValue: String  = localProps.getProperty("API_HOST",  "localhost")
 val authPortValue: String = localProps.getProperty("AUTH_PORT", "8080")
 val apiPortValue: String  = localProps.getProperty("API_PORT",  "8081")
+
+val updateApiHostFromNetwork by tasks.registering {
+    group = "configuration"
+    description = "Detects this machine's LAN IPv4 and writes it to local.properties as API_HOST"
+    doLast {
+        val interfaces = Collections.list(NetworkInterface.getNetworkInterfaces())
+            .filter { it.isUp && !it.isLoopback && !it.isVirtual }
+            .filterNot {
+                it.name.startsWith("docker") ||
+                it.name.startsWith("vbox") ||
+                it.name.startsWith("bridge") ||
+                it.name.startsWith("utun")
+            }
+            .sortedBy {
+                when {
+                    it.name.startsWith("en") -> 0
+                    it.name.startsWith("wlan") -> 1
+                    it.name.startsWith("eth") -> 2
+                    else -> 3
+                }
+            }
+
+        val lanIp = interfaces.firstNotNullOfOrNull { networkInterface ->
+            Collections.list(networkInterface.inetAddresses)
+                .mapNotNull { address ->
+                    val host = address.hostAddress ?: return@mapNotNull null
+                    if (
+                        host.contains(":") ||
+                        host == "127.0.0.1" ||
+                        host.startsWith("169.254.")
+                    ) null else host
+                }
+                .firstOrNull()
+        } ?: throw org.gradle.api.GradleException(
+            "Could not detect a LAN IPv4 address. Connect to Wi-Fi/Ethernet and try again."
+        )
+
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (!localPropertiesFile.exists()) {
+            localPropertiesFile.createNewFile()
+        }
+
+        val props = Properties()
+        if (localPropertiesFile.length() > 0L) {
+            localPropertiesFile.inputStream().use { props.load(it) }
+        }
+        props.setProperty("API_HOST", lanIp)
+        localPropertiesFile.outputStream().use {
+            props.store(it, "Updated by :composeApp:updateApiHostFromNetwork")
+        }
+
+        logger.lifecycle("API_HOST set to $lanIp in ${localPropertiesFile.absolutePath}")
+    }
+}
 
 // Generates AppConfig.kt directly into the iosMain source tree so the IDE
 // can resolve the constants without a prior Gradle build.  The file is
@@ -173,6 +229,10 @@ android {
 }
 dependencies {
     implementation(libs.androidx.lifecycle.common.jvm)
+}
+
+tasks.named("preBuild") {
+    dependsOn(updateApiHostFromNetwork)
 }
 
 // Keep AppConfig.kt up to date whenever any iOS Kotlin target is compiled.
