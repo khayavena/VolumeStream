@@ -40,6 +40,8 @@ import com.vditital.data.model.PlaybackMediaItem
 private val GreenAccent = Color(0xFF00E676)
 private val CardPlaceholderTop = Color(0xFF2A3D33)
 private val CardPlaceholderBottom = Color(0xFF161A18)
+private val CardImageTintTop = Color(0x332A3D33)
+private val CardImageTintBottom = Color(0x1F161A18)
 
 @Composable
 fun MediaItemWidget(
@@ -55,34 +57,48 @@ fun MediaItemWidget(
             .width(120.dp)
     ) {
         Box {
-            Box(
-                modifier = Modifier
-                    .height(180.dp)
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(CardPlaceholderTop, CardPlaceholderBottom)
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.PlayArrow,
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.45f),
-                    modifier = Modifier.size(28.dp)
+            if (playbackMediaItem.artworkUrl.isNotBlank()) {
+                Image(
+                    painter = rememberImagePainter(playbackMediaItem.artworkUrl),
+                    contentDescription = playbackMediaItem.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .height(180.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
                 )
+                Box(
+                    modifier = Modifier
+                        .height(180.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(CardImageTintTop, CardImageTintBottom)
+                            )
+                        )
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .height(180.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(CardPlaceholderTop, CardPlaceholderBottom)
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.45f),
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
             }
-            Image(
-                painter = rememberImagePainter(playbackMediaItem.artworkUrl),
-                contentDescription = playbackMediaItem.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .height(180.dp)
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-            )
             // Download overlay button (bottom-right)
             Box(
                 modifier = Modifier

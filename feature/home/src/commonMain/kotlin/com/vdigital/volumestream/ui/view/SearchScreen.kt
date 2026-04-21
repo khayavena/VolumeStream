@@ -61,6 +61,8 @@ private val SurfaceDark  = Color(0xFF1A1A1A)
 private val FieldBg      = Color(0xFF1E1E1E)
 private val SearchCardTop = Color(0xFF24372A)
 private val SearchCardBottom = Color(0xFF161E18)
+private val SearchImageTintTop = Color(0x3324372A)
+private val SearchImageTintBottom = Color(0x1F161E18)
 
 @OptIn(KoinExperimentalAPI::class)
 @Composable
@@ -195,12 +197,7 @@ private fun SearchResultCard(item: PlaybackMediaItem, onClick: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(140.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(SearchCardTop, SearchCardBottom)
-                    )
-                ),
+                .clip(RoundedCornerShape(8.dp)),
             contentAlignment = Alignment.Center
         ) {
             if (item.artworkUrl.isNotBlank()) {
@@ -209,6 +206,25 @@ private fun SearchResultCard(item: PlaybackMediaItem, onClick: () -> Unit) {
                     contentDescription = item.title,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(SearchImageTintTop, SearchImageTintBottom)
+                            )
+                        )
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(SearchCardTop, SearchCardBottom)
+                            )
+                        )
                 )
             }
 

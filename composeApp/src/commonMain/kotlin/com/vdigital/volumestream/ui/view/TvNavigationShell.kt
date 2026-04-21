@@ -35,6 +35,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,6 +58,9 @@ import com.vdigital.volumestream.ui.viewmodel.AuthUiState
 import com.vdigital.volumestream.ui.viewmodel.AuthViewModel
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.annotation.KoinExperimentalAPI
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 private val SideNavBg       = Color(0xFF0D0D0D)
@@ -128,6 +132,8 @@ fun TvNavigationShell(
 
     // Whether any nav-rail item currently holds D-pad focus
     var navHasFocus by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    var collapseJob by remember { mutableStateOf<Job?>(null) }
 
     val showSideNav = !showPlayer && currentRoute != null && currentRoute !in NO_SIDE_NAV_ROUTES
 
@@ -254,8 +260,17 @@ fun TvNavigationShell(
                             item     = item,
                             selected = selected,
                             expanded = navHasFocus,
-                            onFocus  = { navHasFocus = true },
-                            onBlur   = { navHasFocus = false },
+                            onFocus  = {
+                                collapseJob?.cancel()
+                                navHasFocus = true
+                            },
+                            onBlur   = {
+                                collapseJob?.cancel()
+                                collapseJob = scope.launch {
+                                    delay(120)
+                                    navHasFocus = false
+                                }
+                            },
                             onClick  = {
                                 navController.navigate(item.route) {
                                     popUpTo(Screen.Home.route) { saveState = true }
@@ -321,8 +336,11 @@ private fun TvSideNavItem(
             .clip(RoundedCornerShape(10.dp))
             .background(bgAnim)
             .onFocusChanged { state ->
-                isFocused = state.isFocused
-                if (state.isFocused) onFocus() else onBlur()
+                val nowFocused = state.isFocused
+                if (nowFocused != isFocused) {
+                    isFocused = nowFocused
+                    if (nowFocused) onFocus() else onBlur()
+                }
             }
             .focusable()
             .selectable(selected = selected, onClick = onClick),

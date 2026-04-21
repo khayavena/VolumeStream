@@ -48,6 +48,8 @@ import com.vditital.data.model.PlaybackMediaItem
 private val GreenAccent = Color(0xFF00E676)
 private val TvCardPlaceholderTop = Color(0xFF2D4438)
 private val TvCardPlaceholderBottom = Color(0xFF161B18)
+private val TvCardImageTintTop = Color(0x332D4438)
+private val TvCardImageTintBottom = Color(0x1F161B18)
 
 /**
  * TV-optimised media item card. Larger artwork (16:9 ratio), bigger text,
@@ -83,34 +85,48 @@ fun TvMediaItemWidget(
                 .clip(RoundedCornerShape(10.dp))
                 .border(width = 2.dp, color = focusBorderColor, shape = RoundedCornerShape(10.dp))
         ) {
-            Box(
-                modifier = Modifier
-                    .height(135.dp)
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(TvCardPlaceholderTop, TvCardPlaceholderBottom)
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.PlayArrow,
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.42f),
-                    modifier = Modifier.size(30.dp)
+            if (playbackMediaItem.artworkUrl.isNotBlank()) {
+                Image(
+                    painter = rememberImagePainter(playbackMediaItem.artworkUrl),
+                    contentDescription = playbackMediaItem.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .height(135.dp)   // 16:9 for 240dp width
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
                 )
+                Box(
+                    modifier = Modifier
+                        .height(135.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(TvCardImageTintTop, TvCardImageTintBottom)
+                            )
+                        )
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .height(135.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(TvCardPlaceholderTop, TvCardPlaceholderBottom)
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.42f),
+                        modifier = Modifier.size(30.dp)
+                    )
+                }
             }
-            Image(
-                painter = rememberImagePainter(playbackMediaItem.artworkUrl),
-                contentDescription = playbackMediaItem.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .height(135.dp)   // 16:9 for 240dp width
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-            )
             if (downloadsEnabled) {
                 // Download overlay (bottom-right corner)
                 Box(
