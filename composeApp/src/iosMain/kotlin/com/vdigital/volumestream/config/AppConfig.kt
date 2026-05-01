@@ -2,6 +2,6 @@
 // Re-generated on every build from local.properties values.
 package com.vdigital.volumestream.config
 
-internal val API_HOST:   String = "192.168.0.102"
+internal val API_HOST:   String = "192.168.0.113"
 internal val AUTH_PORT:  Int    = 8080
 internal val API_PORT:   Int    = 8081

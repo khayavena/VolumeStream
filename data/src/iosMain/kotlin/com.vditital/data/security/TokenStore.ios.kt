@@ -30,12 +30,17 @@ actual class TokenStore {
         query.setObject(NSNumber.numberWithBool(true),   forKey = kSecReturnData as NSCopyingProtocol)
         query.setObject(kSecMatchLimitOne as Any,        forKey = kSecMatchLimit as NSCopyingProtocol)
 
-        val result = alloc<CFTypeRefVar>()
-        val status = SecItemCopyMatching(query as CFDictionaryRef, result.ptr)
-        if (status != errSecSuccess || result.value == null) return null
-        val data = result.value as NSData
-        CFRelease(result.value)
-        NSString.create(data, NSUTF8StringEncoding) as? String
+        val queryRef = CFBridgingRetain(query) as CFDictionaryRef
+        try {
+            val result = alloc<CFTypeRefVar>()
+            val status = SecItemCopyMatching(queryRef, result.ptr)
+            if (status != errSecSuccess) return null
+
+            val data = result.value as? NSData ?: return null
+            NSString.create(data, NSUTF8StringEncoding) as? String
+        } finally {
+            CFRelease(queryRef)
+        }
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -44,7 +49,6 @@ actual class TokenStore {
             bytes.usePinned { NSData.create(bytes = it.addressOf(0), length = bytes.size.toULong()) }
         }
 
-        // Try update first; insert on errSecItemNotFound.
         val updateQuery = NSMutableDictionary()
         updateQuery.setObject(kSecClassGenericPassword as Any, forKey = kSecClass as NSCopyingProtocol)
         updateQuery.setObject(key,              forKey = kSecAttrAccount as NSCopyingProtocol)
@@ -53,17 +57,29 @@ actual class TokenStore {
         val attrs = NSMutableDictionary()
         attrs.setObject(data, forKey = kSecValueData as NSCopyingProtocol)
 
-        val status = SecItemUpdate(updateQuery as CFDictionaryRef, attrs as CFDictionaryRef)
+        val updateQueryRef = CFBridgingRetain(updateQuery) as CFDictionaryRef
+        val attrsRef = CFBridgingRetain(attrs) as CFDictionaryRef
+        val status = try {
+            SecItemUpdate(updateQueryRef, attrsRef)
+        } finally {
+            CFRelease(updateQueryRef)
+            CFRelease(attrsRef)
+        }
+
         if (status == errSecItemNotFound) {
             val addQuery = updateQuery.mutableCopy() as NSMutableDictionary
             addQuery.setObject(data, forKey = kSecValueData as NSCopyingProtocol)
-            // kSecAttrAccessible = kSecAttrAccessibleWhenUnlockedThisDeviceOnly:
-            //   encrypted, accessible only after first unlock, NOT backed up to iCloud.
             addQuery.setObject(
                 kSecAttrAccessibleWhenUnlockedThisDeviceOnly as Any,
                 forKey = kSecAttrAccessible as NSCopyingProtocol
             )
-            SecItemAdd(addQuery as CFDictionaryRef, null)
+
+            val addQueryRef = CFBridgingRetain(addQuery) as CFDictionaryRef
+            try {
+                SecItemAdd(addQueryRef, null)
+            } finally {
+                CFRelease(addQueryRef)
+            }
         }
     }
 
@@ -73,7 +89,13 @@ actual class TokenStore {
         query.setObject(kSecClassGenericPassword as Any, forKey = kSecClass as NSCopyingProtocol)
         query.setObject(key,              forKey = kSecAttrAccount as NSCopyingProtocol)
         query.setObject(KEYCHAIN_SERVICE, forKey = kSecAttrService as NSCopyingProtocol)
-        SecItemDelete(query as CFDictionaryRef)
+
+        val queryRef = CFBridgingRetain(query) as CFDictionaryRef
+        try {
+            SecItemDelete(queryRef)
+        } finally {
+            CFRelease(queryRef)
+        }
     }
 
     // ── TokenStore API ────────────────────────────────────────────────────────
@@ -109,4 +131,3 @@ actual class TokenStore {
         const val KEY_DEVICE_ID = "vs_device_id"
     }
 }
-

@@ -11,16 +11,23 @@ class SessionRepositoryImpl(
     private val tokenStore: TokenStore
 ) : SessionRepository {
 
-    override suspend fun ensureDeviceRegistered(): ResultState<Unit> = runCatching {
-        val jwt = tokenStore.getJwt() ?: error("Not authenticated")
-        sessionDataSource.registerDevice(jwt)
-    }.fold(
-        onSuccess = { ResultState.Success(Unit) },
-        onFailure = { e ->
-            AppLogger.e("SessionRepo", "ensureDeviceRegistered failed", e as? Exception)
-            ResultState.Error(e)
+    override suspend fun ensureDeviceRegistered(): ResultState<Unit> {
+        val jwt = tokenStore.getJwt()
+        if (jwt.isNullOrBlank()) {
+            AppLogger.d("SessionRepo", "ensureDeviceRegistered skipped (no JWT)")
+            return ResultState.Success(Unit)
         }
-    )
+
+        return runCatching {
+            sessionDataSource.registerDevice(jwt)
+        }.fold(
+            onSuccess = { ResultState.Success(Unit) },
+            onFailure = { e ->
+                AppLogger.e("SessionRepo", "ensureDeviceRegistered failed", e as? Exception)
+                ResultState.Error(e)
+            }
+        )
+    }
 
     override suspend fun startSession(jwt: String, videoId: String): ResultState<SessionStartResponse> =
         runCatching {
@@ -52,4 +59,3 @@ class SessionRepositoryImpl(
         }
     )
 }
-
