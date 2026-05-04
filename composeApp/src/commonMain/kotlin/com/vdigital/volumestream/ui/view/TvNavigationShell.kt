@@ -116,6 +116,7 @@ fun TvNavigationShell(
     val authViewModel: AuthViewModel = koinViewModel()
     val authState by authViewModel.uiState.collectAsState()
     var showPlayer by remember { mutableStateOf(false) }
+    var playbackSessionId by remember { mutableStateOf(0L) }
 
     LaunchedEffect(authState) {
         if (authState is AuthUiState.SessionRevoked) {
@@ -155,7 +156,10 @@ fun TvNavigationShell(
         label = "railBg"
     )
 
-    val onPlay: () -> Unit = { showPlayer = true }
+    val onPlay: () -> Unit = {
+        playbackSessionId += 1
+        showPlayer = true
+    }
     val onBackFromPlayer: () -> Unit = { showPlayer = false }
 
     val items = remember(downloadsEnabled) { navItems(downloadsEnabled) }
@@ -294,7 +298,10 @@ fun TvNavigationShell(
         Crossfade(targetState = showPlayer, label = "tvPlayerCrossfade") { isPlayerVisible ->
             if (isPlayerVisible) {
                 Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-                    PlaybackView(onBack = onBackFromPlayer)
+                    PlaybackView(
+                        playbackInstanceKey = "tv-play:$playbackSessionId",
+                        onBack = onBackFromPlayer
+                    )
                 }
             }
         }

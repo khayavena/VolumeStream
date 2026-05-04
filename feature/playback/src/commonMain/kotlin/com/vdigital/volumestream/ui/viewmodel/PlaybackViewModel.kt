@@ -14,17 +14,13 @@ import com.vditital.data.repository.PlaybackMediaItemRepository
 import com.vditital.data.repository.SessionRepository
 import com.vditital.data.repository.state.ResultState
 import com.vditital.data.util.AppLogger
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
 
 class PlaybackViewModel(
     private val playbackStateController: PlaybackStateController,
@@ -35,6 +31,9 @@ class PlaybackViewModel(
     private val sessionRepository: SessionRepository,
     private val authRepository: AuthRepository,
 ) : ViewModel() {
+
+    private val vmId = hashCode()
+    private fun diag(msg: String) = AppLogger.d("Diag.VM", "vm=$vmId controller=${playbackStateController.hashCode()} $msg")
 
     private val _playBackState   = MutableStateFlow<PlaybackState>(PlaybackState.Buffering)
     private val _progressState   = MutableStateFlow(0F)
@@ -50,15 +49,10 @@ class PlaybackViewModel(
     val selectedTrackIdUI = _selectedTrackId.asStateFlow()
     val qualityUI         = _quality.asStateFlow()
 
-    /** Holds the active session ID so we can revoke it when the ViewModel is cleared. */
-    private var activeSessionId: String? = null
-    private var activeJwt: String? = null
 
     /** Re-entry guard: prevents a second initialise() while the first is still in flight. */
     private var initialiseJob: Job? = null
 
-    /** Separate scope for fire-and-forget cleanup after viewModelScope is cancelled. */
-    private val cleanupScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     companion object {
         /** Header names used by StreamVault. Centralised here so SDK consumers can
@@ -70,39 +64,76 @@ class PlaybackViewModel(
     fun getPlatformController(): PlaybackStateController = playbackStateController
 
     fun initialise() {
+        diag("initialise called")
         // Prevent duplicate initialisations (e.g. from a LaunchedEffect re-fire).
-        if (initialiseJob?.isActive == true) return
+        if (initialiseJob?.isActive == true) {
+            diag("initialise skipped reason=job_active")
+            return
+        }
         initialiseJob = viewModelScope.launch(Dispatchers.Main) {
             try {
                 loadTrackList()
-                val item = selectedMediaItemHolder.current() ?: return@launch
+                val item = selectedMediaItemHolder.current()
+                if (item == null) {
+                    diag("initialise exit reason=no_selected_item")
+                    AppLogger.e("PlaybackVM", "initialise aborted: no selected media item", null)
+                    _playBackState.value = PlaybackState.Error("No media selected.")
+                    return@launch
+                }
+                diag("initialise media=${item.id} os=${osType.name}")
+                AppLogger.i("PlaybackVM", "initialise mediaId=${item.id} platform=${osType.name}")
 
                 // 1. Ensure we have a valid (non-expired) JWT
                 val jwt = withContext(Dispatchers.IO) { authRepository.ensureValidJwt() }
+                if (jwt == null) {
+                    diag("initialise exit reason=no_jwt media=${item.id}")
+                    AppLogger.e("PlaybackVM",
+                        "JWT unavailable — user is not logged in or token refresh failed. " +
+                        "Check auth-pulse-service is running on the configured auth port.", null)
+                    _playBackState.value = PlaybackState.Error("Auth failed: no JWT in store. Please log in.")
+                    return@launch
+                }
+                diag("initialise jwt_ready media=${item.id}")
+                AppLogger.d("PlaybackVM", "JWT obtained (len=${jwt.length})")
 
-                // 2. Start a cert-pinned playback session
-                if (jwt != null) {
-                    val sessionResult = withContext(Dispatchers.IO) {
-                        sessionRepository.startSession(jwt, item.id)
-                    }
-                    if (sessionResult is ResultState.Success) {
-                        activeSessionId = sessionResult.data.sessionId
-                        activeJwt       = jwt
-                        // 3. Inject headers into the player's HTTP layer BEFORE
-                        //    initPlayer() builds ExoPlayer / AVPlayer.
-                        //    Header names come from this common layer — the player
-                        //    SDK is completely header-agnostic.
-                        playbackStateController.setAuthHeaders(
-                            mapOf(
-                                HEADER_AUTHORIZATION to "Bearer $jwt",
-                                HEADER_SESSION_TOKEN to sessionResult.data.sessionToken
-                            )
+                // 2. Ensure device is registered (RSA-2048 public key on the server).
+                //    Must complete BEFORE startSession, which requires a valid cert signature.
+                //    HomaPageViewModel also fires this but it is fire-and-forget; we do it here
+                //    too so playback is never blocked by a missed registration.
+                AppLogger.d("PlaybackVM", "ensureDeviceRegistered for mediaId=${item.id}")
+                val regResult = withContext(Dispatchers.IO) {
+                    sessionRepository.ensureDeviceRegistered()
+                }
+                if (regResult is ResultState.Error) {
+                    AppLogger.w("PlaybackVM",
+                        "Device registration failed: ${regResult.exception.message}. " +
+                        "Session start may fail with 403 if device was never registered.")
+                } else {
+                    AppLogger.d("PlaybackVM", "Device registration OK")
+                }
+
+                // 3. Start a cert-pinned playback session
+                AppLogger.i("PlaybackVM", "startSession mediaId=${item.id}")
+                var sessionToken: String? = null
+                val sessionResult = withContext(Dispatchers.IO) {
+                    sessionRepository.startSession(jwt, item.id)
+                }
+                if (sessionResult is ResultState.Success) {
+                    sessionToken    = sessionResult.data.sessionToken
+                    diag("session started id=${sessionResult.data.sessionId} media=${item.id}")
+                    AppLogger.i("PlaybackVM",
+                        "Session started: sessionId=${sessionResult.data.sessionId} mediaId=${item.id}")
+                    // 4. Inject headers into the player's HTTP layer BEFORE
+                    //    initPlayer() builds ExoPlayer / AVPlayer.
+                    playbackStateController.setAuthHeaders(
+                        mapOf(
+                            HEADER_AUTHORIZATION to "Bearer $jwt",
+                            HEADER_SESSION_TOKEN to sessionResult.data.sessionToken
                         )
-                        // 4. Fetch + inject the 16-byte AES-128 key for DASH segment
-                        //    decryption.  Must be called BEFORE initPlayer() so that
-                        //    ExoPlayer's RoutingDataSourceFactory picks it up on the
-                        //    very first segment request.  No-op on iOS (AVFoundation
-                        //    handles HLS key delivery natively via EXT-X-KEY).
+                    )
+                    // 5. Fetch + inject the 16-byte AES-128 key for DASH segment decryption.
+                    //    iOS SKIPPED: AVFoundation handles HLS AES-128 natively via EXT-X-KEY.
+                    if (osType != OsType.IOS) {
                         val keyResult = withContext(Dispatchers.IO) {
                             sessionRepository.fetchAesKey(
                                 mediaId      = item.id,
@@ -116,16 +147,42 @@ class PlaybackViewModel(
                         } else {
                             AppLogger.w("PlaybackVM", "AES key unavailable — encrypted DASH may not play")
                         }
-                        AppLogger.d("PlaybackVM", "Session started: ${sessionResult.data.sessionId}")
                     } else {
-                        AppLogger.e("PlaybackVM", "Session start failed — playing without token", null)
+                        AppLogger.d("PlaybackVM", "iOS: skipping AES key fetch — AVFoundation handles EXT-X-KEY")
                     }
+                } else {
+                    diag("session start failed media=${item.id}")
+                    val cause = (sessionResult as? ResultState.Error)?.exception?.message ?: "unknown"
+                    AppLogger.e("PlaybackVM",
+                        "Session start failed — cause='$cause'. " +
+                        "Check: (1) device is registered, (2) cert signature is valid, " +
+                        "(3) POST /api/v1/session/start returns 200 in server logs.", null)
+                }
+
+                if (sessionToken == null) {
+                    diag("initialise exit reason=no_session_token media=${item.id}")
+                    AppLogger.e("PlaybackVM",
+                        "Playback blocked: no session token. " +
+                        "platform=${osType.name} mediaId=${item.id}", null)
+                    val cause = (sessionResult as? ResultState.Error)?.exception?.message ?: "unknown"
+                    _playBackState.value = PlaybackState.Error("Session failed: $cause")
+                    return@launch
                 }
 
                 val localPath = withContext(Dispatchers.IO) { downloadController.getLocalPath(item.id) }
-                val playItem = if (localPath != null) item.copy(streamUrl = localPath) else item
+                val candidate = if (localPath != null) item.copy(streamUrl = localPath, hlsStreamUrl = localPath) else item
+                AppLogger.d("PlaybackVM", "Prefetching item for ${osType.name}: mediaId=${item.id}")
+                val playItem = if (osType == OsType.IOS) {
+                    // iOS prefetch depends on auth headers set in this coroutine; keep it on Main to avoid stale reads.
+                    playbackStateController.prefetchForPlayback(candidate)
+                } else {
+                    withContext(Dispatchers.IO) { playbackStateController.prefetchForPlayback(candidate) }
+                }
+                AppLogger.d("PlaybackVM", "Prefetch complete for mediaId=${item.id}")
+                diag("prefetch complete media=${item.id} start_player=true")
                 handleInitialPlayback(mutableListOf(playItem))
             } catch (e: Exception) {
+                diag("initialise exception=${e.message}")
                 AppLogger.e("PlaybackVM", "Playback initialisation failed", e)
                 _playBackState.value = PlaybackState.Error("Playback initialisation failed.")
             }
@@ -147,6 +204,10 @@ class PlaybackViewModel(
 
     private fun handleInitialPlayback(playbackMediaItems: MutableList<PlaybackMediaItem>) {
         try {
+            diag("handleInitialPlayback items=${playbackMediaItems.size}")
+            // Queue items FIRST so the timer never sees an empty queue on its
+            // first tick (which would incorrectly emit PlaybackState.Ended).
+            playbackStateController.addItemItems(playbackMediaItems)
             // initPlayer builds a brand-new ExoPlayer / AVPlayer and attaches it to
             // the surface owned by PlatformMediaPlayerView.  Call this ONLY once — on
             // first launch.  For subsequent track changes use handleTrackSwitch().
@@ -154,7 +215,6 @@ class PlaybackViewModel(
                 _durationMs.value    = duration
                 _progressState.value = if (duration > 0) currentPosition.toFloat() / duration else 0f
             }, playbackState = { _playBackState.value = it })
-            playbackStateController.addItemItems(playbackMediaItems)
             playbackStateController.play(playbackState = { _playBackState.value = it })
         } catch (e: Exception) {
             AppLogger.e("PlaybackVM", "Player initialisation error", e)
@@ -172,6 +232,7 @@ class PlaybackViewModel(
      */
     private fun handleTrackSwitch(item: PlaybackMediaItem) {
         try {
+            diag("handleTrackSwitch media=${item.id}")
             _playBackState.value = PlaybackState.Buffering
             _progressState.value = 0f
             _durationMs.value    = 0L
@@ -221,42 +282,43 @@ class PlaybackViewModel(
     }
 
     fun selectTrack(item: PlaybackMediaItem) {
+        diag("selectTrack called media=${item.id}")
         _selectedTrackId.value = item.id
         selectedMediaItemHolder.select(item)
         viewModelScope.launch(Dispatchers.Main) {
             try {
-                // End the previous session — with a timeout so a slow server
-                // cannot stall the track-switch indefinitely.
-                val prevJwt = activeJwt
-                val prevSid = activeSessionId
-                if (prevJwt != null && prevSid != null) {
-                    runCatching {
-                        withTimeout(5_000L) {
-                            withContext(Dispatchers.IO) {
-                                sessionRepository.endSession(prevJwt, prevSid)
-                            }
-                        }
-                    }
-                }
-                activeSessionId = null
-                activeJwt = null
-
                 val jwt = withContext(Dispatchers.IO) { authRepository.ensureValidJwt() }
-                if (jwt != null) {
-                    val sessionResult = withContext(Dispatchers.IO) {
-                        sessionRepository.startSession(jwt, item.id)
-                    }
-                    if (sessionResult is ResultState.Success) {
-                        activeSessionId = sessionResult.data.sessionId
-                        activeJwt       = jwt
-                        playbackStateController.setAuthHeaders(
-                            mapOf(
-                                HEADER_AUTHORIZATION to "Bearer $jwt",
-                                HEADER_SESSION_TOKEN to sessionResult.data.sessionToken
-                            )
+                if (jwt == null) {
+                    diag("selectTrack exit reason=no_jwt media=${item.id}")
+                    AppLogger.e("PlaybackVM", "Track switch blocked: JWT unavailable", null)
+                    _playBackState.value = PlaybackState.Error("Not authenticated. Please log in.")
+                    return@launch
+                }
+
+
+                // Ensure device is registered before starting the new session
+                val regResult = withContext(Dispatchers.IO) { sessionRepository.ensureDeviceRegistered() }
+                if (regResult is ResultState.Error) {
+                    AppLogger.w("PlaybackVM", "Device re-registration failed: ${regResult.exception.message}")
+                }
+
+                var sessionToken: String? = null
+                val sessionResult = withContext(Dispatchers.IO) {
+                    sessionRepository.startSession(jwt, item.id)
+                }
+                if (sessionResult is ResultState.Success) {
+                    sessionToken    = sessionResult.data.sessionToken
+                    diag("selectTrack session_started id=${sessionResult.data.sessionId} media=${item.id}")
+                    AppLogger.i("PlaybackVM", "Track switch session: ${sessionResult.data.sessionId} mediaId=${item.id}")
+                    playbackStateController.setAuthHeaders(
+                        mapOf(
+                            HEADER_AUTHORIZATION to "Bearer $jwt",
+                            HEADER_SESSION_TOKEN to sessionResult.data.sessionToken
                         )
-                        // Fetch + inject the AES-128 key for the new session so DASH
-                        // decryption continues to work after a track switch.
+                    )
+                    // 5. Fetch + inject AES key for DASH segment decryption.
+                    //    iOS SKIPPED: AVFoundation handles HLS AES-128 natively via EXT-X-KEY.
+                    if (osType != OsType.IOS) {
                         val keyResult = withContext(Dispatchers.IO) {
                             sessionRepository.fetchAesKey(
                                 mediaId      = item.id,
@@ -270,17 +332,36 @@ class PlaybackViewModel(
                         } else {
                             AppLogger.w("PlaybackVM", "AES key unavailable for track ${item.id}")
                         }
+                    } else {
+                        AppLogger.d("PlaybackVM", "iOS: skipping AES key fetch for track switch — AVFoundation handles EXT-X-KEY")
                     }
+                } else {
+                    diag("selectTrack session_start_failed media=${item.id}")
+                    val cause = (sessionResult as? ResultState.Error)?.exception?.message ?: "unknown"
+                    AppLogger.e("PlaybackVM", "Track switch session start failed: $cause", null)
+                }
+
+                if (sessionToken == null) {
+                    diag("selectTrack exit reason=no_session_token media=${item.id}")
+                    AppLogger.e("PlaybackVM", "iOS track switch blocked: missing session token", null)
+                    _playBackState.value = PlaybackState.Error("Playback session unavailable.")
+                    return@launch
                 }
 
                 val localPath = withContext(Dispatchers.IO) { downloadController.getLocalPath(item.id) }
-                val playItem  = if (localPath != null) item.copy(streamUrl = localPath) else item
+                val candidate = if (localPath != null) item.copy(streamUrl = localPath, hlsStreamUrl = localPath) else item
+                val playItem  = if (osType == OsType.IOS) {
+                    playbackStateController.prefetchForPlayback(candidate)
+                } else {
+                    withContext(Dispatchers.IO) { playbackStateController.prefetchForPlayback(candidate) }
+                }
 
                 // Switch tracks in-place — keeps the platform player attached to its
                 // rendering surface.  release() + initPlayer() would detach the player
                 // from the AndroidView / UIViewRepresentable and produce a blank frame.
                 handleTrackSwitch(playItem)
             } catch (e: Exception) {
+                diag("selectTrack exception=${e.message}")
                 AppLogger.e("PlaybackVM", "Track selection failed", e)
                 _playBackState.value = PlaybackState.Error("Track selection failed.")
             }
@@ -296,18 +377,10 @@ class PlaybackViewModel(
     // call viewModelScope.cancel() manually; doing so is redundant and can mask
     // bugs by cancelling the scope before super.onCleared() runs.
     override fun onCleared() {
+        diag("onCleared release_controller=true")
         super.onCleared()
-        // Best-effort session revocation on ViewModel clear (user leaves playback screen).
-        // Uses cleanupScope so the DELETE request can complete after viewModelScope cancels.
-        val jwt = activeJwt
-        val sid = activeSessionId
-        if (jwt != null && sid != null) {
-            cleanupScope.launch {
-                runCatching {
-                    withTimeout(5_000L) { sessionRepository.endSession(jwt, sid) }
-                }
-            }
-        }
-        cleanupScope.cancel()
+        // Session cleanup is handled server-side via TTL / 401 revocation —
+        // no client-side DELETE call needed.
+        playbackStateController.release()
     }
 }

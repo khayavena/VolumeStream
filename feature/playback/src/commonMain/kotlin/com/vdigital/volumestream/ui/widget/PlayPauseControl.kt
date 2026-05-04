@@ -22,19 +22,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vdigital.volumestream.ui.viewmodel.PlaybackViewModel
 import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState
-import org.koin.compose.viewmodel.koinViewModel
-import org.koin.core.annotation.KoinExperimentalAPI
 
 private val GreenAccent = Color(0xFF00E676)
 private val ControlsBg  = Color(0xFF000000)
 
-@OptIn(KoinExperimentalAPI::class)
 @Composable
-fun PlayPauseControl(onPlayPause: () -> Unit) {
-    val viewModel: PlaybackViewModel = koinViewModel()
+fun PlayPauseControl(
+    viewModel: PlaybackViewModel,
+    onPlayPause: () -> Unit
+) {
     // Collect only playback state here — progress is isolated in ProgressRing
     // so this composable only recomposes when play/pause/buffering state changes.
     val state = viewModel.playBackStateUI.collectAsState()
+    val progress = viewModel.progressStateUI.collectAsState()
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -58,7 +58,7 @@ fun PlayPauseControl(onPlayPause: () -> Unit) {
             contentAlignment = Alignment.Center,
             modifier = Modifier.size(64.dp)
         ) {
-            ProgressRing()
+            ProgressRing(progress = progress.value)
             IconButton(
                 onClick = onPlayPause,
                 modifier = Modifier
@@ -87,16 +87,11 @@ fun PlayPauseControl(onPlayPause: () -> Unit) {
 
 /**
  * Isolated composable for the seek-progress ring.
- * Recomposes every ~200 ms (player position tick) without touching
- * the surrounding [PlayPauseControl] or the play/pause button.
  */
-@OptIn(KoinExperimentalAPI::class)
 @Composable
-private fun ProgressRing() {
-    val viewModel: PlaybackViewModel = koinViewModel()
-    val progress = viewModel.progressStateUI.collectAsState()
+private fun ProgressRing(progress: Float) {
     CircularProgressIndicator(
-        progress    = progress.value,
+        progress    = progress,
         modifier    = Modifier.size(64.dp),
         strokeWidth = 3.dp,
         color       = GreenAccent

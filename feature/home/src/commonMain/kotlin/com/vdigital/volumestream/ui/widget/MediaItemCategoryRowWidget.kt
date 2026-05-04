@@ -61,8 +61,11 @@ fun PlaybackCategoryCarousel(
                     playbackMediaItem = mediaItem,
                     downloadViewModel = downloadViewModel
                 ) {
+                    println("[NAV][trace] tapped mediaId=${mediaItem.id} title=${mediaItem.title}")
                     holder.select(mediaItem)
+                    println("[NAV][trace] holder.select done, navigating to ${Screen.Play.route}")
                     navController.navigate(Screen.Play.route)
+                    println("[NAV][trace] navigate() called")
                 }
             }
         }

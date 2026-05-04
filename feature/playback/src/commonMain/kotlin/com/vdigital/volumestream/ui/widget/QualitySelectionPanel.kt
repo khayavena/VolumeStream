@@ -29,17 +29,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vdigital.volumestream.ui.viewmodel.PlaybackViewModel
 import com.vdigital.volumestream.ui.viewmodel.state.PlaybackQuality
-import org.koin.compose.viewmodel.koinViewModel
-import org.koin.core.annotation.KoinExperimentalAPI
 
 private val QualityGreen   = Color(0xFF00E676)
 private val QualityPanelBg = Color(0xFF0A0A0A)
 private val QualityDivider = Color(0xFF1C1C1C)
 
-@OptIn(KoinExperimentalAPI::class)
 @Composable
-fun QualitySelectionPanel(onSelect: () -> Unit = {}) {
-    val viewModel      = koinViewModel<PlaybackViewModel>()
+fun QualitySelectionPanel(
+    viewModel: PlaybackViewModel,
+    onSelect: () -> Unit = {}
+) {
     val currentQuality by viewModel.qualityUI.collectAsState()
 
     Column(

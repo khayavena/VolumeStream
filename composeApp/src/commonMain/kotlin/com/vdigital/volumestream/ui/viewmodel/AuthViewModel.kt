@@ -32,7 +32,7 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
         // UI can navigate to login and stop retrying with the dead token.
         viewModelScope.launch {
             SessionRevokedBus.events.collect {
-                authRepository.logout()
+                withContext(Dispatchers.IO) { authRepository.logout() }
                 _uiState.value = AuthUiState.SessionRevoked
             }
         }

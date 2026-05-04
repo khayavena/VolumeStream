@@ -32,17 +32,13 @@ import androidx.compose.ui.unit.sp
 import com.seiko.imageloader.rememberImagePainter
 import com.vdigital.volumestream.ui.viewmodel.PlaybackViewModel
 import com.vditital.data.model.PlaybackMediaItem
-import org.koin.compose.viewmodel.koinViewModel
-import org.koin.core.annotation.KoinExperimentalAPI
 
 private val PanelGreen    = Color(0xFF00E676)
 private val PanelBg       = Color(0xFF0A0A0A)
 private val PanelDivider  = Color(0xFF1C1C1C)
 
-@OptIn(KoinExperimentalAPI::class)
 @Composable
-fun TrackSelectionPanel() {
-    val viewModel  = koinViewModel<PlaybackViewModel>()
+fun TrackSelectionPanel(viewModel: PlaybackViewModel) {
     val tracks     = viewModel.trackListUI.collectAsState()
     val selectedId = viewModel.selectedTrackIdUI.collectAsState()
 

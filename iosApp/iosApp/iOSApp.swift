@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import ComposeApp
+import AVFoundation
 
 class AppDelegate: NSObject, UIApplicationDelegate {
 
@@ -15,6 +16,13 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            print("Failed to set AVAudioSession category: \(error)")
+        }
+
         NotificationCenter.default.addObserver(
             forName: NSNotification.Name(OrientationManager.shared.LOCK_CHANGED_NOTIFICATION),
             object: nil,

@@ -19,8 +19,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vdigital.volumestream.ui.viewmodel.PlaybackViewModel
-import org.koin.compose.viewmodel.koinViewModel
-import org.koin.core.annotation.KoinExperimentalAPI
 
 private val SeekGreen = Color(0xFF00E676)
 
@@ -31,10 +29,8 @@ private fun Long.toFormattedTime(): String {
     return "${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
 }
 
-@OptIn(KoinExperimentalAPI::class)
 @Composable
-fun PlaybackSeekBar() {
-    val viewModel: PlaybackViewModel = koinViewModel()
+fun PlaybackSeekBar(viewModel: PlaybackViewModel) {
     val progress   = viewModel.progressStateUI.collectAsState()
     val durationMs = viewModel.durationMsUI.collectAsState()
 

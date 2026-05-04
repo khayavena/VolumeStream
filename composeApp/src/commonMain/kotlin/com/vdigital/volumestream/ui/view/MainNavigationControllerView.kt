@@ -83,7 +83,12 @@ fun MainNavigationControllerView() {
             composable(Screen.Downloads.route) { DownloadsScreen(navController = navController) }
             composable(Screen.Profile.route)   { ProfileScreen(navController = navController) }
             composable(Screen.Settings.route)  { SettingsScreen() }
-            composable(Screen.Play.route)      { PlaybackView(onBack = { navController.popBackStack() }) }
+            composable(Screen.Play.route) { backStackEntry ->
+                PlaybackView(
+                    playbackInstanceKey = "play:${backStackEntry.hashCode()}",
+                    onBack = { navController.popBackStack() }
+                )
+            }
         }
     }
 }

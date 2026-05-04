@@ -11,6 +11,8 @@ internal actual val platformPlayerModule: Module = module {
     // PlayerConfig: default provided here; SDK consumers override before playerCoreModule.
     single<PlayerConfig> { PlayerConfig() }
 
+    // Factory scope ensures each playback entry gets a fresh AVQueuePlayer-backed
+    // controller instead of reusing a previously released instance.
     factory { PlaybackStateController(get()) }
     single<OsType> { OsType.IOS }
     single { DownloadController() }

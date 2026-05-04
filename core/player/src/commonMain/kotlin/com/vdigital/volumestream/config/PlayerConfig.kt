@@ -37,12 +37,6 @@ data class PlayerConfig(
     /** Socket read timeout — should be generous on slow Wi-Fi (ms). */
     val httpReadTimeoutMs: Int = 20_000,
 
-    // ── iOS AVFoundation ──────────────────────────────────────────────────────
-    /**
-     * Key used in [AVURLAsset] options to inject custom HTTP headers.
-     * Matches the Objective-C constant `AVURLAssetHTTPHeaderFieldsKey`.
-     */
-    val avFoundationHttpHeadersKey: String = "AVURLAssetHTTPHeaderFieldsKey",
 
     // ── DASH proxy ────────────────────────────────────────────────────────────
     /**

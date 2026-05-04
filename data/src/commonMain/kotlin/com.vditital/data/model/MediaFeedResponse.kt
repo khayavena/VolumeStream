@@ -91,6 +91,7 @@ fun MediaItemDto.toPlaybackMediaItem(apiHost: String, config: StreamVaultConfig 
     // AesGcmDecryptingDataSource (AES-128-GCM) by the player's RoutingDataSource.
     // Requires Authorization + X-Session-Token headers (injected by the player layer).
     streamUrl    = "${if (config.useHttps) "https" else "http"}://$apiHost:${config.apiPort}/${config.apiBasePath}/${config.dashManifestPath}/$id",
+    hlsStreamUrl = "${if (config.useHttps) "https" else "http"}://$apiHost:${config.apiPort}/${config.apiBasePath}/manifest/hls/$id",
     downloadUrl  = normalizeMediaUrl(downloadUrl, apiHost, config),
     artworkUrl   = normalizeMediaUrl(remapArtworkSource(artworkUrl, id, config), apiHost, config),
     durationMs   = durationMs,

@@ -16,7 +16,6 @@ import kotlinx.serialization.json.long
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.bearerAuth
-import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.statement.readRawBytes
 import io.ktor.client.request.header
@@ -64,6 +63,9 @@ class SessionDataSourceImpl(
 
         val payload       = "$userId|$videoId|$certTimestamp"
         val certSignature = deviceCrypto.signPayload(payload)
+        check(certSignature.isNotBlank()) {
+            "DeviceCrypto.signPayload returned empty — RSA signing failed on this device"
+        }
 
         val sessionUrl = "${protocol.name.lowercase()}://$apiHost:$port/$base/session/start"
         AppLogger.i("SessionDS", "startSession ──────────────────────────────────────")
@@ -84,14 +86,6 @@ class SessionDataSourceImpl(
         }.body()
     }
 
-    override suspend fun endSession(jwt: String, sessionId: String) {
-        AppLogger.d("SessionDS", "endSession sessionId=$sessionId")
-        runCatching {
-            httpClient.delete("${protocol.name.lowercase()}://$apiHost:$port/$base/session/$sessionId") {
-                bearerAuth(jwt)
-            }
-        }
-    }
 
     override suspend fun fetchAesKey(mediaId: String, sessionId: String, sessionToken: String): ByteArray {
         AppLogger.d("SessionDS", "fetchAesKey mediaId=$mediaId sid=$sessionId")
@@ -111,7 +105,7 @@ class SessionDataSourceImpl(
      */
     private suspend fun fetchServerEpochMillis(): Long {
         return try {
-            val response = httpClient.get("${protocol.name.lowercase()}://$apiHost:$port/api/v1/server/time")
+            val response = httpClient.get("${protocol.name.lowercase()}://$apiHost:$port/$base/server/time")
             val json = Json.parseToJsonElement(response.body<String>()).jsonObject
             json["epochMillis"]!!.jsonPrimitive.long
         } catch (e: Exception) {

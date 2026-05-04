@@ -18,6 +18,8 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
@@ -51,8 +53,19 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
+		<!-- NSAllowsLocalNetworking only covers localhost / .local Bonjour; it does NOT
+		     cover LAN addresses such as 192.168.x.x.  NSAllowsArbitraryLoads is required
+		     for development builds where the StreamVault / auth-pulse servers are reachable
+		     over plain HTTP on a LAN IP (configured in local.properties → AppConfig.kt).
+		     Remove or tighten this when switching to HTTPS in production. -->
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>

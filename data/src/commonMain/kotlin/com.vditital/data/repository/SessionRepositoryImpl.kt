@@ -40,10 +40,6 @@ class SessionRepositoryImpl(
             }
         )
 
-    override suspend fun endSession(jwt: String, sessionId: String) {
-        runCatching { sessionDataSource.endSession(jwt, sessionId) }
-            .onFailure { AppLogger.e("SessionRepo", "endSession failed (ignored)", it as? Exception) }
-    }
 
     override suspend fun fetchAesKey(
         mediaId: String,
@@ -58,4 +54,5 @@ class SessionRepositoryImpl(
             ResultState.Error(e)
         }
     )
+    // endSession removed — session cleanup is handled server-side via TTL / 401 revocation.
 }

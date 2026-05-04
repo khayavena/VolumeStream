@@ -31,16 +31,20 @@ actual class TokenStore {
         query.setObject(kSecMatchLimitOne as Any,        forKey = kSecMatchLimit as NSCopyingProtocol)
 
         val queryRef = CFBridgingRetain(query) as CFDictionaryRef
-        try {
+        val keychainResult = try {
             val result = alloc<CFTypeRefVar>()
             val status = SecItemCopyMatching(queryRef, result.ptr)
-            if (status != errSecSuccess) return null
-
-            val data = result.value as? NSData ?: return null
-            NSString.create(data, NSUTF8StringEncoding) as? String
+            if (status != errSecSuccess) null
+            else {
+                val data = result.value as? NSData ?: return@memScoped null
+                NSString.create(data, NSUTF8StringEncoding) as? String
+            }
         } finally {
             CFRelease(queryRef)
         }
+
+        // If keychain returned nothing, check the NSUserDefaults fallback written by keychainWrite.
+        keychainResult ?: (NSUserDefaults.standardUserDefaults.stringForKey("kc_fb_$key"))
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -59,27 +63,39 @@ actual class TokenStore {
 
         val updateQueryRef = CFBridgingRetain(updateQuery) as CFDictionaryRef
         val attrsRef = CFBridgingRetain(attrs) as CFDictionaryRef
-        val status = try {
+        val updateStatus = try {
             SecItemUpdate(updateQueryRef, attrsRef)
         } finally {
             CFRelease(updateQueryRef)
             CFRelease(attrsRef)
         }
 
-        if (status == errSecItemNotFound) {
+        if (updateStatus == errSecItemNotFound) {
             val addQuery = updateQuery.mutableCopy() as NSMutableDictionary
             addQuery.setObject(data, forKey = kSecValueData as NSCopyingProtocol)
             addQuery.setObject(
-                kSecAttrAccessibleWhenUnlockedThisDeviceOnly as Any,
+                kSecAttrAccessibleAfterFirstUnlock as Any,
                 forKey = kSecAttrAccessible as NSCopyingProtocol
             )
 
             val addQueryRef = CFBridgingRetain(addQuery) as CFDictionaryRef
-            try {
+            val addStatus = try {
                 SecItemAdd(addQueryRef, null)
             } finally {
                 CFRelease(addQueryRef)
             }
+
+            if (addStatus != errSecSuccess) {
+                // Keychain unavailable (e.g. simulator entitlement issue) — fall back to
+                // NSUserDefaults so the app remains functional in development.
+                println("[TokenStore] Keychain SecItemAdd failed status=$addStatus for key=$key — falling back to NSUserDefaults")
+                NSUserDefaults.standardUserDefaults.setObject(value, forKey = "kc_fb_$key")
+                NSUserDefaults.standardUserDefaults.synchronize()
+            }
+        } else if (updateStatus != errSecSuccess) {
+            println("[TokenStore] Keychain SecItemUpdate failed status=$updateStatus for key=$key — falling back to NSUserDefaults")
+            NSUserDefaults.standardUserDefaults.setObject(value, forKey = "kc_fb_$key")
+            NSUserDefaults.standardUserDefaults.synchronize()
         }
     }
 
@@ -96,6 +112,9 @@ actual class TokenStore {
         } finally {
             CFRelease(queryRef)
         }
+        // Also clear the NSUserDefaults fallback
+        NSUserDefaults.standardUserDefaults.removeObjectForKey("kc_fb_$key")
+        NSUserDefaults.standardUserDefaults.synchronize()
     }
 
     // ── TokenStore API ────────────────────────────────────────────────────────

@@ -7,6 +7,7 @@ import com.vditital.data.repository.PlaybackMediaItemRepository
 import com.vditital.data.repository.state.ResultState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -85,7 +86,7 @@ class SearchViewModel(
             _isLoading.value = true
             _loadError.value = null
             try {
-                val result = withContext(Dispatchers.Default) {
+                val result = withContext(Dispatchers.IO) {
                     repository.getMediaItemsState()
                 }
                 when (result) {

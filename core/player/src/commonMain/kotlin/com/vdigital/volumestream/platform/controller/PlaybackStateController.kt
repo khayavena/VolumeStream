@@ -13,6 +13,7 @@ expect class PlaybackStateController {
      * No-op on iOS (AVPlayer handles HLS natively).
      */
     fun setAesKey(key: ByteArray)
+    suspend fun prefetchForPlayback(mediaItem: PlaybackMediaItem): PlaybackMediaItem
     fun initPlayer(callback: (Long, Long) -> Unit, playbackState: (PlaybackState) -> Unit)
     fun addItem(mediaItem: PlaybackMediaItem)
     fun pause(playbackState: (PlaybackState) -> Unit)

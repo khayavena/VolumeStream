@@ -33,6 +33,8 @@ actual class PlaybackStateController(private val media3PlayerComponent: Media3Pl
         media3PlayerComponent.setAesKey(key)
     }
 
+    actual suspend fun prefetchForPlayback(mediaItem: PlaybackMediaItem): PlaybackMediaItem = mediaItem
+
     actual fun addItem(mediaItem: PlaybackMediaItem) {
         media3PlayerComponent.addMediaItem(mediaItem)
     }

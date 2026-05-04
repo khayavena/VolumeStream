@@ -23,7 +23,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.IconButton
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -35,8 +34,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vdigital.volumestream.core.player.SelectedMediaItemHolder
 import com.vdigital.volumestream.platform.enum.OsType
 import com.vdigital.volumestream.platform.orientation.LockLandscapeOrientation
 import com.vdigital.volumestream.platform.view.PlatformMediaPlayerView
@@ -48,7 +49,9 @@ import com.vdigital.volumestream.ui.widget.PlaybackBufferingIndicator
 import com.vdigital.volumestream.ui.widget.PlaybackSeekBar
 import com.vdigital.volumestream.ui.widget.QualitySelectionPanel
 import com.vdigital.volumestream.ui.widget.TrackSelectionPanel
+import com.vditital.data.util.AppLogger
 import kotlinx.coroutines.delay
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.annotation.KoinExperimentalAPI
 
@@ -58,15 +61,26 @@ private const val CONTROLS_HIDE_DELAY_MS = 4_000L
 
 @OptIn(KoinExperimentalAPI::class)
 @Composable
-fun PlaybackView(onBack: () -> Unit = {}) {
+fun PlaybackView(
+    playbackInstanceKey: String = "playback-default",
+    onBack: () -> Unit = {}
+) {
     LockLandscapeOrientation()
-    val viewModel: PlaybackViewModel = koinViewModel()
-    val controller = remember { viewModel.getPlatformController() }
+    val viewModel: PlaybackViewModel = koinViewModel(key = playbackInstanceKey)
+    val holder: SelectedMediaItemHolder = koinInject()
+    val selectedItem by holder.selectedItem.collectAsState()
+    println("[PlaybackView][trace] selectedItem=${selectedItem?.id}")
+    val controller = remember(viewModel) { viewModel.getPlatformController() }
+    AppLogger.d(
+        "Diag.UI",
+        "compose key=$playbackInstanceKey vm=${viewModel.hashCode()} controller=${controller.hashCode()} selected=${selectedItem?.id}"
+    )
 
     // Stop playback immediately then navigate — prevents audio bleeding into the
     // transition animation when the user presses back.
     val handleBack: () -> Unit = remember(controller, onBack) {
         {
+            AppLogger.i("Diag.UI", "back pressed controller=${controller.hashCode()} statePause=true")
             controller.pause(playbackState = {})
             onBack()
         }
@@ -95,12 +109,22 @@ fun PlaybackView(onBack: () -> Unit = {}) {
         showQualityPanel = false
     }
 
-    // Kick off player initialisation: JWT refresh, session start, then play.
-    LaunchedEffect(Unit) { viewModel.initialise() }
+    // Kick off player initialisation when a selected item exists (and when it changes).
+    LaunchedEffect(selectedItem?.id) {
+        AppLogger.d(
+            "Diag.UI",
+            "selectedItem effect vm=${viewModel.hashCode()} controller=${controller.hashCode()} media=${selectedItem?.id}"
+        )
+        if (selectedItem != null) viewModel.initialise()
+    }
 
     // Auto-navigate back when the stream ends.
     val playbackState by viewModel.playBackStateUI.collectAsState()
     LaunchedEffect(playbackState) {
+        AppLogger.d(
+            "Diag.UI",
+            "state effect vm=${viewModel.hashCode()} controller=${controller.hashCode()} state=${playbackState::class.simpleName}"
+        )
         when (playbackState) {
             PlaybackState.Ended -> {
                 delay(600L)
@@ -113,6 +137,18 @@ fun PlaybackView(onBack: () -> Unit = {}) {
             PlaybackState.SessionExpired -> {
                 controller.release()
                 handleBack()
+            }
+            // Auth errors: show the message for 8 s then navigate back so the user
+            // can log in again from the Home / Login screen.
+            is PlaybackState.Error -> {
+                val msg = (playbackState as PlaybackState.Error).errorMessage
+                if (msg.contains("authenticated", ignoreCase = true) ||
+                    msg.contains("session", ignoreCase = true) ||
+                    msg.contains("Auth failed", ignoreCase = true) ||
+                    msg.contains("Session failed", ignoreCase = true)) {
+                    delay(8_000L)
+                    handleBack()
+                }
             }
             else -> Unit
         }
@@ -147,8 +183,58 @@ fun PlaybackView(onBack: () -> Unit = {}) {
             PlaybackBufferingIndicator(playbackState)
         }
 
+        // Visible error overlay — shows the exact error so the user is never
+        // left staring at a silent black screen.
+        val errorState = playbackState as? PlaybackState.Error
+        if (errorState != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xCC000000)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .padding(32.dp)
+                ) {
+                    Text(
+                        text = "⚠",
+                        color = Color(0xFFFF5252),
+                        fontSize = 48.sp,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = errorState.errorMessage,
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                    Spacer(modifier = Modifier.height(20.dp))
+                    // Tappable back link — important because showControls auto-hides
+                    // after 4 s and the overlay would otherwise trap the user.
+                    Text(
+                        text = "Tap ❮ to go back",
+                        color = Color(0xFF00E676),
+                        fontSize = 13.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .pointerInput(Unit) {
+                                awaitEachGesture {
+                                    awaitPointerEvent(PointerEventPass.Initial)
+                                    handleBack()
+                                }
+                            }
+                            .padding(vertical = 8.dp)
+                    )
+                }
+            }
+        }
+
         AnimatedVisibility(
-            visible = showControls,
+            visible = showControls || playbackState is PlaybackState.Error,
             modifier = Modifier.align(Alignment.TopStart),
             enter = fadeIn(), exit = fadeOut()
         ) {
@@ -258,12 +344,14 @@ fun PlaybackView(onBack: () -> Unit = {}) {
                     .padding(horizontal = 8.dp, vertical = 10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                PlayPauseControl(onPlayPause = {
+                PlayPauseControl(
+                    viewModel = viewModel,
+                    onPlayPause = {
                     viewModel.playPause()
                     controlsResetTick++
                 })
                 Spacer(modifier = Modifier.height(6.dp))
-                PlaybackSeekBar()
+                PlaybackSeekBar(viewModel = viewModel)
             }
         }
 
@@ -273,7 +361,7 @@ fun PlaybackView(onBack: () -> Unit = {}) {
             enter = slideInVertically(initialOffsetY = { it }),
             exit = slideOutVertically(targetOffsetY = { it })
         ) {
-            TrackSelectionPanel()
+            TrackSelectionPanel(viewModel = viewModel)
         }
 
         AnimatedVisibility(
@@ -282,7 +370,10 @@ fun PlaybackView(onBack: () -> Unit = {}) {
             enter = slideInVertically(initialOffsetY = { it }),
             exit = slideOutVertically(targetOffsetY = { it })
         ) {
-            QualitySelectionPanel(onSelect = { showQualityPanel = false })
+            QualitySelectionPanel(
+                viewModel = viewModel,
+                onSelect = { showQualityPanel = false }
+            )
         }
     }
 }

@@ -4,7 +4,6 @@ import com.vditital.data.datasource.AuthDataSource
 import com.vditital.data.repository.state.ResultState
 import com.vditital.data.security.TokenStore
 import com.vditital.data.util.AppLogger
-import com.vditital.data.util.isJwtExpired
 
 class AuthRepositoryImpl(
     private val authDataSource: AuthDataSource,
@@ -34,7 +33,8 @@ class AuthRepositoryImpl(
         onFailure = { ResultState.Error(it) }
     )
 
-    override fun isLoggedIn(): Boolean = tokenStore.getJwt() != null
+    override fun isLoggedIn(): Boolean =
+        tokenStore.getJwt().isNullOrBlank().not()
 
     override fun getCurrentUserEmail(): String? = tokenStore.getUserEmail()
 
@@ -42,21 +42,6 @@ class AuthRepositoryImpl(
         tokenStore.clearAll()
     }
 
-    override suspend fun ensureValidJwt(): String? {
-        val jwt = tokenStore.getJwt() ?: return null
-        return if (isJwtExpired(jwt)) {
-            AppLogger.d("AuthRepo", "JWT expired — refreshing")
-            runCatching {
-                val refreshed = authDataSource.refreshToken(jwt)
-                val rawToken = refreshed.token.removePrefix("Bearer ").trim()
-                tokenStore.setJwt(rawToken)
-                rawToken
-            }.onFailure {
-                AppLogger.e("AuthRepo", "Token refresh failed", it as? Exception)
-            }.getOrNull()
-        } else {
-            jwt
-        }
-    }
+    override suspend fun ensureValidJwt(): String? = tokenStore.getJwt()
 }
 

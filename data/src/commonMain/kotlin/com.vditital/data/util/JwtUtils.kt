@@ -33,6 +33,8 @@ fun isJwtExpired(token: String): Boolean {
         val exp = expMatch.groupValues[1].toLongOrNull() ?: return false
         exp < (currentEpochMillis() / 1000L)
     } catch (_: Exception) {
-        false
+        // Treat an undecodable / malformed JWT as expired so the caller will
+        // attempt a refresh (and ultimately clear the token if refresh fails).
+        true
     }
 }

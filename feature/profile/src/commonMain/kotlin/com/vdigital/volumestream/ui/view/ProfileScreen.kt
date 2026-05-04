@@ -46,6 +46,7 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = koinViewModel()
 ) {
     val signedOut by viewModel.signedOut.collectAsState()
+    val userEmail by viewModel.userEmail.collectAsState()
 
     // When sign-out completes, clear the entire back stack and go to Login.
     LaunchedEffect(signedOut) {
@@ -59,7 +60,7 @@ fun ProfileScreen(
     }
 
     // Derive initials from the email address (e.g. "alice@example.com" → "AL")
-    val email    = viewModel.userEmail ?: "user@volumestream.com"
+    val email    = userEmail ?: "user@volumestream.com"
     val initials = email.take(2).uppercase()
 
     Column(
