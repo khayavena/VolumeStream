@@ -19,3 +19,10 @@ captures
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
 /.history/
+
+# Xcode build output directories (CLI and GUI builds)
+iosApp/build_cli/
+iosApp/build_ios/
+build/ios_build/
+build/ios_derived/
+
