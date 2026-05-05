@@ -393,7 +393,8 @@ actual class DeviceCrypto(private val alias: String = DEFAULT_KEY_ALIAS) {
      *   "r_ref" = kSecReturnRef
      *   "mlmt"  = kSecMatchLimit,  "mlm1" = kSecMatchLimitOne
      */
-    private fun loadKeyFromKeychain(appTag: NSData): SecKeyRef? {        val query = NSMutableDictionary()
+    private fun loadKeyFromKeychain(appTag: NSData): SecKeyRef? {
+        val query = NSMutableDictionary()
         query.setObject("keys" as NSString,              forKey = "class" as NSCopyingProtocol)
         query.setObject("42"   as NSString,              forKey = "type"  as NSCopyingProtocol)
         query.setObject("1"    as NSString,              forKey = "kcls"  as NSCopyingProtocol)

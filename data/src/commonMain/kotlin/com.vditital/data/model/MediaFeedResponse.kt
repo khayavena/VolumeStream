@@ -1,6 +1,8 @@
 package com.vditital.data.model
 
 import com.vditital.data.config.StreamVaultConfig
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.json.JsonNames
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -33,7 +35,8 @@ data class MediaItemDto(
     val categoryId: String = "",
     @SerialName("categoryName")
     val categoryName: String = "",
-    @SerialName("isPublished")
+    @OptIn(ExperimentalSerializationApi::class)
+    @JsonNames("isPublished", "published")
     val isPublished: Boolean = true,
     @SerialName("releasedAt")
     val releasedAt: String = "",
@@ -41,8 +44,23 @@ data class MediaItemDto(
     val qualities: List<String> = emptyList()
 )
 
-private val absoluteUrlRegex = Regex("^(https?)://(\\[[^\\]]+]|[^/:]+)(:\\d+)?(.*)$", RegexOption.IGNORE_CASE)
+private val absoluteUrlRegex = Regex("^(https?)://(\\[[^]]+]|[^/:]+)(:\\d+)?(.*)$", RegexOption.IGNORE_CASE)
 private const val sampleArtworkPrefix = "https://storage.googleapis.com/gtv-videos-bucket/sample/images/"
+
+private fun buildAbsoluteApiUrl(
+    apiHost: String,
+    config: StreamVaultConfig,
+    apiPath: String,
+    originOverride: String? = null
+): String {
+    val origin = originOverride ?: "${if (config.useHttps) "https" else "http"}://$apiHost:${config.apiPort}"
+    return "$origin/${apiPath.trimStart('/')}"
+}
+
+private fun extractOrigin(rawUrl: String): String? {
+    val match = absoluteUrlRegex.matchEntire(rawUrl.trim()) ?: return null
+    return "${match.groupValues[1]}://${match.groupValues[2]}${match.groupValues[3]}"
+}
 
 private fun remapArtworkSource(rawArtworkUrl: String?, mediaId: String, config: StreamVaultConfig): String {
     val raw = rawArtworkUrl?.trim().orEmpty()
@@ -82,16 +100,39 @@ private fun normalizeMediaUrl(rawUrl: String?, apiHost: String, config: StreamVa
 }
 
 fun MediaItemDto.toPlaybackMediaItem(apiHost: String, config: StreamVaultConfig = StreamVaultConfig()) = PlaybackMediaItem(
+    // The server's feed `streamUrl` is already the canonical HLS manifest URL:
+    //   http(s)://{host}:{port}/api/v1/manifest/{id}
+    // `hlsStreamUrl` is used directly by iOS (prefetched to a local .m3u8 file).
+    // `streamUrl` is remapped to the DASH manifest path for Android/Web.
+    // The replace("/manifest/dash/", "/manifest/") guard in PlaybackStateController
+    // covers the case where hlsStreamUrl falls through to streamUrl on iOS.
     id           = id,
     title        = title,
     isDownloaded = false,
-    // DASH MPD manifest endpoint: GET /api/v1/manifest/dash/{id}
-    // ExoPlayer parses the MPD and fetches encrypted segments from
-    // /api/v1/proxy/dash/{id}/{segmentIdx}?t=… which are routed through
-    // AesGcmDecryptingDataSource (AES-128-GCM) by the player's RoutingDataSource.
-    // Requires Authorization + X-Session-Token headers (injected by the player layer).
-    streamUrl    = "${if (config.useHttps) "https" else "http"}://$apiHost:${config.apiPort}/${config.apiBasePath}/${config.dashManifestPath}/$id",
-    hlsStreamUrl = "${if (config.useHttps) "https" else "http"}://$apiHost:${config.apiPort}/${config.apiBasePath}/manifest/hls/$id",
+    // Android/Web: DASH MPD endpoint derived from the feed origin
+    streamUrl    = buildAbsoluteApiUrl(
+        apiHost = apiHost,
+        config = config,
+        apiPath = "${config.apiBasePath}/${config.dashManifestPath}/$id",
+        originOverride = extractOrigin(normalizeMediaUrl(streamUrl, apiHost, config))
+    ),
+    // iOS: the normalized feed streamUrl is already the HLS manifest URL.
+    // Falls back to the canonical user-manifest path if the feed value is blank
+    // (e.g. newly-ingested items not yet present in the feed cache).
+    hlsStreamUrl = normalizeMediaUrl(streamUrl, apiHost, config).let { normalized ->
+        if (normalized.isNotBlank() && !normalized.contains("/manifest/dash/")) {
+            normalized
+        } else {
+            // Feed returned a DASH URL or blank — rewrite to HLS manifest path.
+            buildAbsoluteApiUrl(
+                apiHost = apiHost,
+                config = config,
+                apiPath = "${config.apiBasePath}/${config.userManifestPath}/$id",
+                originOverride = extractOrigin(normalizeMediaUrl(streamUrl, apiHost, config))
+                    ?: "${if (config.useHttps) "https" else "http"}://$apiHost:${config.apiPort}"
+            )
+        }
+    },
     downloadUrl  = normalizeMediaUrl(downloadUrl, apiHost, config),
     artworkUrl   = normalizeMediaUrl(remapArtworkSource(artworkUrl, id, config), apiHost, config),
     durationMs   = durationMs,

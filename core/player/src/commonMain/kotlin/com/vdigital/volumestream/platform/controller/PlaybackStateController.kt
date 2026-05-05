@@ -5,7 +5,7 @@ import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState
 import com.vditital.data.model.PlaybackMediaItem
 
 expect class PlaybackStateController {
-    /** Attach arbitrary HTTP headers to every player request (manifest, key, segments). */
+    /** Attach auth headers needed before playback starts; on iOS this is primarily used for HLS master-manifest prefetch. */
     fun setAuthHeaders(headers: Map<String, String>)
     /**
      * Supply the 16-byte AES-128 session key so DASH segments can be decrypted.

@@ -14,6 +14,7 @@ import com.vditital.data.repository.PlaybackMediaItemRepository
 import com.vditital.data.repository.SessionRepository
 import com.vditital.data.repository.state.ResultState
 import com.vditital.data.util.AppLogger
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
@@ -52,6 +53,9 @@ class PlaybackViewModel(
 
     /** Re-entry guard: prevents a second initialise() while the first is still in flight. */
     private var initialiseJob: Job? = null
+    /** Latest-track-wins guard: prevents stale async selectTrack completions from overriding newer taps. */
+    private var selectTrackJob: Job? = null
+    private var trackSelectionVersion: Long = 0L
 
 
     companion object {
@@ -70,7 +74,10 @@ class PlaybackViewModel(
             diag("initialise skipped reason=job_active")
             return
         }
-        initialiseJob = viewModelScope.launch(Dispatchers.Main) {
+        // No explicit dispatcher — viewModelScope already uses Dispatchers.Main.immediate,
+        // which starts the coroutine body synchronously when called from Main, avoiding
+        // an unnecessary queue-posting cycle before the first UI state update.
+        initialiseJob = viewModelScope.launch {
             try {
                 loadTrackList()
                 val item = selectedMediaItemHolder.current()
@@ -172,15 +179,21 @@ class PlaybackViewModel(
                 val localPath = withContext(Dispatchers.IO) { downloadController.getLocalPath(item.id) }
                 val candidate = if (localPath != null) item.copy(streamUrl = localPath, hlsStreamUrl = localPath) else item
                 AppLogger.d("PlaybackVM", "Prefetching item for ${osType.name}: mediaId=${item.id}")
-                val playItem = if (osType == OsType.IOS) {
-                    // iOS prefetch depends on auth headers set in this coroutine; keep it on Main to avoid stale reads.
+                // Always prefetch on IO: Ktor Darwin uses NSURLSession (async) so the network call
+                // never blocks the Main thread, and the IO dispatcher ensures any synchronous file
+                // I/O (manifest writeToFile) is also off Main.  Coroutine happens-before semantics
+                // guarantee the IO thread sees the auth headers written by setAuthHeaders() above.
+                val playItem = withContext(Dispatchers.IO) {
                     playbackStateController.prefetchForPlayback(candidate)
-                } else {
-                    withContext(Dispatchers.IO) { playbackStateController.prefetchForPlayback(candidate) }
                 }
                 AppLogger.d("PlaybackVM", "Prefetch complete for mediaId=${item.id}")
                 diag("prefetch complete media=${item.id} start_player=true")
                 handleInitialPlayback(mutableListOf(playItem))
+            } catch (e: CancellationException) {
+                // Propagate coroutine cancellation — do NOT treat it as a playback error.
+                // This fires when onCleared() cancels viewModelScope mid-initialisation.
+                diag("initialise cancelled")
+                throw e
             } catch (e: Exception) {
                 diag("initialise exception=${e.message}")
                 AppLogger.e("PlaybackVM", "Playback initialisation failed", e)
@@ -205,6 +218,12 @@ class PlaybackViewModel(
     private fun handleInitialPlayback(playbackMediaItems: MutableList<PlaybackMediaItem>) {
         try {
             diag("handleInitialPlayback items=${playbackMediaItems.size}")
+            // Reset to Buffering immediately.  The previous session's timer may have emitted
+            // PlaybackState.Ended while initialise() was running its IO chain (JWT, session,
+            // prefetch), which starts a 600 ms auto-back countdown in PlaybackView's
+            // LaunchedEffect.  Setting Buffering here changes the LaunchedEffect key, cancelling
+            // that countdown before the new item is even inserted into the player.
+            _playBackState.value = PlaybackState.Buffering
             // Queue items FIRST so the timer never sees an empty queue on its
             // first tick (which would incorrectly emit PlaybackState.Ended).
             playbackStateController.addItemItems(playbackMediaItems)
@@ -252,9 +271,14 @@ class PlaybackViewModel(
 
     fun onSeekChanged(seekValue: Float) {
         val targetMs = (seekValue * playbackStateController.duration()).toLong()
-        playbackStateController.seekTo(targetMs)
-        playbackStateController.play(playbackState = { _playBackState.value = it })
+        // Emit Buffering immediately so the UI reflects the seek rather than
+        // flashing Playing→Buffering→Playing when the buffer hasn't loaded yet.
+        _playBackState.value = PlaybackState.Buffering
         _progressState.value = seekValue
+        playbackStateController.seekTo(targetMs)
+        // Resume play after seek — the timer will transition to Playing once
+        // AVFoundation reports isPlaybackLikelyToKeepUp = true at the new position.
+        playbackStateController.resume()
     }
 
     fun playPause() {
@@ -285,7 +309,12 @@ class PlaybackViewModel(
         diag("selectTrack called media=${item.id}")
         _selectedTrackId.value = item.id
         selectedMediaItemHolder.select(item)
-        viewModelScope.launch(Dispatchers.Main) {
+
+        // Cancel any in-flight switch; only the latest user selection should apply.
+        selectTrackJob?.cancel()
+        val selectionVersion = ++trackSelectionVersion
+
+        selectTrackJob = viewModelScope.launch { // uses Dispatchers.Main.immediate from viewModelScope
             try {
                 val jwt = withContext(Dispatchers.IO) { authRepository.ensureValidJwt() }
                 if (jwt == null) {
@@ -310,6 +339,7 @@ class PlaybackViewModel(
                     sessionToken    = sessionResult.data.sessionToken
                     diag("selectTrack session_started id=${sessionResult.data.sessionId} media=${item.id}")
                     AppLogger.i("PlaybackVM", "Track switch session: ${sessionResult.data.sessionId} mediaId=${item.id}")
+                    if (selectionVersion != trackSelectionVersion) return@launch
                     playbackStateController.setAuthHeaders(
                         mapOf(
                             HEADER_AUTHORIZATION to "Bearer $jwt",
@@ -348,18 +378,21 @@ class PlaybackViewModel(
                     return@launch
                 }
 
+                if (selectionVersion != trackSelectionVersion) return@launch
                 val localPath = withContext(Dispatchers.IO) { downloadController.getLocalPath(item.id) }
                 val candidate = if (localPath != null) item.copy(streamUrl = localPath, hlsStreamUrl = localPath) else item
-                val playItem  = if (osType == OsType.IOS) {
+                // Always prefetch on IO — see initialise() comment above.
+                val playItem = withContext(Dispatchers.IO) {
                     playbackStateController.prefetchForPlayback(candidate)
-                } else {
-                    withContext(Dispatchers.IO) { playbackStateController.prefetchForPlayback(candidate) }
                 }
 
                 // Switch tracks in-place — keeps the platform player attached to its
                 // rendering surface.  release() + initPlayer() would detach the player
                 // from the AndroidView / UIViewRepresentable and produce a blank frame.
+                if (selectionVersion != trackSelectionVersion) return@launch
                 handleTrackSwitch(playItem)
+            } catch (_: CancellationException) {
+                diag("selectTrack cancelled media=${item.id}")
             } catch (e: Exception) {
                 diag("selectTrack exception=${e.message}")
                 AppLogger.e("PlaybackVM", "Track selection failed", e)

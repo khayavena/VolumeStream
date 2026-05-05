@@ -9,6 +9,7 @@ import com.vditital.data.repository.state.ResultState
 import com.vditital.data.util.AppLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -23,8 +24,16 @@ class HomaPageViewModel(
         MutableStateFlow<ResultState<Map<String, MutableList<PlaybackMediaItem>>>>(ResultState.Loading)
     val homeDataUIState = homeDataState.asStateFlow()
 
+    /** Re-entry guard: prevents duplicate fetches triggered by Compose recompositions. */
+    private var fetchJob: Job? = null
+
     fun fetchData(forceRefresh: Boolean = false) {
-        viewModelScope.launch {
+        // If a non-forced fetch is already in flight, don't launch a duplicate.
+        if (!forceRefresh && fetchJob?.isActive == true) {
+            AppLogger.d("HomeVM", "fetchData skipped — job already active")
+            return
+        }
+        fetchJob = viewModelScope.launch {
             AppLogger.d("HomeVM", "fetchData called (forceRefresh=$forceRefresh)")
 
             // Fire-and-forget: register the device's RSA public key once per install.

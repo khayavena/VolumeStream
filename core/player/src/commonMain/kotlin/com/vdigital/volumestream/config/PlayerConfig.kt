@@ -22,14 +22,27 @@ data class PlayerConfig(
     val cacheDirName: String = "media",
 
     // ── Android ExoPlayer buffering ───────────────────────────────────────────
-    /** Minimum buffer kept in memory before ExoPlayer is satisfied (ms). */
-    val minBufferMs: Int = 30_000,
-    /** Maximum buffer ExoPlayer will try to maintain ahead (ms). */
-    val maxBufferMs: Int = 60_000,
-    /** Buffer required before playback starts for the first time (ms). */
-    val bufferForPlaybackMs: Int = 3_000,
-    /** Buffer required before playback resumes after a rebuffer stall (ms). */
-    val bufferForPlaybackAfterRebufferMs: Int = 8_000,
+    /** Minimum steady-state forward buffer kept in memory (default 15s). */
+    val minBufferMs: Int = 15_000,
+    /** Maximum forward buffer the player will try to maintain ahead (default 30s). */
+    val maxBufferMs: Int = 30_000,
+    /** Buffer required before initial playback starts (default 2.5s). */
+    val bufferForPlaybackMs: Int = 2_500,
+    /** Buffer required before resuming after a stall (default 5s). */
+    val bufferForPlaybackAfterRebufferMs: Int = 5_000,
+
+    // ── iOS AVPlayer buffering ────────────────────────────────────────────────
+    /**
+     * Preferred amount of media AVPlayer should keep buffered ahead when possible.
+     * A small forward buffer (default 6s) reduces visible stalls on variable networks
+     * without adding excessive startup delay.
+     */
+    val iosPreferredForwardBufferSeconds: Double = 6.0,
+    /**
+     * When true, AVPlayer waits briefly for enough media to reduce the chance of
+     * immediate rebuffer stalls during startup/resume.
+     */
+    val iosAutomaticallyWaitsToMinimizeStalling: Boolean = true,
 
     // ── Android HTTP timeouts ─────────────────────────────────────────────────
     /** TCP connect timeout for segment / manifest requests (ms). */

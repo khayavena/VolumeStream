@@ -19,10 +19,18 @@ import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import platform.AVFoundation.AVPlayer
 import platform.AVFoundation.AVPlayerItem
 import platform.AVFoundation.AVPlayerItemStatusFailed
 import platform.AVFoundation.AVQueuePlayer
+import platform.AVFoundation.AVURLAsset
 import platform.AVFoundation.currentItem
 import platform.AVFoundation.currentTime
 import platform.AVFoundation.duration
@@ -48,6 +56,10 @@ actual class PlaybackStateController(
     private val playerConfig: PlayerConfig = PlayerConfig()
 ) {
 
+    // Keep iOS Auto on a stable 720p-equivalent ceiling to avoid aggressive jumps to 1080p
+    // that can cause video decode stalls while audio continues.
+    private val autoPeakBitRate = 3_000_000.0
+
     private val controllerId = hashCode()
     private var timerTick = 0
     private fun diag(msg: String) = AppLogger.d("Diag.Controller", "controller=$controllerId player=${avPlayer.hashCode()} $msg")
@@ -63,8 +75,26 @@ actual class PlaybackStateController(
     // not misread the momentarily-empty queue as a stream-ended condition.
     private var isLoadingItems = false
     private var lastEmittedPlaybackState: PlaybackState? = null
+
+    // authHeaders is written by setAuthHeaders() in the ViewModel coroutine, always before a
+    // withContext(Dispatchers.IO) boundary, so coroutine happens-before semantics guarantee
+    // the IO thread sees the update — no @Volatile annotation required.
     private var authHeaders: Map<String, String> = emptyMap()
     private var prefetchClient: HttpClient? = null
+    /** Debug map to correlate AVPlayerItem failures with the exact source URL. */
+    private val itemSourceByHash = mutableMapOf<Int, String>()
+    /** Tracks temp manifest files written by persistManifestToTempFile so they can be deleted on release(). */
+    private val tempManifestPaths = mutableListOf<String>()
+
+    /**
+     * Scope used to dispatch background work (file cleanup on release) off the Main thread.
+     * Cancelled once in release() so pending jobs don't outlive the controller.
+     */
+    private val controllerScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    init {
+        applyPlayerBufferingPreferences()
+    }
 
     private fun emitPlaybackStateIfChanged(
         next: PlaybackState,
@@ -80,8 +110,7 @@ actual class PlaybackStateController(
         val existing = prefetchClient
         if (existing != null) return existing
         return HttpClient(Darwin) {
-            // Manifest prefetch runs on the Main thread on iOS — a hard timeout prevents
-            // the UI from freezing if the server is slow or unreachable.
+            // Hard timeouts prevent runaway requests from holding the IO dispatcher too long.
             install(HttpTimeout) {
                 requestTimeoutMillis = 10_000
                 connectTimeoutMillis = 8_000
@@ -94,10 +123,58 @@ actual class PlaybackStateController(
         authHeaders = headers
     }
 
+    private fun applyPlayerBufferingPreferences() {
+        val key = "automaticallyWaitsToMinimizeStalling"
+        val selector = NSSelectorFromString("setAutomaticallyWaitsToMinimizeStalling:")
+        if (avPlayer.respondsToSelector(selector)) {
+            avPlayer.setValue(
+                NSNumber.numberWithBool(playerConfig.iosAutomaticallyWaitsToMinimizeStalling),
+                forKey = key
+            )
+        }
+    }
+
+    private fun applyBufferingPreferences(playerItem: AVPlayerItem) {
+        val key = "preferredForwardBufferDuration"
+        val selector = NSSelectorFromString("setPreferredForwardBufferDuration:")
+        if (playerItem.respondsToSelector(selector)) {
+            playerItem.setValue(
+                NSNumber.numberWithDouble(playerConfig.iosPreferredForwardBufferSeconds.coerceAtLeast(0.0)),
+                forKey = key
+            )
+        }
+    }
+
+    private suspend fun persistManifestToTempFile(mediaId: String, manifest: String): String {
+        val tempDir = NSTemporaryDirectory()
+        check(!tempDir.isNullOrBlank()) {
+            "NSTemporaryDirectory returned a blank path"
+        }
+
+        // Use a unique filename per prefetch to avoid AVFoundation reusing a stale cached
+        // local manifest URL that still points at an old session token.
+        val uniqueSuffix = NSUUID().UUIDString.lowercase()
+        val filePath = "${tempDir.trimEnd('/')}/streamvault-${mediaId}-$controllerId-$uniqueSuffix.m3u8"
+        val manifestData = manifest.encodeToByteArray().toNSData()
+
+        // NSData.writeToFile is synchronous blocking I/O — dispatch to IO to keep Main free.
+        withContext(Dispatchers.IO) {
+            check(manifestData.writeToFile(filePath, true)) {
+                "Failed to write prefetched HLS manifest to $filePath"
+            }
+        }
+
+        // Guard against duplicates — same mediaId replayed on same controller (Koin single scope)
+        // would otherwise add the same path twice and trigger a double-delete warning on release().
+        if (!tempManifestPaths.contains(filePath)) {
+            tempManifestPaths.add(filePath)
+        }
+        return filePath
+    }
+
     /**
-     * No-op on iOS — AVFoundation / HLS handles AES-128 key delivery natively
-     * via the EXT-X-KEY URI in the playlist.  The key is fetched by AVFoundation
-     * using the same HTTP headers injected via [setAuthHeaders].
+     * No-op on iOS — AVFoundation handles HLS AES-128 key delivery natively
+     * via the signed EXT-X-KEY URI emitted by the backend playlists.
      */
     actual fun setAesKey(key: ByteArray) {
         // No-op: AVFoundation decrypts HLS segments transparently.
@@ -105,8 +182,10 @@ actual class PlaybackStateController(
 
     actual suspend fun prefetchForPlayback(mediaItem: PlaybackMediaItem): PlaybackMediaItem {
         var manifestUrl = mediaItem.hlsStreamUrl.ifBlank { mediaItem.streamUrl }
-        // Force HLS variant for iOS AVPlayer
-        manifestUrl = manifestUrl.replace("/manifest/dash/", "/manifest/hls/")
+        // StreamVault now advertises the canonical user-scoped HLS manifest via
+        // /api/v1/manifest/{mediaId}. If a DASH URL slips through as a fallback,
+        // rewrite it to the HLS/user-manifest path expected by AVPlayer prefetch.
+        manifestUrl = manifestUrl.replace("/manifest/dash/", "/manifest/")
 
         AppLogger.i("iOS.Prefetch", "▶ prefetchForPlayback mediaId=${mediaItem.id}")
         AppLogger.i("iOS.Prefetch", "  resolvedManifestUrl=$manifestUrl")
@@ -155,16 +234,7 @@ actual class PlaybackStateController(
                 return@runCatching mediaItem
             }
 
-            // ── Key change ────────────────────────────────────────────────────────
-            // Return the corrected HLS http:// URL directly.
-            // Previously we wrote to a file:// temp path, but AVFoundation does NOT
-            // propagate AVURLAssetHTTPHeaderFieldsKey when crossing from file:// to
-            // http://, causing variant playlist requests to be blocked silently.
-            // Giving AVPlayer the http:// URL directly means the X-Session-Token
-            // header (set via AVURLAssetHTTPHeaderFieldsKey in addItem()) is included
-            // in the master-manifest request, and downstream requests authenticate
-            // via the ?sid=&t= query params already embedded in variant/segment URLs.
-            AppLogger.i("iOS.Prefetch", "  ✓ Manifest valid — passing HTTP URL to AVPlayer: $manifestUrl")
+            AppLogger.i("iOS.Prefetch", "  ✓ Manifest valid — using remote URL for AVPlayer")
             mediaItem.copy(hlsStreamUrl = manifestUrl, streamUrl = manifestUrl)
         }
             .onFailure { e ->
@@ -183,31 +253,59 @@ actual class PlaybackStateController(
         else                            -> NSURL.URLWithString(streamUrl)
     }
 
-    actual fun addItem(mediaItem: PlaybackMediaItem) {
+    /**
+     * Builds an [AVPlayerItem] for [mediaItem] without queuing it.
+     * Returns null and logs an error if the URL cannot be resolved.
+     */
+    private fun buildPlayerItem(mediaItem: PlaybackMediaItem): AVPlayerItem? {
         val resolved = mediaItem.hlsStreamUrl.ifBlank { mediaItem.streamUrl }
-            .replace("/manifest/dash/", "/manifest/hls/")
-            
-        AppLogger.i("iOS.Player", "addItem mediaId=${mediaItem.id}")
+            .replace("/manifest/dash/", "/manifest/")
+
+        AppLogger.i("iOS.Player", "buildPlayerItem mediaId=${mediaItem.id}")
         AppLogger.i("iOS.Player", "  hlsStreamUrl=${mediaItem.hlsStreamUrl}")
         AppLogger.i("iOS.Player", "  streamUrl=${mediaItem.streamUrl}")
         AppLogger.i("iOS.Player", "  → resolved URL: $resolved")
 
-        if (resolved.startsWith("http://") || resolved.startsWith("https://")) {
-            AppLogger.i("iOS.Player",
-                "  → Loading HLS from HTTP URL. X-Session-Token injected via AVURLAssetHTTPHeaderFieldsKey.")
+        val isRemoteUrl = resolved.startsWith("http://") || resolved.startsWith("https://")
+        if (!isRemoteUrl) {
+            AppLogger.i("iOS.Player", "  → Loading local manifest/file URL")
+        } else {
+            AppLogger.i("iOS.Player", "  → Loading remote manifest URL with AVURLAsset headers")
         }
 
         val url = nsUrlFor(resolved)
         if (url == null) {
             AppLogger.e("iOS.Player", "  ✗ nsUrlFor returned null for: $resolved", null)
-            return
+            return null
         }
-        AppLogger.i("iOS.Player", "  → AVPlayerItem(url=$resolved) with headers")
-        val options: Map<Any?, *> = mapOf("AVURLAssetHTTPHeaderFieldsKey" to authHeaders)
-        val asset = platform.AVFoundation.AVURLAsset(uRL = url, options = options)
+        val assetOptions: Map<Any?, Any?>? = if (isRemoteUrl) {
+            val headerFields = NSMutableDictionary()
+            authHeaders["X-Session-Token"]?.let { headerFields.setValue(it, forKey = "X-Session-Token") }
+            authHeaders["Authorization"]?.let { headerFields.setValue(it, forKey = "Authorization") }
+            if (headerFields.count.toInt() > 0) {
+                // AVURLAsset option key literal mirrors AVFoundation's AVURLAssetHTTPHeaderFieldsKey.
+                mapOf("AVURLAssetHTTPHeaderFieldsKey" to headerFields)
+            } else null
+        } else null
+        AppLogger.i("iOS.Player", "  → AVURLAsset(url=$resolved, hasHeaders=${assetOptions != null})")
+        val asset = AVURLAsset(uRL = url, options = assetOptions)
         val playerItem = AVPlayerItem(asset)
+        // Apply default Auto cap on newly created items; manual quality changes can override it.
+        playerItem.preferredPeakBitRate = autoPeakBitRate
+        itemSourceByHash[playerItem.hashCode()] = resolved
+        applyBufferingPreferences(playerItem)
+        AppLogger.i(
+            "iOS.Player",
+            "  buffering waitToMinimizeStalling=${playerConfig.iosAutomaticallyWaitsToMinimizeStalling} " +
+                "forwardBuffer=${playerConfig.iosPreferredForwardBufferSeconds}s"
+        )
+        return playerItem
+    }
+
+    actual fun addItem(mediaItem: PlaybackMediaItem) {
+        val playerItem = buildPlayerItem(mediaItem) ?: return
         avPlayer.insertItem(playerItem, afterItem = null)
-        AppLogger.i("iOS.Player", "  ✓ item inserted, queue size=${avPlayer.items().size}")
+        AppLogger.i("iOS.Player", "  ✓ item appended to queue, size=${avPlayer.items().size}")
         diag("addItem media=${mediaItem.id} queue=${avPlayer.items().size}")
     }
 
@@ -218,6 +316,7 @@ actual class PlaybackStateController(
         released = false
         timerTick = 0
         lastEmittedPlaybackState = null
+        applyPlayerBufferingPreferences()
         diag("initPlayer released=$released")
 
         progressTimer?.invalidate()
@@ -238,10 +337,12 @@ actual class PlaybackStateController(
             // ── Check AVPlayerItem-level error (e.g. 401, file not found, decode fail) ──
             val itemErr = item?.error
             if (itemErr != null) {
+                val failedSource = item?.let { itemSourceByHash[it.hashCode()] }
                 AppLogger.e("iOS.Player",
                     "AVPlayerItem error: code=${itemErr.code()} " +
                     "domain=${itemErr.domain()} " +
-                    "desc=${itemErr.localizedDescription()}", null)
+                    "desc=${itemErr.localizedDescription()} " +
+                    "source=${failedSource ?: "<unknown>"}", null)
                 val desc = itemErr.localizedDescription()?.lowercase() ?: ""
                 if (desc.contains("401") || desc.contains("unauthorized")) {
                     com.vditital.data.security.SessionRevokedBus.emit()
@@ -258,7 +359,9 @@ actual class PlaybackStateController(
             if (item?.status == AVPlayerItemStatusFailed) {
                 val statusErr = item?.error
                 val desc = statusErr?.localizedDescription() ?: "item status is failed"
-                AppLogger.e("iOS.Player", "AVPlayerItem status failed: $desc", null)
+                val failedSource = item?.let { itemSourceByHash[it.hashCode()] }
+                AppLogger.e("iOS.Player",
+                    "AVPlayerItem status failed: $desc source=${failedSource ?: "<unknown>"}", null)
                 emitPlaybackStateIfChanged(Error("Playback failed: $desc"), playbackState)
                 return@timerWithTimeInterval
             }
@@ -285,8 +388,13 @@ actual class PlaybackStateController(
                     emitPlaybackStateIfChanged(PlaybackState.Ended, playbackState)
                 item?.isPlaybackBufferEmpty() == true ->
                     emitPlaybackStateIfChanged(Buffering, playbackState)
+                // User-paused media that is otherwise ready should remain Paused,
+                // not Buffering, so controls/state stay stable between timer ticks.
+                avPlayer.rate == 0.0f && item != null &&
+                    (item.isPlaybackLikelyToKeepUp() == true || item.isPlaybackBufferFull() == true) ->
+                    emitPlaybackStateIfChanged(Paused, playbackState)
                 else ->
-                    // Not playing, not empty, no error yet — still buffering
+                    // Not playing, not paused-ready, no error yet — still buffering.
                     emitPlaybackStateIfChanged(Buffering, playbackState)
             }
         }
@@ -295,7 +403,7 @@ actual class PlaybackStateController(
     }
 
     actual fun pause(playbackState: (PlaybackState) -> Unit) {
-        (avPlayer as AVPlayer).pause()
+        avPlayer.pause()
         diag("pause")
         emitPlaybackStateIfChanged(Paused, playbackState)
     }
@@ -307,17 +415,34 @@ actual class PlaybackStateController(
         lastEmittedPlaybackState = null
         prefetchClient?.close()
         prefetchClient = null
-        (avPlayer as AVPlayer).pause()
+        avPlayer.pause()
         progressTimer?.invalidate()
         progressTimer = null
         avPlayer.removeAllItems()
+        // Dispatch temp file cleanup to IO — NSFileManager.removeItemAtPath is blocking I/O.
+        // Snapshot the paths list before launching so the closure captures a safe copy.
+        val pathsToDelete = tempManifestPaths.toList()
+        tempManifestPaths.clear()
+        itemSourceByHash.clear()
+        controllerScope.launch(Dispatchers.IO) {
+            val fileManager = NSFileManager.defaultManager
+            pathsToDelete.forEach { path ->
+                runCatching {
+                    fileManager.removeItemAtPath(path, error = null)
+                }.onFailure {
+                    AppLogger.w("iOS.Player", "release: failed to delete temp manifest $path: ${it.message}")
+                }
+            }
+        }
+        controllerScope.cancel()
         diag("release done queue=${avPlayer.items().size}")
     }
 
     actual fun resume() { avPlayer.play() }
 
     actual fun isPlaying(): Boolean =
-        avPlayer.rate.toLong().toInt() != 0 && avPlayer.error == null
+        // Compare as Float — toLong() truncates 0.999f to 0, falsely reporting not-playing.
+        avPlayer.rate != 0.0f && avPlayer.error == null
 
     actual fun duration(): Long {
         val sec = avPlayer.currentItem?.let { CMTimeGetSeconds(it.duration) }
@@ -331,7 +456,16 @@ actual class PlaybackStateController(
 
     actual fun seekTo(position: Long) {
         diag("seekTo position=$position")
-        avPlayer.seekToTime(CMTimeMake(position, 1000))
+        // Use zero tolerance (CMTimeMake(0,1) = 0 seconds) so AVFoundation seeks to
+        // the exact millisecond requested rather than snapping to the nearest HLS
+        // segment keyframe boundary (which can be ±3 s on 6-second segments with the
+        // default tolerances).
+        val zeroTolerance = CMTimeMake(0, 1)
+        avPlayer.seekToTime(
+            CMTimeMake(position, 1000),
+            toleranceBefore = zeroTolerance,
+            toleranceAfter  = zeroTolerance
+        )
     }
 
     actual fun play(playbackState: (PlaybackState) -> Unit) {
@@ -341,11 +475,34 @@ actual class PlaybackStateController(
     }
 
     actual fun addItemItems(items: List<PlaybackMediaItem>) {
-        // Guard the timer against misreading the briefly-empty queue as stream-ended.
+        if (items.isEmpty()) {
+            AppLogger.w("iOS.Player", "addItemItems called with empty list — no-op to avoid spurious Ended state")
+            return
+        }
         isLoadingItems = true
+
+        // Build the first AVPlayerItem up-front so queue replacement can happen immediately.
+        val firstPlayerItem = buildPlayerItem(items.first())
+        if (firstPlayerItem == null) {
+            AppLogger.e("iOS.Player", "addItemItems: buildPlayerItem returned null for first item — aborting", null)
+            isLoadingItems = false
+            return
+        }
+
+        // Kotlin/Native AVFoundation bindings in this project do not expose
+        // replaceCurrentItemWithPlayerItem(_:) on AVQueuePlayer, so perform an explicit clear+insert.
         avPlayer.removeAllItems()
-        items.forEach { addItem(it) }
+        avPlayer.insertItem(firstPlayerItem, afterItem = null)
+        AppLogger.i("iOS.Player",
+            "addItemItems: queue replaced via removeAllItems+insertItem queue=${avPlayer.items().size}")
+
+        // Append any additional items (track-queue support).
+        for (i in 1 until items.size) {
+            addItem(items[i])
+        }
+
         isLoadingItems = false
+        diag("addItemItems count=${items.size} queue=${avPlayer.items().size}")
     }
 
     actual fun downloadDashManifest(playbackItem: PlaybackMediaItem) {}
@@ -355,7 +512,7 @@ actual class PlaybackStateController(
         // preferredPeakBitRate hints the adaptive algorithm toward a specific tier;
         // 0.0 restores fully-automatic selection.
         when (quality) {
-            PlaybackQuality.Auto   -> avPlayer.currentItem?.preferredPeakBitRate = 0.0
+            PlaybackQuality.Auto   -> avPlayer.currentItem?.preferredPeakBitRate = autoPeakBitRate
             PlaybackQuality.Q360p  -> avPlayer.currentItem?.preferredPeakBitRate = 800_000.0
             PlaybackQuality.Q480p  -> avPlayer.currentItem?.preferredPeakBitRate = 1_500_000.0
             PlaybackQuality.Q720p  -> avPlayer.currentItem?.preferredPeakBitRate = 3_000_000.0

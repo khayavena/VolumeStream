@@ -3,7 +3,7 @@ package com.vditital.data.config
 /**
  * All runtime-configurable parameters for the StreamVault data layer.
  *
- * Supply a custom instance via Koin before [externalDataModule] is loaded:
+ * Supply a custom instance via Koin before `externalDataModule` is loaded:
  *
  * ```kotlin
  * startKoin {
@@ -31,6 +31,10 @@ data class StreamVaultConfig(
     val apiBasePath: String = "api/v1",
     /** Common prefix for all auth-pulse paths, e.g. "api". */
     val authBasePath: String = "api",
+    /** Canonical user-scoped HLS manifest path advertised by the media feed. */
+    val userManifestPath: String = "manifest",
+    /** Non-user-scoped HLS master manifest path. */
+    val hlsManifestPath: String = "manifest/hls",
     /**
      * Path segment appended to [apiBasePath] to reach the DASH MPD manifest endpoint.
      * Full manifest URL: {scheme}://{host}:{port}/{apiBasePath}/{dashManifestPath}/{mediaId}
