@@ -30,6 +30,7 @@ import platform.AVFoundation.AVPlayer
 import platform.AVFoundation.AVPlayerItem
 import platform.AVFoundation.AVPlayerItemStatusFailed
 import platform.AVFoundation.AVQueuePlayer
+import platform.AVFoundation.AVPlayerItemDidPlayToEndTimeNotification
 import platform.AVFoundation.AVURLAsset
 import platform.AVFoundation.currentItem
 import platform.AVFoundation.currentTime
@@ -75,6 +76,8 @@ actual class PlaybackStateController(
     // not misread the momentarily-empty queue as a stream-ended condition.
     private var isLoadingItems = false
     private var lastEmittedPlaybackState: PlaybackState? = null
+    private var endObserver: Any? = null
+    private var didReachEnd = false
 
     // authHeaders is written by setAuthHeaders() in the ViewModel coroutine, always before a
     // withContext(Dispatchers.IO) boundary, so coroutine happens-before semantics guarantee
@@ -117,6 +120,14 @@ actual class PlaybackStateController(
                 socketTimeoutMillis  = 10_000
             }
         }.also { prefetchClient = it }
+    }
+
+    private fun clearEndObserver() {
+        val observer = endObserver
+        if (observer != null) {
+            NSNotificationCenter.defaultCenter.removeObserver(observer)
+        }
+        endObserver = null
     }
 
     actual fun setAuthHeaders(headers: Map<String, String>) {
@@ -316,8 +327,22 @@ actual class PlaybackStateController(
         released = false
         timerTick = 0
         lastEmittedPlaybackState = null
+        didReachEnd = false
         applyPlayerBufferingPreferences()
         diag("initPlayer released=$released")
+
+        clearEndObserver()
+        endObserver = NSNotificationCenter.defaultCenter.addObserverForName(
+            name = AVPlayerItemDidPlayToEndTimeNotification,
+            `object` = null,
+            queue = null
+        ) { notification ->
+            val endedItem = notification?.`object` as? AVPlayerItem
+            if (endedItem != null && endedItem != avPlayer.currentItem) return@addObserverForName
+            didReachEnd = true
+            emitPlaybackStateIfChanged(PlaybackState.Ended, playbackState)
+            diag("observed didPlayToEnd item=${endedItem?.hashCode()}")
+        }
 
         progressTimer?.invalidate()
         progressTimer = null
@@ -380,6 +405,8 @@ actual class PlaybackStateController(
             }
 
             when {
+                didReachEnd && !released && !isLoadingItems ->
+                    emitPlaybackStateIfChanged(PlaybackState.Ended, playbackState)
                 isPlaying() ->
                     emitPlaybackStateIfChanged(playerState(), playbackState)
                 // Guard: if we're in the middle of swapping the queue
@@ -412,7 +439,9 @@ actual class PlaybackStateController(
         if (released) return
         diag("release start queue=${avPlayer.items().size}")
         released = true
+        didReachEnd = false
         lastEmittedPlaybackState = null
+        clearEndObserver()
         prefetchClient?.close()
         prefetchClient = null
         avPlayer.pause()
@@ -480,6 +509,7 @@ actual class PlaybackStateController(
             return
         }
         isLoadingItems = true
+        didReachEnd = false
 
         // Build the first AVPlayerItem up-front so queue replacement can happen immediately.
         val firstPlayerItem = buildPlayerItem(items.first())
