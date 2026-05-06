@@ -150,6 +150,10 @@ actual class PlaybackStateController(private val media3PlayerComponent: Media3Pl
     class PlaybackControllerListener(val playbackState: (PlaybackState) -> Unit) : Listener {
         override fun onPlayerError(error: PlaybackException) {
             super.onPlayerError(error)
+            Log.e(
+                "VolumeStream",
+                "onPlayerError code=${error.errorCode} name=${error.errorCodeName} msg=${error.message}\n${error.causeChain()}"
+            )
             // ERROR_CODE_AUTHENTICATION_EXPIRED = 4003 in Media3.
             // This happens when the DASH segment request returns 401 mid-playback
             // (e.g. the session was revoked server-side). Treat it the same way as
@@ -161,6 +165,7 @@ actual class PlaybackStateController(private val media3PlayerComponent: Media3Pl
             // ERROR_CODE_AUTHENTICATION_EXPIRED) for 401 responses, so we also walk
             // the cause chain for an InvalidResponseCodeException with responseCode 401.
             if (error.errorCode == PlaybackException.ERROR_CODE_AUTHENTICATION_EXPIRED || error.is401()) {
+                Log.w("VolumeStream", "Playback session expired/unauthorized (401/auth-expired), signaling SessionExpired")
                 com.vditital.data.security.SessionRevokedBus.emit()
                 playbackState(PlaybackState.SessionExpired)
             } else {
@@ -186,9 +191,30 @@ actual class PlaybackStateController(private val media3PlayerComponent: Media3Pl
 private fun PlaybackException.is401(): Boolean {
     var t: Throwable? = cause
     while (t != null) {
+        if (t is HttpDataSource.InvalidResponseCodeException) {
+            Log.w(
+                "VolumeStream",
+                "HTTP load failure code=${t.responseCode} uri=${t.dataSpec?.uri}"
+            )
+        }
         if (t is HttpDataSource.InvalidResponseCodeException && t.responseCode == 401) return true
         t = t.cause
     }
     return false
 }
 
+private fun Throwable.causeChain(): String {
+    val out = StringBuilder()
+    var current: Throwable? = this
+    var depth = 0
+    while (current != null && depth < 10) {
+        out.append("cause[").append(depth).append("] ")
+            .append(current::class.simpleName ?: current::class.java.name)
+            .append(": ")
+            .append(current.message ?: "<no-message>")
+            .append('\n')
+        current = current.cause
+        depth++
+    }
+    return out.toString().trimEnd()
+}

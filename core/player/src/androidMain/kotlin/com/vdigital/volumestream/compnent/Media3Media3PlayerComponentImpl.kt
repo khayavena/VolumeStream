@@ -10,6 +10,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
@@ -55,6 +56,29 @@ class Media3Media3PlayerComponentImpl(
             .setLoadControl(loadControl)
             .build()
             .also { player ->
+                player.addAnalyticsListener(object : AnalyticsListener {
+                    override fun onLoadStarted(
+                        eventTime: AnalyticsListener.EventTime,
+                        loadEventInfo: androidx.media3.exoplayer.source.LoadEventInfo,
+                        mediaLoadData: androidx.media3.exoplayer.source.MediaLoadData
+                    ) {
+                        Log.d("VolumeStream", "Media3 load-start uri=${redactUri(loadEventInfo.uri.toString())}")
+                    }
+
+                    override fun onLoadError(
+                        eventTime: AnalyticsListener.EventTime,
+                        loadEventInfo: androidx.media3.exoplayer.source.LoadEventInfo,
+                        mediaLoadData: androidx.media3.exoplayer.source.MediaLoadData,
+                        error: java.io.IOException,
+                        wasCanceled: Boolean
+                    ) {
+                        Log.e(
+                            "VolumeStream",
+                            "Media3 load-error uri=${redactUri(loadEventInfo.uri.toString())} canceled=$wasCanceled msg=${error.message}",
+                            error
+                        )
+                    }
+                })
                 // Tell ExoPlayer this is movie/TV content so the system uses the
                 // correct audio focus behaviour (AUDIOFOCUS_GAIN) and audio session.
                 // handleAudioBecomingNoisy = true pauses playback when headphones
@@ -110,10 +134,12 @@ class Media3Media3PlayerComponentImpl(
     }
 
     override fun setMediaItem(mediaItem: PlaybackMediaItem) {
+        Log.d("VolumeStream", "setMediaItem streamUrl=${redactUri(mediaItem.streamUrl)}")
         player.setMediaItem(buildMediaItem(mediaItem))
     }
 
     override fun addMediaItem(mediaItem: PlaybackMediaItem) {
+        Log.d("VolumeStream", "addMediaItem streamUrl=${redactUri(mediaItem.streamUrl)}")
         player.addMediaItem(buildMediaItem(mediaItem))
     }
 
@@ -125,7 +151,10 @@ class Media3Media3PlayerComponentImpl(
         // renderer — producing audio-only playback on every track after the first.
         player.stop()
         player.clearMediaItems()
-        mediaItems.forEach { player.addMediaItem(buildMediaItem(it)) }
+        mediaItems.forEach {
+            Log.d("VolumeStream", "addAll streamUrl=${redactUri(it.streamUrl)}")
+            player.addMediaItem(buildMediaItem(it))
+        }
         player.prepare()
         player.playWhenReady = true
     }
@@ -180,6 +209,15 @@ class Media3Media3PlayerComponentImpl(
             uri.startsWith("http")                             -> MimeTypes.APPLICATION_M3U8
             else                                               -> null
         }
+        val sourceType = when (mimeType) {
+            MimeTypes.APPLICATION_MPD -> "DASH"
+            MimeTypes.APPLICATION_M3U8 -> "HLS"
+            else -> "PROGRESSIVE/UNKNOWN"
+        }
+        Log.d(
+            "VolumeStream",
+            "buildMediaItem source=$sourceType mime=${mimeType ?: "<none>"} uri=${redactUri(uri)}"
+        )
         return MediaItem.Builder()
             .setUri(uri)
             .setMediaId(uri)
@@ -191,5 +229,9 @@ class Media3Media3PlayerComponentImpl(
                     .build()
             )
             .build()
+    }
+
+    private fun redactUri(uri: String): String {
+        return uri.replace(Regex("([?&](?:t|sid|token)=)[^&]+", RegexOption.IGNORE_CASE), "$1***")
     }
 }

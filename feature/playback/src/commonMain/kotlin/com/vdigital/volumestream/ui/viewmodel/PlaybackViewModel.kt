@@ -224,17 +224,17 @@ class PlaybackViewModel(
             // LaunchedEffect.  Setting Buffering here changes the LaunchedEffect key, cancelling
             // that countdown before the new item is even inserted into the player.
             _playBackState.value = PlaybackState.Buffering
-            // Queue items FIRST so the timer never sees an empty queue on its
-            // first tick (which would incorrectly emit PlaybackState.Ended).
+             // initPlayer builds a brand-new ExoPlayer / AVPlayer and attaches it to
+             // the surface owned by PlatformMediaPlayerView.  Call this ONLY once — on
+             // first launch.  For subsequent track changes use handleTrackSwitch().
+             playbackStateController.initPlayer({ currentPosition, duration ->
+                 _durationMs.value    = duration
+                 _progressState.value = if (duration > 0) currentPosition.toFloat() / duration else 0f
+             }, playbackState = { _playBackState.value = it })
+            // Queue items AFTER initPlayer: Android initPlayer() clears ExoPlayer items.
+            // Adding media first causes the startup item to be wiped before playback starts.
             playbackStateController.addItemItems(playbackMediaItems)
-            // initPlayer builds a brand-new ExoPlayer / AVPlayer and attaches it to
-            // the surface owned by PlatformMediaPlayerView.  Call this ONLY once — on
-            // first launch.  For subsequent track changes use handleTrackSwitch().
-            playbackStateController.initPlayer({ currentPosition, duration ->
-                _durationMs.value    = duration
-                _progressState.value = if (duration > 0) currentPosition.toFloat() / duration else 0f
-            }, playbackState = { _playBackState.value = it })
-            playbackStateController.play(playbackState = { _playBackState.value = it })
+             playbackStateController.play(playbackState = { _playBackState.value = it })
         } catch (e: Exception) {
             AppLogger.e("PlaybackVM", "Player initialisation error", e)
             _playBackState.value = PlaybackState.Error("Exception was thrown.")

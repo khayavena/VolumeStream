@@ -4,6 +4,7 @@ import com.vditital.data.datasource.AuthDataSource
 import com.vditital.data.repository.state.ResultState
 import com.vditital.data.security.TokenStore
 import com.vditital.data.util.AppLogger
+import com.vditital.data.util.isJwtExpired
 
 class AuthRepositoryImpl(
     private val authDataSource: AuthDataSource,
@@ -42,6 +43,24 @@ class AuthRepositoryImpl(
         tokenStore.clearAll()
     }
 
-    override suspend fun ensureValidJwt(): String? = tokenStore.getJwt()
+    override suspend fun ensureValidJwt(): String? {
+        val current = tokenStore.getJwt()?.takeIf { it.isNotBlank() } ?: return null
+        if (!isJwtExpired(current)) return current
+
+        AppLogger.d("AuthRepo", "JWT expired; attempting refresh")
+        return runCatching {
+            val refreshed = authDataSource.refreshToken(current)
+                .token
+                .removePrefix("Bearer ")
+                .trim()
+            require(refreshed.isNotBlank()) { "Refresh endpoint returned an empty token" }
+            tokenStore.setJwt(refreshed)
+            refreshed
+        }.getOrElse { e ->
+            AppLogger.e("AuthRepo", "JWT refresh failed; clearing stored JWT", e as? Exception ?: Exception(e))
+            tokenStore.clearJwt()
+            null
+        }
+    }
 }
 

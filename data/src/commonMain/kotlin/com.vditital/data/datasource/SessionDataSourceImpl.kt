@@ -54,6 +54,9 @@ class SessionDataSourceImpl(
 
     override suspend fun startSession(jwt: String, videoId: String): SessionStartResponse {
         val userId   = extractUserIdFromJwt(jwt)
+        check(userId.isNotBlank()) {
+            "Unable to extract userId/sub/id claim from JWT; cannot build cert-pin payload"
+        }
         val deviceId = tokenStore.getDeviceId()
 
         // Use server time to sign — guards against emulator/device clock drift
