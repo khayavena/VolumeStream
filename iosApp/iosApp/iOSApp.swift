@@ -5,6 +5,24 @@ import AVFoundation
 
 class AppDelegate: NSObject, UIApplicationDelegate {
 
+    private func applyOrientationLock(_ application: UIApplication?) {
+        let mask: UIInterfaceOrientationMask = OrientationManager.shared.forceLandscape ? .landscape : .portrait
+
+        let scenes = application?.connectedScenes.compactMap { $0 as? UIWindowScene } ?? []
+        guard let windowScene = scenes.first else { return }
+
+        if #available(iOS 16.0, *) {
+            windowScene.requestGeometryUpdate(.iOS(interfaceOrientations: mask)) { error in
+                print("Geometry update error: \(error)")
+            }
+            let keyWindow = windowScene.windows.first(where: { $0.isKeyWindow })
+            keyWindow?.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()
+            UIViewController.attemptRotationToDeviceOrientation()
+        } else {
+            UIViewController.attemptRotationToDeviceOrientation()
+        }
+    }
+
     func application(
         _ application: UIApplication,
         supportedInterfaceOrientationsFor window: UIWindow?
@@ -28,19 +46,10 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             object: nil,
             queue: .main
         ) { [weak application] _ in
-            guard let windowScene = application?.connectedScenes
-                .compactMap({ $0 as? UIWindowScene }).first else { return }
-            if #available(iOS 16.0, *) {
-                windowScene.requestGeometryUpdate(
-                    .iOS(interfaceOrientations: OrientationManager.shared.forceLandscape
-                        ? .landscape : .portrait)
-                )
-                windowScene.keyWindow?.rootViewController?
-                    .setNeedsUpdateOfSupportedInterfaceOrientations()
-            } else {
-                UIViewController.attemptRotationToDeviceOrientation()
-            }
+            self.applyOrientationLock(application)
         }
+
+        applyOrientationLock(application)
         return true
     }
 }

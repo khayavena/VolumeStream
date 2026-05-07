@@ -20,6 +20,7 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -55,6 +56,8 @@ class PlaybackViewModel(
     private var initialiseJob: Job? = null
     /** Latest-track-wins guard: prevents stale async selectTrack completions from overriding newer taps. */
     private var selectTrackJob: Job? = null
+    /** Guards against ultra-fast duplicate play/pause taps (seen mostly on iOS overlays). */
+    private var playPauseToggleLocked = false
     private var trackSelectionVersion: Long = 0L
 
 
@@ -282,7 +285,16 @@ class PlaybackViewModel(
     }
 
     fun playPause() {
-        if (_playBackState.value == PlaybackState.Playing) {
+        if (playPauseToggleLocked) return
+        playPauseToggleLocked = true
+        viewModelScope.launch {
+            delay(220)
+            playPauseToggleLocked = false
+        }
+
+        // Use the platform player's real-time state to avoid stale UI-state races
+        // from timer-based playback updates (seen most on iOS AVPlayer).
+        if (playbackStateController.isPlaying()) {
             playbackStateController.pause(playbackState = { _playBackState.value = it })
         } else {
             playbackStateController.play(playbackState = { _playBackState.value = it })

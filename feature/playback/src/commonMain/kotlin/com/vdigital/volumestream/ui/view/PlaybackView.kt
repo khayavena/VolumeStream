@@ -20,8 +20,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -31,9 +36,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -56,7 +64,14 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.annotation.KoinExperimentalAPI
 
 private val GreenAccent    = Color(0xFF00E676)
-private val ControlsBarBg  = Color(0xCC000000)
+private val ControlsBarBg  = Color(0x8C000000)
+private val ErrorOverlayBg = Color(0x99000000)
+private val TopScrimBrush = Brush.verticalGradient(
+    colors = listOf(Color(0x8F000000), Color.Transparent)
+)
+private val BottomScrimBrush = Brush.verticalGradient(
+    colors = listOf(Color.Transparent, Color(0x96000000))
+)
 private const val CONTROLS_HIDE_DELAY_MS = 4_000L
 
 @OptIn(KoinExperimentalAPI::class)
@@ -190,7 +205,7 @@ fun PlaybackView(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0xCC000000)),
+                    .background(ErrorOverlayBg),
                 contentAlignment = Alignment.Center
             ) {
                 Column(
@@ -216,7 +231,7 @@ fun PlaybackView(
                     // Tappable back link — important because showControls auto-hides
                     // after 4 s and the overlay would otherwise trap the user.
                     Text(
-                        text = "Tap ❮ to go back",
+                        text = "Tap Back to go back",
                         color = Color(0xFF00E676),
                         fontSize = 13.sp,
                         textAlign = TextAlign.Center,
@@ -240,14 +255,16 @@ fun PlaybackView(
         ) {
             IconButton(
                 onClick = handleBack,
-                modifier = Modifier.padding(8.dp).size(44.dp)
+                modifier = Modifier
+                    .padding(8.dp)
+                    .size(44.dp)
+                    .semantics { contentDescription = "Back" }
             ) {
-                Text(
-                    text = "❮",
-                    color = GreenAccent,
-                    fontSize = 26.sp,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = GreenAccent,
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }
@@ -260,6 +277,7 @@ fun PlaybackView(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .background(TopScrimBrush)
                     .padding(horizontal = 16.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
@@ -277,11 +295,19 @@ fun PlaybackView(
                             if (isZoomed) GreenAccent else Color(0xFF444444),
                             CircleShape
                         )
+                        .semantics {
+                            contentDescription = if (isZoomed) {
+                                "Video mode fill. Tap to switch to fit"
+                            } else {
+                                "Video mode fit. Tap to switch to fill"
+                            }
+                        }
                 ) {
                     Text(
-                        if (isZoomed) "⊡" else "⊞",
+                        if (isZoomed) "FILL" else "FIT",
                         color = if (isZoomed) GreenAccent else Color.White,
-                        fontSize = 16.sp
+                        fontSize = 10.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
@@ -299,6 +325,13 @@ fun PlaybackView(
                             if (showQualityPanel) GreenAccent else Color(0xFF444444),
                             CircleShape
                         )
+                        .semantics {
+                            contentDescription = if (showQualityPanel) {
+                                "Close quality options"
+                            } else {
+                                "Open quality options"
+                            }
+                        }
                 ) {
                     Text(
                         if (currentQuality == PlaybackQuality.Auto) "HD" else currentQuality.label,
@@ -322,11 +355,19 @@ fun PlaybackView(
                             if (showTrackPanel) GreenAccent else Color(0xFF444444),
                             CircleShape
                         )
+                        .semantics {
+                            contentDescription = if (showTrackPanel) {
+                                "Close track list"
+                            } else {
+                                "Open track list"
+                            }
+                        }
                 ) {
-                    Text(
-                        if (showTrackPanel) "✕" else "☰",
-                        color = if (showTrackPanel) GreenAccent else Color.White,
-                        fontSize = 16.sp
+                    Icon(
+                        imageVector = if (showTrackPanel) Icons.Default.Close else Icons.Default.Menu,
+                        contentDescription = if (showTrackPanel) "Close track list" else "Open track list",
+                        tint = if (showTrackPanel) GreenAccent else Color.White,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
@@ -337,21 +378,28 @@ fun PlaybackView(
             modifier = Modifier.align(Alignment.BottomCenter),
             enter = fadeIn(), exit = fadeOut()
         ) {
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(ControlsBarBg)
-                    .padding(horizontal = 8.dp, vertical = 10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .background(BottomScrimBrush)
+                    .padding(horizontal = 8.dp, vertical = 10.dp)
             ) {
-                PlayPauseControl(
-                    viewModel = viewModel,
-                    onPlayPause = {
-                    viewModel.playPause()
-                    controlsResetTick++
-                })
-                Spacer(modifier = Modifier.height(6.dp))
-                PlaybackSeekBar(viewModel = viewModel)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(ControlsBarBg)
+                        .padding(horizontal = 10.dp, vertical = 10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    PlayPauseControl(
+                        viewModel = viewModel,
+                        onPlayPause = {
+                        viewModel.playPause()
+                        controlsResetTick++
+                    })
+                    Spacer(modifier = Modifier.height(6.dp))
+                    PlaybackSeekBar(viewModel = viewModel)
+                }
             }
         }
 

@@ -19,9 +19,6 @@ kotlin {
     iosX64()
     iosArm64()
     iosSimulatorArm64()
-    tvosX64()
-    tvosArm64()
-    tvosSimulatorArm64()
 
     sourceSets {
         commonMain.dependencies {
@@ -30,6 +27,7 @@ kotlin {
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material)
+            implementation(compose.materialIconsExtended)
             implementation(compose.ui)
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
@@ -44,10 +42,6 @@ kotlin {
         }
         // Shared source set for all iOS targets — hierarchy template creates it automatically.
         val iosMain by getting
-        // tvOS: PlatformBackHandler is a no-op on iOS and likewise on tvOS
-        val tvosMain by getting {
-            kotlin.srcDirs("src/iosMain/kotlin")
-        }
     }
 }
 

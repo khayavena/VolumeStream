@@ -53,7 +53,7 @@ private val TvCardImageTintBottom = Color(0x1F161B18)
 
 /**
  * TV-optimised media item card. Larger artwork (16:9 ratio), bigger text,
- * and [Modifier.focusable] so D-pad focus works on both Android TV and tvOS.
+ * and [Modifier.focusable] so D-pad focus works on Android TV.
  *
  * Download indicator matches [MediaItemWidget] so the UX is consistent.
  */
