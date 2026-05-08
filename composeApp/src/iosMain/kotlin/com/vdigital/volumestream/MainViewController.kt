@@ -5,5 +5,6 @@ import com.vditital.data.util.AppLogger
 
 fun MainViewController() = ComposeUIViewController {
     AppLogger.init()
+    initKoinIfNeeded()
     VolumeStreamApp()
 }

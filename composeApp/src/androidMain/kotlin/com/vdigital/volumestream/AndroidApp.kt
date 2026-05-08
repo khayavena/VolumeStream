@@ -1,9 +1,7 @@
 package com.vdigital.volumestream
 
 import android.app.Application
-import com.vdigital.volumestream.di.appModule
 import com.vditital.data.util.AppLogger
-import org.koin.core.context.startKoin
 
 
 class AndroidApp : Application() {
@@ -13,10 +11,7 @@ class AndroidApp : Application() {
         super.onCreate()
         AppLogger.init()
         instance = this
-        startKoin {
-            configureKoin()
-            modules(appModule)
-        }
+        initKoinIfNeeded()
     }
 
     companion object {
