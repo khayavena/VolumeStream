@@ -22,14 +22,14 @@ data class PlayerConfig(
     val cacheDirName: String = "media",
 
     // ── Android ExoPlayer buffering ───────────────────────────────────────────
-    /** Minimum steady-state forward buffer kept in memory (default 15s). */
-    val minBufferMs: Int = 15_000,
-    /** Maximum forward buffer the player will try to maintain ahead (default 30s). */
-    val maxBufferMs: Int = 30_000,
-    /** Buffer required before initial playback starts (default 2.5s). */
-    val bufferForPlaybackMs: Int = 2_500,
-    /** Buffer required before resuming after a stall (default 5s). */
-    val bufferForPlaybackAfterRebufferMs: Int = 5_000,
+    /** Minimum steady-state forward buffer kept in memory (default 20s for smoother TV VOD). */
+    val minBufferMs: Int = 20_000,
+    /** Maximum forward buffer the player will try to maintain ahead (default 60s). */
+    val maxBufferMs: Int = 60_000,
+    /** Buffer required before initial playback starts (default 1.5s for faster startup). */
+    val bufferForPlaybackMs: Int = 1_500,
+    /** Buffer required before resuming after a stall (default 3s). */
+    val bufferForPlaybackAfterRebufferMs: Int = 3_000,
 
     // ── iOS AVPlayer buffering ────────────────────────────────────────────────
     /**

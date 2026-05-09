@@ -14,6 +14,7 @@ import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.session.MediaController
 import androidx.media3.session.MediaSession
 import com.google.common.util.concurrent.FutureCallback
@@ -36,6 +37,14 @@ class Media3Media3PlayerComponentImpl(
 
     @OptIn(UnstableApi::class)
     private fun buildPlayer(): ExoPlayer {
+        val trackSelector = DefaultTrackSelector(context)
+        trackSelector.setParameters(
+            trackSelector.buildUponParameters()
+                .setAllowVideoNonSeamlessAdaptiveness(true)
+                .setAllowVideoMixedMimeTypeAdaptiveness(true)
+                .build()
+        )
+
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
                 playerConfig.minBufferMs,
@@ -43,6 +52,7 @@ class Media3Media3PlayerComponentImpl(
                 playerConfig.bufferForPlaybackMs,
                 playerConfig.bufferForPlaybackAfterRebufferMs
             )
+            .setPrioritizeTimeOverSizeThresholds(true)
             .build()
 
         // Prefer hardware codec extensions (e.g. MediaCodec VP9/AV1 hardware decoder).
@@ -52,6 +62,7 @@ class Media3Media3PlayerComponentImpl(
             .setEnableDecoderFallback(true)
 
         return ExoPlayer.Builder(context, renderersFactory)
+            .setTrackSelector(trackSelector)
             .setMediaSourceFactory(cachedPlaybackDataSourceFactory.buildCacheDataSourceFactory())
             .setLoadControl(loadControl)
             .build()
