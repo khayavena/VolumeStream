@@ -93,6 +93,21 @@ class PlaybackViewModel(
                 diag("initialise media=${item.id} os=${osType.name}")
                 AppLogger.i("PlaybackVM", "initialise mediaId=${item.id} platform=${osType.name}")
 
+                val localPlaybackItem = withContext(Dispatchers.IO) { resolveLocalPlaybackItem(item) }
+                if (localPlaybackItem != null) {
+                    diag("initialise local_source media=${item.id}")
+                    AppLogger.i("PlaybackVM", "Local playback source detected for mediaId=${item.id}; skipping auth/session bootstrap")
+                    playbackStateController.setAuthHeaders(emptyMap())
+                    handleInitialPlayback(mutableListOf(localPlaybackItem))
+                    return@launch
+                }
+                if (item.isDownloaded) {
+                    diag("initialise downloaded_missing_local media=${item.id}")
+                    AppLogger.e("PlaybackVM", "Downloaded item has no local source: mediaId=${item.id}. Blocking API fallback.", null)
+                    _playBackState.value = PlaybackState.Error("Downloaded file is missing. Please re-download.")
+                    return@launch
+                }
+
                 // 1. Ensure we have a valid (non-expired) JWT
                 val jwt = withContext(Dispatchers.IO) { authRepository.ensureValidJwt() }
                 if (jwt == null) {
@@ -328,6 +343,22 @@ class PlaybackViewModel(
 
         selectTrackJob = viewModelScope.launch { // uses Dispatchers.Main.immediate from viewModelScope
             try {
+                val localPlaybackItem = withContext(Dispatchers.IO) { resolveLocalPlaybackItem(item) }
+                if (localPlaybackItem != null) {
+                    diag("selectTrack local_source media=${item.id}")
+                    AppLogger.i("PlaybackVM", "Local playback source detected for track ${item.id}; skipping auth/session bootstrap")
+                    if (selectionVersion != trackSelectionVersion) return@launch
+                    playbackStateController.setAuthHeaders(emptyMap())
+                    handleTrackSwitch(localPlaybackItem)
+                    return@launch
+                }
+                if (item.isDownloaded) {
+                    diag("selectTrack downloaded_missing_local media=${item.id}")
+                    AppLogger.e("PlaybackVM", "Downloaded track has no local source: mediaId=${item.id}. Blocking API fallback.", null)
+                    _playBackState.value = PlaybackState.Error("Downloaded file is missing. Please re-download.")
+                    return@launch
+                }
+
                 val jwt = withContext(Dispatchers.IO) { authRepository.ensureValidJwt() }
                 if (jwt == null) {
                     diag("selectTrack exit reason=no_jwt media=${item.id}")
@@ -416,6 +447,25 @@ class PlaybackViewModel(
     fun setQuality(q: PlaybackQuality) {
         _quality.value = q
         playbackStateController.setQuality(q)
+    }
+
+    private suspend fun resolveLocalPlaybackItem(item: PlaybackMediaItem): PlaybackMediaItem? {
+        val localPath = downloadController.getLocalPath(item.id)
+        if (localPath != null) {
+            return item.copy(isDownloaded = true, streamUrl = localPath, hlsStreamUrl = localPath)
+        }
+
+        val current = item.hlsStreamUrl.ifBlank { item.streamUrl }
+        return if (isLocalPath(current)) {
+            item.copy(isDownloaded = true, streamUrl = current, hlsStreamUrl = current)
+        } else {
+            null
+        }
+    }
+
+    private fun isLocalPath(path: String): Boolean {
+        val p = path.trim().lowercase()
+        return p.startsWith("file://") || p.startsWith("/")
     }
 
     // viewModelScope is already cancelled by ViewModel.onCleared() — no need to

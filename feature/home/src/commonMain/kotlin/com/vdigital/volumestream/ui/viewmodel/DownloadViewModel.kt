@@ -6,9 +6,15 @@ import com.vdigital.volumestream.core.player.SelectedMediaItemHolder
 import com.vdigital.volumestream.core.player.download.DownloadController
 import com.vdigital.volumestream.core.player.download.DownloadItem
 import com.vdigital.volumestream.core.player.download.DownloadState
+import com.vditital.data.config.StreamVaultConfig
 import com.vditital.data.model.PlaybackMediaItem
+import com.vditital.data.repository.AuthRepository
+import com.vditital.data.repository.SessionRepository
+import com.vditital.data.repository.state.ResultState
 import com.vditital.data.security.SettingsStore
 import com.vditital.data.util.AppLogger
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,7 +31,16 @@ class DownloadViewModel(
     private val downloadController: DownloadController,
     private val selectedMediaItemHolder: SelectedMediaItemHolder,
     private val settingsStore: SettingsStore,
+    private val authRepository: AuthRepository,
+    private val sessionRepository: SessionRepository,
+    private val config: StreamVaultConfig,
 ) : ViewModel() {
+
+    private companion object {
+        const val HEADER_AES_KEY_B64 = "X-Aes-Key-B64"
+    }
+
+    private data class DownloadRequest(val url: String, val headers: Map<String, String>)
 
     private val _allDownloads = MutableStateFlow<List<DownloadItem>>(emptyList())
     val allDownloads: StateFlow<List<DownloadItem>> = _allDownloads.asStateFlow()
@@ -62,14 +77,22 @@ class DownloadViewModel(
     }
 
     fun download(item: PlaybackMediaItem) {
-        val url = item.downloadUrl.ifBlank { item.streamUrl }
         overrideFor(item.id).value = null
         viewModelScope.launch {
             try {
+                val request = withContext(Dispatchers.IO) { buildDownloadRequest(item) }
+                if (request == null) {
+                    overrideFor(item.id).value = DownloadState.Failed("Download unavailable for this item")
+                    return@launch
+                }
                 withContext(Dispatchers.IO) {
                     downloadController.download(
-                        item.id, url, item.title, item.artworkUrl,
-                        wifiOnly = settingsStore.isWifiOnlyDownloads()
+                        id = item.id,
+                        url = request.url,
+                        title = item.title,
+                        artworkUrl = item.artworkUrl,
+                        wifiOnly = settingsStore.isWifiOnlyDownloads(),
+                        headers = request.headers
                     )
                 }
                 // Wait for terminal state — Idle covers the "cancelled" path so
@@ -88,6 +111,76 @@ class DownloadViewModel(
             }
         }
     }
+
+    @OptIn(ExperimentalEncodingApi::class)
+    private suspend fun buildDownloadRequest(item: PlaybackMediaItem): DownloadRequest? {
+        val directUrl = item.downloadUrl.trim()
+        if (directUrl.isNotBlank()) {
+            val normalizedManifestUrl = DownloadUrlResolver.toDownloadManifestUrl(directUrl, item.id, config)
+            if (normalizedManifestUrl != null) {
+                return buildDashManifestDownloadRequest(item.id, normalizedManifestUrl)
+            }
+
+            val jwt = authRepository.ensureValidJwt()
+            val headers = if (jwt.isNullOrBlank()) emptyMap() else mapOf("Authorization" to "Bearer $jwt")
+            return DownloadRequest(directUrl, headers)
+        }
+
+        // Fallback for catalog items without direct downloadUrl:
+        // request the online DASH manifest so segment URLs are fetchable.
+        val sourceManifest = item.hlsStreamUrl.ifBlank { item.streamUrl }
+        val downloadManifestUrl = DownloadUrlResolver.toDownloadManifestUrl(sourceManifest, item.id, config)
+        if (downloadManifestUrl == null) {
+            AppLogger.w("DownloadVM", "Skipping download for ${item.id}: no downloadUrl and download manifest rewrite failed")
+            return null
+        }
+
+        return buildDashManifestDownloadRequest(item.id, downloadManifestUrl)
+    }
+
+    @OptIn(ExperimentalEncodingApi::class)
+    private suspend fun buildDashManifestDownloadRequest(mediaId: String, manifestUrl: String): DownloadRequest? {
+        val jwt = authRepository.ensureValidJwt() ?: return null
+        when (val reg = sessionRepository.ensureDeviceRegistered()) {
+            is ResultState.Error -> {
+                AppLogger.w("DownloadVM", "Download device registration failed: ${reg.exception.message}")
+                return null
+            }
+            else -> Unit
+        }
+
+        val session = sessionRepository.startSession(
+            jwt = jwt,
+            videoId = mediaId
+        )
+        if (session !is ResultState.Success) {
+            val message = (session as? ResultState.Error)?.exception?.message ?: "unknown"
+            AppLogger.w("DownloadVM", "Download session start failed for ${mediaId}: $message")
+            return null
+        }
+
+        val keyResult = sessionRepository.fetchAesKey(
+            mediaId = mediaId,
+            sessionId = session.data.sessionId,
+            sessionToken = session.data.sessionToken
+        )
+        if (keyResult !is ResultState.Success) {
+            val message = (keyResult as? ResultState.Error)?.exception?.message ?: "unknown"
+            AppLogger.w("DownloadVM", "Download AES key fetch failed for ${mediaId}: $message")
+            return null
+        }
+
+        val aesB64 = Base64.encode(keyResult.data)
+        return DownloadRequest(
+            url = manifestUrl,
+            headers = mapOf(
+                "Authorization" to "Bearer $jwt",
+                "X-Session-Token" to session.data.sessionToken,
+                HEADER_AES_KEY_B64 to aesB64
+            )
+        )
+    }
+
 
     /**
      * Cancels an in-progress download off the Main thread (WorkManager Binder IPC +
@@ -200,7 +293,9 @@ class DownloadViewModel(
             PlaybackMediaItem(
                 id         = item.id,
                 title      = item.title,
+                isDownloaded = true,
                 streamUrl  = localPath,
+                hlsStreamUrl = localPath,
                 artworkUrl = item.artworkUrl
             )
         )

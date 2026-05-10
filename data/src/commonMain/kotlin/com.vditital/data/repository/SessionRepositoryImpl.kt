@@ -62,9 +62,19 @@ class SessionRepositoryImpl(
         }
     }
 
-    override suspend fun startSession(jwt: String, videoId: String): ResultState<SessionStartResponse> =
+    override suspend fun startSession(
+        jwt: String,
+        videoId: String,
+        offlinePlayback: Boolean,
+        offlineLicenseSeconds: Long?
+    ): ResultState<SessionStartResponse> =
         runCatching {
-            sessionDataSource.startSession(jwt, videoId)
+            sessionDataSource.startSession(
+                jwt = jwt,
+                videoId = videoId,
+                offlinePlayback = offlinePlayback,
+                offlineLicenseSeconds = offlineLicenseSeconds
+            )
         }.fold(
             onSuccess = { ResultState.Success(it) },
             onFailure = { e ->

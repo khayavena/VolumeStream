@@ -57,7 +57,9 @@ data class DeviceRegisterRequest(
 
 @Serializable
 data class SessionStartRequest(
-    @SerialName("videoId") val videoId: String
+    @SerialName("videoId") val videoId: String,
+    @SerialName("offlinePlayback") val offlinePlayback: Boolean? = null,
+    @SerialName("offlineLicenseSeconds") val offlineLicenseSeconds: Long? = null
 )
 
 @Serializable
@@ -65,7 +67,10 @@ data class SessionStartResponse(
     @SerialName("sessionId") val sessionId: String,
     @SerialName("nonce") val nonce: String,
     @SerialName("sessionToken") val sessionToken: String,
-    @SerialName("expiresAt") val expiresAt: Long
+    @SerialName("expiresAt") val expiresAt: Long,
+    @SerialName("offlinePlayback") val offlinePlayback: Boolean = false,
+    @SerialName("offlineLicenseExpiresAt") val offlineLicenseExpiresAt: Long = 0L,
+    @SerialName("offlineSessionToken") val offlineSessionToken: String? = null
 )
 
 @Serializable

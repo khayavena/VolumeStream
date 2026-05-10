@@ -10,7 +10,14 @@ expect class DownloadController {
      *                 Android: WorkManager constraint NetworkType.UNMETERED.
      *                 iOS:     NSURLSession with allowsCellularAccess = false.
      */
-    fun download(id: String, url: String, title: String, artworkUrl: String, wifiOnly: Boolean = false)
+    fun download(
+        id: String,
+        url: String,
+        title: String,
+        artworkUrl: String,
+        wifiOnly: Boolean = false,
+        headers: Map<String, String> = emptyMap()
+    )
     fun cancel(id: String)
     fun remove(id: String)
     fun observeState(id: String): Flow<DownloadState>

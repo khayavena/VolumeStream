@@ -206,6 +206,7 @@ class Media3Media3PlayerComponentImpl(
             uri.contains("/manifest/dash/", ignoreCase = true) -> MimeTypes.APPLICATION_MPD
             uri.contains("/proxy/dash/", ignoreCase = true)    -> MimeTypes.APPLICATION_MPD
             uri.endsWith(".mpd", ignoreCase = true)            -> MimeTypes.APPLICATION_MPD
+            uri.endsWith(".m3u8", ignoreCase = true)           -> MimeTypes.APPLICATION_M3U8
             uri.endsWith(".mp4", ignoreCase = true)            -> null
             uri.endsWith(".mp3", ignoreCase = true)            -> null
             // HLS master playlist — covers:

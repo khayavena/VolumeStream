@@ -7,7 +7,12 @@ interface SessionDataSource {
     suspend fun registerDevice(jwt: String): Boolean
 
     /** Signs and starts a playback session; returns the session token envelope. */
-    suspend fun startSession(jwt: String, videoId: String): SessionStartResponse
+    suspend fun startSession(
+        jwt: String,
+        videoId: String,
+        offlinePlayback: Boolean = false,
+        offlineLicenseSeconds: Long? = null
+    ): SessionStartResponse
 
     /**
      * Fetches the 16-byte AES-128 session key from

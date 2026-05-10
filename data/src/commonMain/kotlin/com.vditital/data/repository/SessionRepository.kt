@@ -8,7 +8,12 @@ interface SessionRepository {
     suspend fun ensureDeviceRegistered(): ResultState<Unit>
 
     /** Starts an authenticated playback session for [videoId]. */
-    suspend fun startSession(jwt: String, videoId: String): ResultState<SessionStartResponse>
+    suspend fun startSession(
+        jwt: String,
+        videoId: String,
+        offlinePlayback: Boolean = false,
+        offlineLicenseSeconds: Long? = null
+    ): ResultState<SessionStartResponse>
 
     /**
      * Returns the 16-byte AES-128 key that decrypts DASH segments for this session.

@@ -1,6 +1,7 @@
 package com.vdigital.volumestream.core.player.download
 
 import android.content.Context
+import android.net.Uri
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.ExistingWorkPolicy
@@ -19,7 +20,14 @@ private const val TAG = "VS_DL_Controller"
 
 actual class DownloadController(private val context: Context) {
 
-    actual fun download(id: String, url: String, title: String, artworkUrl: String, wifiOnly: Boolean) {
+    actual fun download(
+        id: String,
+        url: String,
+        title: String,
+        artworkUrl: String,
+        wifiOnly: Boolean,
+        headers: Map<String, String>
+    ) {
         val networkType = if (wifiOnly) NetworkType.UNMETERED else NetworkType.CONNECTED
         val request = OneTimeWorkRequestBuilder<DownloadWorker>()
             .setInputData(
@@ -27,7 +35,10 @@ actual class DownloadController(private val context: Context) {
                     DownloadWorker.KEY_ID      to id,
                     DownloadWorker.KEY_URL     to url,
                     DownloadWorker.KEY_TITLE   to title,
-                    DownloadWorker.KEY_ARTWORK to artworkUrl
+                    DownloadWorker.KEY_ARTWORK to artworkUrl,
+                    DownloadWorker.KEY_AUTHORIZATION to headers["Authorization"],
+                    DownloadWorker.KEY_SESSION_TOKEN to headers["X-Session-Token"],
+                    DownloadWorker.KEY_AES_KEY_B64 to headers["X-Aes-Key-B64"]
                 )
             )
             .setConstraints(Constraints(requiredNetworkType = networkType))
@@ -41,13 +52,31 @@ actual class DownloadController(private val context: Context) {
         Log.d(TAG, "cancel($id) — cancelling WorkManager work + clearing prefs")
         WorkManager.getInstance(context).cancelUniqueWork(id)
         context.getSharedPreferences(DownloadWorker.PREFS, Context.MODE_PRIVATE)
-            .edit().remove(id).remove("_t_$id").remove("_a_$id").apply()
+            .edit().remove(id).remove("_t_$id").remove("_a_$id").remove("_u_$id").apply()
         Log.d(TAG, "cancel($id) — prefs cleared")
     }
 
     actual fun remove(id: String) {
         Log.d(TAG, "remove($id)")
+        val prefs = context.getSharedPreferences(DownloadWorker.PREFS, Context.MODE_PRIVATE)
+        val storedPath = prefs.getString(id, null)
         cancel(id)
+        val candidate = storedPath?.let {
+            runCatching {
+                if (it.startsWith("file://")) File(Uri.parse(it).path ?: "") else File(it)
+            }.getOrNull()
+        }
+        candidate?.takeIf { it.exists() }?.let { file ->
+            val packagedDir = file.parentFile
+            val inPackagedDir = file.extension.equals("mpd", ignoreCase = true) &&
+                packagedDir?.name == id
+            if (inPackagedDir) {
+                packagedDir?.deleteRecursively()
+            } else {
+                file.delete()
+            }
+        }
+        // Legacy fallback for older downloads stored as {id}.mp4.
         File(context.filesDir, "downloads/$id.mp4").takeIf { it.exists() }?.delete()
     }
 
@@ -95,9 +124,18 @@ actual class DownloadController(private val context: Context) {
                 mapped
             }
 
-    actual fun getLocalPath(id: String): String? =
-        context.getSharedPreferences(DownloadWorker.PREFS, Context.MODE_PRIVATE)
-            .getString(id, null)
+    actual fun getLocalPath(id: String): String? {
+        val prefs = context.getSharedPreferences(DownloadWorker.PREFS, Context.MODE_PRIVATE)
+        val raw = prefs.getString(id, null) ?: return null
+        val file = runCatching {
+            if (raw.startsWith("file://")) File(Uri.parse(raw).path ?: "") else File(raw)
+        }.getOrNull() ?: return null
+        if (file.exists()) return raw
+
+        // Clear stale metadata if the file was removed externally or from an older layout.
+        prefs.edit().remove(id).remove("_t_$id").remove("_a_$id").remove("_u_$id").apply()
+        return null
+    }
 
     actual fun isDownloaded(id: String): Boolean = getLocalPath(id) != null
 
@@ -105,14 +143,19 @@ actual class DownloadController(private val context: Context) {
     actual fun listDownloads(): List<DownloadItem> {
         val prefs = context.getSharedPreferences(DownloadWorker.PREFS, Context.MODE_PRIVATE)
         return prefs.all.entries
-            .filter { !it.key.startsWith("_t_") && !it.key.startsWith("_a_") }
+            .filter { !it.key.startsWith("_t_") && !it.key.startsWith("_a_") && !it.key.startsWith("_u_") }
             .mapNotNull { entry ->
                 val id        = entry.key
                 val localPath = entry.value as? String ?: return@mapNotNull null
+                val file = runCatching {
+                    if (localPath.startsWith("file://")) File(Uri.parse(localPath).path ?: "") else File(localPath)
+                }.getOrNull() ?: return@mapNotNull null
+                if (!file.exists()) return@mapNotNull null
+                val remoteUrl = prefs.getString("_u_$id", null)
                 DownloadItem(
                     id         = id,
                     title      = prefs.getString("_t_$id", null) ?: id,
-                    url        = localPath,
+                    url        = remoteUrl ?: localPath,
                     artworkUrl = prefs.getString("_a_$id", null) ?: "",
                     state      = DownloadState.Completed,
                     localPath  = localPath

@@ -52,7 +52,12 @@ class SessionDataSourceImpl(
         return ok
     }
 
-    override suspend fun startSession(jwt: String, videoId: String): SessionStartResponse {
+    override suspend fun startSession(
+        jwt: String,
+        videoId: String,
+        offlinePlayback: Boolean,
+        offlineLicenseSeconds: Long?
+    ): SessionStartResponse {
         val userId   = extractUserIdFromJwt(jwt)
         check(userId.isNotBlank()) {
             "Unable to extract userId/sub/id claim from JWT; cannot build cert-pin payload"
@@ -85,7 +90,7 @@ class SessionDataSourceImpl(
             header(config.headerCertTimestamp,   certTimestamp.toString())
             header(config.headerCertSignature,   certSignature)
             contentType(ContentType.Application.Json)
-            setBody(SessionStartRequest(videoId))
+            setBody(SessionStartRequest(videoId, offlinePlayback = offlinePlayback, offlineLicenseSeconds = offlineLicenseSeconds))
         }.body()
     }
 

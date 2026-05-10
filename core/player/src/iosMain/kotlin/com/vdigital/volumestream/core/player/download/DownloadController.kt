@@ -10,6 +10,8 @@ import platform.darwin.NSObject
 import platform.Foundation.NSOperationQueue
 import platform.Foundation.NSSearchPathForDirectoriesInDomains
 import platform.Foundation.NSURL
+import platform.Foundation.NSMutableURLRequest
+import platform.Foundation.setValue
 import platform.Foundation.NSURLSession
 import platform.Foundation.NSURLSessionConfiguration
 import platform.Foundation.NSURLSessionDownloadDelegateProtocol
@@ -64,6 +66,7 @@ actual class DownloadController {
     private val stateFlows  = mutableMapOf<String, MutableStateFlow<DownloadState>>()
     private val taskIdToId  = mutableMapOf<NSUInteger, String>()
     private val idToTask    = mutableMapOf<String, NSURLSessionDownloadTask>()
+    private val idToExtension = mutableMapOf<String, String>()
 
     private fun <T> withLock(block: () -> T): T {
         lock.lock()
@@ -98,12 +101,13 @@ actual class DownloadController {
             val id = withLock { taskIdToId.remove(taskId) }
             if (id != null) {
                 withLock { idToTask.remove(id) }
+                val ext = withLock { idToExtension.remove(id) }
                 val flow = withLock { stateFlows[id] }
                 if (flow != null) {
                     if (error != null || tmpUrl == null) {
                         flow.value = DownloadState.Failed(error?.localizedDescription ?: "Download failed")
                     } else {
-                        val dest = destPathFor(id)
+                        val dest = destPathFor(id, ext)
                         if (dest == null) {
                             flow.value = DownloadState.Failed("No destination")
                         } else {
@@ -144,7 +148,14 @@ actual class DownloadController {
         (NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, true) as List<*>)
             .firstOrNull() as? String
 
-    private fun destPathFor(id: String): String? = docsPath()?.let { "$it/vs_downloads/$id.mp4" }
+    private fun destPathFor(id: String, extension: String? = null): String? {
+        val ext = when {
+            extension.isNullOrBlank() -> ".mp4"
+            extension.startsWith(".") -> extension
+            else -> ".$extension"
+        }
+        return docsPath()?.let { "$it/vs_downloads/$id$ext" }
+    }
 
     private fun flowFor(id: String): MutableStateFlow<DownloadState> =
         withLock {
@@ -156,7 +167,14 @@ actual class DownloadController {
             }
         }
 
-    actual fun download(id: String, url: String, title: String, artworkUrl: String, wifiOnly: Boolean) {
+    actual fun download(
+        id: String,
+        url: String,
+        title: String,
+        artworkUrl: String,
+        wifiOnly: Boolean,
+        headers: Map<String, String>
+    ) {
         val flow = flowFor(id)
         if (flow.value == DownloadState.Completed ||
             flow.value is DownloadState.Downloading ||
@@ -174,12 +192,22 @@ actual class DownloadController {
                 session.finishTasksAndInvalidate()
                 session = makeSession(needCellular)
             }
+            idToExtension[id] = inferExtension(url)
         }
         prefs.setObject(title, forKey = "vs_dl_t_$id")
         prefs.setObject(artworkUrl, forKey = "vs_dl_a_$id")
+        prefs.setObject(url, forKey = "vs_dl_u_$id")
         flow.value = DownloadState.Downloading(0f)
         val currentSession = withLock { session }
-        val task = currentSession.downloadTaskWithURL(nsUrl)
+        val task = if (headers.isEmpty()) {
+            currentSession.downloadTaskWithURL(nsUrl)
+        } else {
+            val request = NSMutableURLRequest.requestWithURL(nsUrl)
+            headers.forEach { (key, value) ->
+                request.setValue(value, forHTTPHeaderField = key)
+            }
+            currentSession.downloadTaskWithRequest(request)
+        }
         withLock {
             taskIdToId[task.taskIdentifier] = id
             idToTask[id] = task
@@ -208,10 +236,20 @@ actual class DownloadController {
         prefs.removeObjectForKey(prefKey(id))
         prefs.removeObjectForKey("vs_dl_t_$id")
         prefs.removeObjectForKey("vs_dl_a_$id")
+        prefs.removeObjectForKey("vs_dl_u_$id")
         // Flush NSUserDefaults to disk so that isDownloaded(id) returns false
         // immediately in the same run-loop turn (avoids a stale-read race in
         // observeState / flowFor on the next recomposition).
         prefs.synchronize()
+    }
+
+    private fun inferExtension(url: String): String {
+        val lower = url.lowercase()
+        return when {
+            lower.contains(".m3u8") || lower.contains("/manifest/") -> ".m3u8"
+            lower.contains(".mpd") -> ".mpd"
+            else -> ".mp4"
+        }
     }
 
     actual fun observeState(id: String): Flow<DownloadState> = flowFor(id)
@@ -235,6 +273,7 @@ actual class DownloadController {
             .filter { entry ->
                 val key = entry.key as? String ?: return@filter false
                 key.startsWith("vs_dl_") && !key.startsWith("vs_dl_t_") && !key.startsWith("vs_dl_a_")
+                    && !key.startsWith("vs_dl_u_")
             }
             .mapNotNull { entry ->
                 val key  = entry.key as? String ?: return@mapNotNull null
@@ -246,7 +285,7 @@ actual class DownloadController {
                 DownloadItem(
                     id         = id,
                     title      = prefs.stringForKey("vs_dl_t_$id") ?: id,
-                    url        = localPath,
+                    url        = prefs.stringForKey("vs_dl_u_$id") ?: localPath,
                     artworkUrl = prefs.stringForKey("vs_dl_a_$id") ?: "",
                     state      = DownloadState.Completed,
                     localPath  = localPath
