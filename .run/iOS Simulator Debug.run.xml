@@ -1,0 +1,24 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="iOS Simulator Debug" type="GradleRunConfiguration" factoryName="Gradle">
+    <ExternalSystemSettings>
+      <option name="externalProjectPath" value="$PROJECT_DIR$" />
+      <option name="externalSystemIdString" value="GRADLE" />
+      <option name="taskNames">
+        <list>
+          <option value=":composeApp:launchIosSimulatorFromIde" />
+        </list>
+      </option>
+      <option name="env">
+        <map>
+          <entry key="IOS_SIMULATOR" value="iPhone 16e" />
+          <entry key="IOS_SCHEME" value="iosApp" />
+          <entry key="IOS_BUNDLE_ID" value="com.vdigital.volumestream.VolumeStream" />
+        </map>
+      </option>
+    </ExternalSystemSettings>
+    <ExternalSystemDebugServerProcess>false</ExternalSystemDebugServerProcess>
+    <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+    <method v="2" />
+  </configuration>
+</component>
+
