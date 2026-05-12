@@ -32,7 +32,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -44,12 +43,7 @@ import com.vdigital.volumestream.ui.widget.PlaybackSeekBar
 import com.vdigital.volumestream.ui.widget.QualitySelectionPanel
 import com.vdigital.volumestream.ui.widget.TrackSelectionPanel
 
-// ── Private theme tokens ──────────────────────────────────────────────────────
-private val GreenAccent      = Color(0xFF00E676)
-private val ControlsBarBg    = Color(0x8C000000)
-private val BottomScrimBrush = Brush.verticalGradient(listOf(Color.Transparent, Color(0x96000000)))
-private val TvChipBg         = Color(0xB3000000)
-private val TvChipFocusedBg  = Color(0x6600E676)
+// Theme tokens are defined in PlaybackOverlayTheme.kt (shared across overlays).
 
 /**
  * Android TV player overlay.
@@ -86,6 +80,10 @@ fun androidx.compose.foundation.layout.BoxScope.PlayerOverlayTv(
     val qualityPanelFirstFocus = remember { FocusRequester() }
     val trackPanelFirstFocus  = remember { FocusRequester() }
 
+    // Single cached lambda — all chips share it to avoid allocating a new
+    // Function1 instance per chip on every recomposition.
+    val onChipFocus: (String?) -> Unit = remember { { key -> state.activeTvControlKey = key } }
+
     // Auto-focus Play chip whenever the overlay becomes visible and no panel is open.
     LaunchedEffect(state.showControls, state.showTrackPanel, state.showQualityPanel) {
         if (!state.showControls) return@LaunchedEffect
@@ -111,7 +109,7 @@ fun androidx.compose.foundation.layout.BoxScope.PlayerOverlayTv(
             label = "Back",
             selected = false,
             focusKey = "tv-back",
-            onFocusKeyChanged = { state.activeTvControlKey = it },
+            onFocusKeyChanged = onChipFocus,
             modifier = Modifier
                 .padding(start = 16.dp, top = 16.dp)
                 .focusRequester(backChipFocus)
@@ -141,7 +139,7 @@ fun androidx.compose.foundation.layout.BoxScope.PlayerOverlayTv(
                 label = if (state.isZoomed) "FILL" else "FIT",
                 selected = state.isZoomed,
                 focusKey = "tv-zoom",
-                onFocusKeyChanged = { state.activeTvControlKey = it },
+                onFocusKeyChanged = onChipFocus,
                 modifier = Modifier
                     .focusRequester(zoomChipFocus)
                     .focusProperties {
@@ -159,7 +157,7 @@ fun androidx.compose.foundation.layout.BoxScope.PlayerOverlayTv(
                 label = if (currentQuality == PlaybackQuality.Auto) "HD" else currentQuality.label,
                 selected = state.showQualityPanel,
                 focusKey = "tv-quality",
-                onFocusKeyChanged = { state.activeTvControlKey = it },
+                onFocusKeyChanged = onChipFocus,
                 modifier = Modifier
                     .focusRequester(qualityChipFocus)
                     .focusProperties {
@@ -178,7 +176,7 @@ fun androidx.compose.foundation.layout.BoxScope.PlayerOverlayTv(
                 label = if (state.showTrackPanel) "TRACKS ON" else "TRACKS",
                 selected = state.showTrackPanel,
                 focusKey = "tv-tracks",
-                onFocusKeyChanged = { state.activeTvControlKey = it },
+                onFocusKeyChanged = onChipFocus,
                 modifier = Modifier
                     .focusRequester(tracksChipFocus)
                     .focusProperties {
@@ -219,7 +217,7 @@ fun androidx.compose.foundation.layout.BoxScope.PlayerOverlayTv(
                         label = "-10s",
                         selected = false,
                         focusKey = "tv-rewind",
-                        onFocusKeyChanged = { state.activeTvControlKey = it },
+                        onFocusKeyChanged = onChipFocus,
                         modifier = Modifier
                             .focusRequester(rewindChipFocus)
                             .focusProperties {
@@ -234,7 +232,7 @@ fun androidx.compose.foundation.layout.BoxScope.PlayerOverlayTv(
                         label = if (playbackState == PlaybackState.Playing) "Pause" else "Play",
                         selected = playbackState == PlaybackState.Playing,
                         focusKey = "tv-play",
-                        onFocusKeyChanged = { state.activeTvControlKey = it },
+                        onFocusKeyChanged = onChipFocus,
                         modifier = Modifier
                             .focusRequester(playChipFocus)
                             .focusProperties {
@@ -255,7 +253,7 @@ fun androidx.compose.foundation.layout.BoxScope.PlayerOverlayTv(
                         label = "+10s",
                         selected = false,
                         focusKey = "tv-forward",
-                        onFocusKeyChanged = { state.activeTvControlKey = it },
+                        onFocusKeyChanged = onChipFocus,
                         modifier = Modifier
                             .focusRequester(forwardChipFocus)
                             .focusProperties {

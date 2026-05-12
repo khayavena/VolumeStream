@@ -30,7 +30,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -45,11 +44,7 @@ import com.vdigital.volumestream.ui.widget.PlaybackSeekBar
 import com.vdigital.volumestream.ui.widget.QualitySelectionPanel
 import com.vdigital.volumestream.ui.widget.TrackSelectionPanel
 
-// ── Private theme tokens ──────────────────────────────────────────────────────
-private val GreenAccent      = Color(0xFF00E676)
-private val ControlsBarBg    = Color(0x8C000000)
-private val TopScrimBrush    = Brush.verticalGradient(listOf(Color(0x8F000000), Color.Transparent))
-private val BottomScrimBrush = Brush.verticalGradient(listOf(Color.Transparent, Color(0x96000000)))
+// Theme tokens are defined in PlaybackOverlayTheme.kt (shared across overlays).
 
 /**
  * Mobile (phone / tablet) player overlay.

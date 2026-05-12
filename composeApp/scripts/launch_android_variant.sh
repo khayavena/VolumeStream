@@ -183,7 +183,10 @@ maybe_start_emulator() {
 
 list_online_devices() {
   local adb="$1"
-  "$adb" devices | awk 'NR>1 && NF>=2 {print $1 " " $2}'
+  # Standard USB:     <serial>   device
+  # Wireless/mDNS:    <serial> (N)._adb-tls-connect._tcp   device   product:…
+  # We print "<serial> device" whenever "device" appears in the line (any field).
+  "$adb" devices | awk 'NR>1 && NF>=2 && /\bdevice\b/ {print $1 " device"}'
 }
 
 resolve_target_serial() {
