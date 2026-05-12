@@ -7,7 +7,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,7 +38,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -95,9 +94,13 @@ fun PlaybackView(
     // transition animation when the user presses back.
     val handleBack: () -> Unit = remember(controller, onBack) {
         {
-            AppLogger.i("Diag.UI", "back pressed controller=${controller.hashCode()} statePause=true")
-            controller.pause(playbackState = {})
-            onBack()
+            runCatching {
+                AppLogger.i("Diag.UI", "back pressed controller=${controller.hashCode()} statePause=true")
+                controller.pause(playbackState = {})
+                onBack()
+            }.onFailure {
+                AppLogger.e("Diag.UI", "back handling failed", it as? Exception ?: Exception(it))
+            }
         }
     }
 
@@ -114,6 +117,7 @@ fun PlaybackView(
     var showQualityPanel  by remember { mutableStateOf(false) }
     var isZoomed          by remember { mutableStateOf(true) }
     var controlsResetTick by remember { mutableStateOf(0) }
+    var didInitialise     by remember { mutableStateOf(false) }
     val currentQuality    by viewModel.qualityUI.collectAsState()
 
     LaunchedEffect(controlsResetTick) {
@@ -124,13 +128,18 @@ fun PlaybackView(
         showQualityPanel = false
     }
 
-    // Kick off player initialisation when a selected item exists (and when it changes).
+    // Kick off player initialisation once per PlaybackView instance.
+    // Track switching is handled by selectTrack()/handleTrackSwitch and must not
+    // re-enter initialise(), otherwise iOS can rebuild player/session unnecessarily.
     LaunchedEffect(selectedItem?.id) {
         AppLogger.d(
             "Diag.UI",
             "selectedItem effect vm=${viewModel.hashCode()} controller=${controller.hashCode()} media=${selectedItem?.id}"
         )
-        if (selectedItem != null) viewModel.initialise()
+        if (!didInitialise && selectedItem != null) {
+            didInitialise = true
+            viewModel.initialise()
+        }
     }
 
     // Auto-navigate back when the stream ends.
@@ -140,32 +149,36 @@ fun PlaybackView(
             "Diag.UI",
             "state effect vm=${viewModel.hashCode()} controller=${controller.hashCode()} state=${playbackState::class.simpleName}"
         )
-        when (playbackState) {
-            PlaybackState.Ended -> {
-                delay(600L)
-                handleBack()
-            }
-            // SessionExpired is emitted by PlaybackControllerListener when ExoPlayer
-            // receives a 401 mid-stream (ERROR_CODE_AUTHENTICATION_EXPIRED).
-            // SessionRevokedBus has already been signalled — the MainNavigationControllerView
-            // watcher will navigate to Login once the back-stack unwinds here.
-            PlaybackState.SessionExpired -> {
-                controller.release()
-                handleBack()
-            }
-            // Auth errors: show the message for 8 s then navigate back so the user
-            // can log in again from the Home / Login screen.
-            is PlaybackState.Error -> {
-                val msg = (playbackState as PlaybackState.Error).errorMessage
-                if (msg.contains("authenticated", ignoreCase = true) ||
-                    msg.contains("session", ignoreCase = true) ||
-                    msg.contains("Auth failed", ignoreCase = true) ||
-                    msg.contains("Session failed", ignoreCase = true)) {
-                    delay(8_000L)
+        runCatching {
+            when (playbackState) {
+                PlaybackState.Ended -> {
+                    delay(600L)
                     handleBack()
                 }
+                // SessionExpired is emitted by PlaybackControllerListener when ExoPlayer
+                // receives a 401 mid-stream (ERROR_CODE_AUTHENTICATION_EXPIRED).
+                // SessionRevokedBus has already been signalled — the MainNavigationControllerView
+                // watcher will navigate to Login once the back-stack unwinds here.
+                PlaybackState.SessionExpired -> {
+                    controller.release()
+                    handleBack()
+                }
+                // Auth errors: show the message for 8 s then navigate back so the user
+                // can log in again from the Home / Login screen.
+                is PlaybackState.Error -> {
+                    val msg = (playbackState as PlaybackState.Error).errorMessage
+                    if (msg.contains("authenticated", ignoreCase = true) ||
+                        msg.contains("session", ignoreCase = true) ||
+                        msg.contains("Auth failed", ignoreCase = true) ||
+                        msg.contains("Session failed", ignoreCase = true)) {
+                        delay(8_000L)
+                        handleBack()
+                    }
+                }
+                else -> Unit
             }
-            else -> Unit
+        }.onFailure {
+            AppLogger.e("Diag.UI", "playback state effect failed", it as? Exception ?: Exception(it))
         }
     }
 
@@ -174,8 +187,7 @@ fun PlaybackView(
             .fillMaxSize()
             .background(Color.Black)
             .pointerInput(Unit) {
-                awaitEachGesture {
-                    awaitPointerEvent(PointerEventPass.Initial)
+                detectTapGestures {
                     controlsResetTick++
                 }
             }
@@ -237,8 +249,7 @@ fun PlaybackView(
                         textAlign = TextAlign.Center,
                         modifier = Modifier
                             .pointerInput(Unit) {
-                                awaitEachGesture {
-                                    awaitPointerEvent(PointerEventPass.Initial)
+                                detectTapGestures {
                                     handleBack()
                                 }
                             }

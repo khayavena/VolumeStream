@@ -289,16 +289,17 @@ actual class PlaybackStateController(
             AppLogger.e("iOS.Player", "  ✗ nsUrlFor returned null for: $resolved", null)
             return null
         }
-        val assetOptions: Map<Any?, Any?>? = if (isRemoteUrl) {
-            val headerFields = NSMutableDictionary()
-            authHeaders["X-Session-Token"]?.let { headerFields.setValue(it, forKey = "X-Session-Token") }
-            authHeaders["Authorization"]?.let { headerFields.setValue(it, forKey = "Authorization") }
-            if (headerFields.count.toInt() > 0) {
-                // AVURLAsset option key literal mirrors AVFoundation's AVURLAssetHTTPHeaderFieldsKey.
-                mapOf("AVURLAssetHTTPHeaderFieldsKey" to headerFields)
-            } else null
-        } else null
-        AppLogger.i("iOS.Player", "  → AVURLAsset(url=$resolved, hasHeaders=${assetOptions != null})")
+        val headerFields = NSMutableDictionary()
+        authHeaders["X-Session-Token"]?.let { headerFields.setValue(it, forKey = "X-Session-Token") }
+        authHeaders["Authorization"]?.let { headerFields.setValue(it, forKey = "Authorization") }
+        val assetOptions: Map<Any?, Any?>? = if (headerFields.count.toInt() > 0) {
+            // Keep headers available even when the root URL is local file:// because
+            // HLS child resources (keys/segments) can still be remote and session-protected.
+            mapOf("AVURLAssetHTTPHeaderFieldsKey" to headerFields)
+        } else {
+            null
+        }
+        AppLogger.i("iOS.Player", "  → AVURLAsset(url=$resolved, hasHeaders=${assetOptions != null}, remote=$isRemoteUrl)")
         val asset = AVURLAsset(uRL = url, options = assetOptions)
         val playerItem = AVPlayerItem(asset)
         // Apply default Auto cap on newly created items; manual quality changes can override it.

@@ -4,7 +4,8 @@ import androidx.compose.ui.window.ComposeUIViewController
 import com.vditital.data.util.AppLogger
 
 fun MainViewController() = ComposeUIViewController {
+    VolumeStreamApp()
+}.also {
     AppLogger.init()
     initKoinIfNeeded()
-    VolumeStreamApp()
 }

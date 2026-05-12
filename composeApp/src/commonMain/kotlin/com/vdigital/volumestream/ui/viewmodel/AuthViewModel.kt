@@ -5,10 +5,13 @@ import androidx.lifecycle.viewModelScope
 import com.vditital.data.repository.AuthRepository
 import com.vditital.data.repository.state.ResultState
 import com.vditital.data.security.SessionRevokedBus
+import com.vditital.data.util.AppLogger
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -26,13 +29,32 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
     val uiState = _uiState.asStateFlow()
 
+    private fun safeLaunch(name: String, block: suspend () -> Unit) {
+        viewModelScope.launch {
+            try {
+                block()
+            } catch (c: CancellationException) {
+                throw c
+            } catch (t: Throwable) {
+                AppLogger.e("AuthVM", "$name failed", t)
+                if (name != "session_revoked_collector") {
+                    _uiState.value = AuthUiState.Error(t.message ?: "Operation failed.")
+                }
+            }
+        }
+    }
+
     init {
         // Listen for server-side session revocation (e.g. 401 TOKEN_INVALID).
         // Clears the stored JWT via logout() and surfaces SessionRevoked so the
         // UI can navigate to login and stop retrying with the dead token.
-        viewModelScope.launch {
-            SessionRevokedBus.events.collect {
-                withContext(Dispatchers.IO) { authRepository.logout() }
+        safeLaunch("session_revoked_collector") {
+            SessionRevokedBus.events.collectLatest {
+                runCatching {
+                    withContext(Dispatchers.IO) { authRepository.logout() }
+                }.onFailure {
+                    AppLogger.e("AuthVM", "logout after session revoke failed", it)
+                }
                 _uiState.value = AuthUiState.SessionRevoked
             }
         }
@@ -43,7 +65,7 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
             _uiState.value = AuthUiState.Error("Please fill in all fields.")
             return
         }
-        viewModelScope.launch {
+        safeLaunch("login") {
             _uiState.value = AuthUiState.Loading
             val result = withContext(Dispatchers.IO) { authRepository.login(email, password) }
             _uiState.value = when (result) {
@@ -64,7 +86,7 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
                 _uiState.value = AuthUiState.Error("Passwords do not match.")
             password.length < 6 ->
                 _uiState.value = AuthUiState.Error("Password must be at least 6 characters.")
-            else -> viewModelScope.launch {
+            else -> safeLaunch("register") {
                 _uiState.value = AuthUiState.Loading
                 val result = withContext(Dispatchers.IO) { authRepository.register(email, password) }
                 _uiState.value = when (result) {

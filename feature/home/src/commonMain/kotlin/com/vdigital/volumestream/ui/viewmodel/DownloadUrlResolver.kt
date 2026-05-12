@@ -3,11 +3,33 @@ package com.vdigital.volumestream.ui.viewmodel
 import com.vditital.data.config.StreamVaultConfig
 
 internal object DownloadUrlResolver {
+    private data class RewriteContext(val prefix: String, val trimmedBase: String, val mediaId: String)
+
     internal fun toDownloadManifestUrl(
         source: String,
         fallbackMediaId: String,
         config: StreamVaultConfig
+    ): String? = toHlsManifestUrl(source, fallbackMediaId, config)
+
+    internal fun toHlsManifestUrl(
+        source: String,
+        fallbackMediaId: String,
+        config: StreamVaultConfig
     ): String? {
+        val ctx = parse(source, fallbackMediaId, config) ?: return null
+        return "${ctx.prefix}/${ctx.trimmedBase}/manifest/${ctx.mediaId}"
+    }
+
+    internal fun toDashManifestUrl(
+        source: String,
+        fallbackMediaId: String,
+        config: StreamVaultConfig
+    ): String? {
+        val ctx = parse(source, fallbackMediaId, config) ?: return null
+        return "${ctx.prefix}/${ctx.trimmedBase}/manifest/dash/${ctx.mediaId}"
+    }
+
+    private fun parse(source: String, fallbackMediaId: String, config: StreamVaultConfig): RewriteContext? {
         val normalized = source.trim().replace("/manifest/dash/", "/manifest/")
         if (!(normalized.startsWith("http://") || normalized.startsWith("https://"))) {
             return null
@@ -37,9 +59,9 @@ internal object DownloadUrlResolver {
             .substringBefore("?")
             .substringBefore("/")
             .ifBlank { fallbackMediaId }
-        if (mediaId.isBlank()) {
-            return null
-        }
-        return "$prefix/$trimmedBase/manifest/dash/$mediaId"
+            .takeIf { it.isNotBlank() }
+            ?: return null
+
+        return RewriteContext(prefix = prefix, trimmedBase = trimmedBase, mediaId = mediaId)
     }
 }

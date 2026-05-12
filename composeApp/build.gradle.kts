@@ -227,8 +227,11 @@ tasks.named("preBuild") {
     dependsOn(updateApiHostFromNetwork)
 }
 
-// Keep AppConfig.kt up to date whenever any iOS Kotlin target is compiled.
-tasks.matching { it.name.startsWith("compileKotlinIos") }.configureEach {
+// Keep AppConfig.kt up to date whenever iOS Kotlin sources are compiled.
+tasks.matching {
+    it.name.startsWith("compileKotlinIos") ||
+    it.name == "compileIosMainKotlinMetadata"
+}.configureEach {
     dependsOn(generateIosAppConfig)
 }
 

@@ -114,7 +114,6 @@ actual fun PlatformMediaPlayerView(
             )
             tapOverlay.removeFromSuperview()
             playerVC.player = null
-            playbackStateController.release()
         },
         modifier = modifier
     )

@@ -1,6 +1,10 @@
 package com.vdigital.volumestream.core.player.download
 
+import com.vditital.data.util.AppLogger
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.convert
+import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import platform.Foundation.NSDocumentDirectory
@@ -20,6 +24,14 @@ import platform.Foundation.NSURLSessionTask
 import platform.Foundation.NSUserDefaults
 import platform.Foundation.NSUserDomainMask
 import platform.darwin.NSUInteger
+import platform.posix.SEEK_END
+import platform.posix.fclose
+import platform.posix.fopen
+import platform.posix.fread
+import platform.posix.fseek
+import platform.posix.ftell
+import platform.posix.fwrite
+import platform.posix.rewind
 
 @OptIn(ExperimentalForeignApi::class)
 private class VsDownloadDelegate(
@@ -56,7 +68,7 @@ private class VsDownloadDelegate(
     }
 }
 
-@OptIn(ExperimentalForeignApi::class)
+@OptIn(ExperimentalForeignApi::class, kotlinx.cinterop.BetaInteropApi::class)
 actual class DownloadController {
 
     private val prefs = NSUserDefaults.standardUserDefaults
@@ -120,6 +132,12 @@ actual class DownloadController {
                             )
                             fm.removeItemAtPath(dest, error = null)
                             if (fm.moveItemAtURL(tmpUrl, toURL = NSURL.fileURLWithPath(dest), error = null)) {
+                                if (ext.equals(".m3u8", ignoreCase = true)) {
+                                    val sourceUrl = prefs.stringForKey("vs_dl_u_$id")
+                                    if (!sourceUrl.isNullOrBlank()) {
+                                        rewriteManifestForLocalPlayback(dest, sourceUrl)
+                                    }
+                                }
                                 prefs.setObject(dest, forKey = prefKey(id))
                                 prefs.synchronize()   // flush to disk immediately
                                 flow.value = DownloadState.Completed
@@ -145,7 +163,7 @@ actual class DownloadController {
 
     @Suppress("UNCHECKED_CAST")
     private fun docsPath(): String? =
-        (NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, true) as List<*>)
+        NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, true)
             .firstOrNull() as? String
 
     private fun destPathFor(id: String, extension: String? = null): String? {
@@ -155,6 +173,91 @@ actual class DownloadController {
             else -> ".$extension"
         }
         return docsPath()?.let { "$it/vs_downloads/$id$ext" }
+    }
+
+    private fun readUtf8File(path: String): String? {
+        val file = fopen(path, "rb") ?: return null
+        try {
+            fseek(file, 0, SEEK_END)
+            val fileSize = ftell(file)
+            if (fileSize < 0L) return null
+            rewind(file)
+            if (fileSize == 0L) return ""
+
+            val buffer = ByteArray(fileSize.toInt())
+            val bytesRead = buffer.usePinned {
+                fread(it.addressOf(0), 1.convert(), buffer.size.convert(), file).toInt()
+            }
+            if (bytesRead <= 0) return null
+            return if (bytesRead == buffer.size) {
+                buffer.decodeToString()
+            } else {
+                buffer.copyOf(bytesRead).decodeToString()
+            }
+        } finally {
+            fclose(file)
+        }
+    }
+
+    private fun writeUtf8File(path: String, content: String): Boolean {
+        val file = fopen(path, "wb") ?: return false
+        try {
+            val bytes = content.encodeToByteArray()
+            val bytesWritten = bytes.usePinned {
+                fwrite(it.addressOf(0), 1.convert(), bytes.size.convert(), file).toInt()
+            }
+            return bytesWritten == bytes.size
+        } finally {
+            fclose(file)
+        }
+    }
+
+    private fun rewriteManifestForLocalPlayback(localPath: String, sourceUrl: String) {
+        val baseUrl = NSURL.URLWithString(sourceUrl) ?: return
+        val manifest = readUtf8File(localPath) ?: return
+        val keyUriRegex = Regex("URI=\"([^\"]+)\"")
+
+        fun absolutize(ref: String): String {
+            val candidate = ref.trim()
+            if (candidate.isEmpty()) return candidate
+            val lower = candidate.lowercase()
+            if (lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("file://")) {
+                return candidate
+            }
+            return NSURL.URLWithString(candidate, relativeToURL = baseUrl)?.absoluteString ?: candidate
+        }
+
+        val rewritten = manifest.lineSequence().joinToString("\n") { line ->
+            val trimmed = line.trim()
+            if (trimmed.isEmpty()) {
+                line
+            } else if (trimmed.startsWith("#")) {
+                val match = keyUriRegex.find(line)
+                if (match != null) {
+                    val original = match.groupValues[1]
+                    line.replace(original, absolutize(original))
+                } else {
+                    line
+                }
+            } else {
+                absolutize(trimmed)
+            }
+        }
+
+        if (rewritten != manifest && !writeUtf8File(localPath, rewritten)) {
+            AppLogger.w("DownloadController.iOS", "Failed to rewrite HLS manifest for local playback: $localPath")
+        }
+    }
+
+    private fun hasStaleSignedHlsUrls(path: String): Boolean {
+        if (!path.lowercase().endsWith(".m3u8")) return false
+        val manifest = readUtf8File(path) ?: return false
+        return manifest.lineSequence().any { line ->
+            val trimmed = line.trim()
+            trimmed.startsWith("http://") &&
+                trimmed.contains("/manifest/hls/") &&
+                !trimmed.contains("?sid=")
+        }
     }
 
     private fun flowFor(id: String): MutableStateFlow<DownloadState> =
@@ -246,8 +349,8 @@ actual class DownloadController {
     private fun inferExtension(url: String): String {
         val lower = url.lowercase()
         return when {
+            lower.contains("/manifest/dash/") || lower.contains(".mpd") -> ".mpd"
             lower.contains(".m3u8") || lower.contains("/manifest/") -> ".m3u8"
-            lower.contains(".mpd") -> ".mpd"
             else -> ".mp4"
         }
     }
@@ -256,6 +359,14 @@ actual class DownloadController {
 
     actual fun getLocalPath(id: String): String? =
         prefs.stringForKey(prefKey(id))?.let { path ->
+            val sourceUrl = prefs.stringForKey("vs_dl_u_$id")
+            if (sourceUrl != null && path.lowercase().endsWith(".m3u8")) {
+                rewriteManifestForLocalPlayback(path, sourceUrl)
+            }
+            if (hasStaleSignedHlsUrls(path)) {
+                AppLogger.w("DownloadController.iOS", "Stale downloaded manifest for $id is missing sid query params; re-download required")
+                return@let null
+            }
             // Normalise: strip a file:// prefix that may have been written by older
             // code so callers always receive a plain POSIX path.
             if (path.startsWith("file://")) path.removePrefix("file://") else path
@@ -277,11 +388,9 @@ actual class DownloadController {
             }
             .mapNotNull { entry ->
                 val key  = entry.key as? String ?: return@mapNotNull null
-                val raw  = entry.value as? String ?: return@mapNotNull null
                 val id   = key.removePrefix("vs_dl_")
-                // Always expose a plain POSIX path so PlaybackStateController can
-                // call NSURL.fileURLWithPath() without double-encoding.
-                val localPath = if (raw.startsWith("file://")) raw.removePrefix("file://") else raw
+                // Reuse getLocalPath() so stale manifests are filtered out consistently.
+                val localPath = getLocalPath(id) ?: return@mapNotNull null
                 DownloadItem(
                     id         = id,
                     title      = prefs.stringForKey("vs_dl_t_$id") ?: id,

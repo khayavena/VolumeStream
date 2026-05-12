@@ -8,7 +8,7 @@ import kotlin.test.assertNull
 class DownloadUrlResolverTest {
 
     @Test
-    fun `rewrites user manifest url to dash manifest`() {
+    fun `rewrites user manifest url to canonical hls manifest`() {
         val source = "https://api.example.com/api/v1/manifest/123e4567-e89b-12d3-a456-426614174000"
 
         val result = DownloadUrlResolver.toDownloadManifestUrl(
@@ -18,13 +18,13 @@ class DownloadUrlResolverTest {
         )
 
         assertEquals(
-            "https://api.example.com/api/v1/manifest/dash/123e4567-e89b-12d3-a456-426614174000",
+            "https://api.example.com/api/v1/manifest/123e4567-e89b-12d3-a456-426614174000",
             result
         )
     }
 
     @Test
-    fun `rewrites dash manifest url to dash manifest`() {
+    fun `rewrites dash manifest url to canonical hls manifest`() {
         val source = "http://localhost:8081/api/v1/manifest/dash/abc-123?t=x"
 
         val result = DownloadUrlResolver.toDownloadManifestUrl(
@@ -34,7 +34,23 @@ class DownloadUrlResolverTest {
         )
 
         assertEquals(
-            "http://localhost:8081/api/v1/manifest/dash/abc-123",
+            "http://localhost:8081/api/v1/manifest/abc-123",
+            result
+        )
+    }
+
+    @Test
+    fun `rewrites user manifest url to dash manifest`() {
+        val source = "https://api.example.com/api/v1/manifest/123e4567-e89b-12d3-a456-426614174000"
+
+        val result = DownloadUrlResolver.toDashManifestUrl(
+            source = source,
+            fallbackMediaId = "unused",
+            config = StreamVaultConfig()
+        )
+
+        assertEquals(
+            "https://api.example.com/api/v1/manifest/dash/123e4567-e89b-12d3-a456-426614174000",
             result
         )
     }
@@ -51,7 +67,7 @@ class DownloadUrlResolverTest {
         )
 
         assertEquals(
-            "https://cdn.example.com/edge/api/manifest/dash/media-42",
+            "https://cdn.example.com/edge/api/manifest/media-42",
             result
         )
     }
@@ -67,7 +83,7 @@ class DownloadUrlResolverTest {
         )
 
         assertEquals(
-            "https://api.example.com/api/v1/manifest/dash/fallback-id",
+            "https://api.example.com/api/v1/manifest/fallback-id",
             result
         )
     }
@@ -83,4 +99,3 @@ class DownloadUrlResolverTest {
         assertNull(result)
     }
 }
-

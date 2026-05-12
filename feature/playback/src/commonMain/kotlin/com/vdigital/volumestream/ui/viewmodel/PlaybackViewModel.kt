@@ -37,6 +37,22 @@ class PlaybackViewModel(
     private val vmId = hashCode()
     private fun diag(msg: String) = AppLogger.d("Diag.VM", "vm=$vmId controller=${playbackStateController.hashCode()} $msg")
 
+    private fun runPlayerAction(
+        action: String,
+        onFailure: (() -> Unit)? = null,
+        block: () -> Unit
+    ) {
+        diag("player_action start=$action")
+        try {
+            block()
+            diag("player_action ok=$action")
+        } catch (t: Throwable) {
+            diag("player_action fail=$action err=${t.message}")
+            AppLogger.e("PlaybackVM", "Player action failed: $action", t as? Exception ?: Exception(t))
+            onFailure?.invoke()
+        }
+    }
+
     private val _playBackState   = MutableStateFlow<PlaybackState>(PlaybackState.Buffering)
     private val _progressState   = MutableStateFlow(0F)
     private val _durationMs      = MutableStateFlow(0L)
@@ -96,8 +112,9 @@ class PlaybackViewModel(
                 val localPlaybackItem = withContext(Dispatchers.IO) { resolveLocalPlaybackItem(item) }
                 if (localPlaybackItem != null) {
                     diag("initialise local_source media=${item.id}")
-                    AppLogger.i("PlaybackVM", "Local playback source detected for mediaId=${item.id}; skipping auth/session bootstrap")
-                    playbackStateController.setAuthHeaders(emptyMap())
+                    AppLogger.i("PlaybackVM", "Local playback source detected for mediaId=${item.id}; preparing best-effort auth/session headers")
+                    val localHeaders = withContext(Dispatchers.IO) { prepareBestEffortPlaybackHeaders(item.id) }
+                    playbackStateController.setAuthHeaders(localHeaders)
                     handleInitialPlayback(mutableListOf(localPlaybackItem))
                     return@launch
                 }
@@ -195,7 +212,8 @@ class PlaybackViewModel(
                 }
 
                 val localPath = withContext(Dispatchers.IO) { downloadController.getLocalPath(item.id) }
-                val candidate = if (localPath != null) item.copy(streamUrl = localPath, hlsStreamUrl = localPath) else item
+                val useLocalCandidate = localPath != null && !(osType == OsType.IOS && localPath.trim().lowercase().endsWith(".m3u8"))
+                val candidate = if (useLocalCandidate) item.copy(streamUrl = localPath!!, hlsStreamUrl = localPath) else item
                 AppLogger.d("PlaybackVM", "Prefetching item for ${osType.name}: mediaId=${item.id}")
                 // Always prefetch on IO: Ktor Darwin uses NSURLSession (async) so the network call
                 // never blocks the Main thread, and the IO dispatcher ensures any synchronous file
@@ -212,7 +230,7 @@ class PlaybackViewModel(
                 // This fires when onCleared() cancels viewModelScope mid-initialisation.
                 diag("initialise cancelled")
                 throw e
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 diag("initialise exception=${e.message}")
                 AppLogger.e("PlaybackVM", "Playback initialisation failed", e)
                 _playBackState.value = PlaybackState.Error("Playback initialisation failed.")
@@ -245,15 +263,27 @@ class PlaybackViewModel(
              // initPlayer builds a brand-new ExoPlayer / AVPlayer and attaches it to
              // the surface owned by PlatformMediaPlayerView.  Call this ONLY once — on
              // first launch.  For subsequent track changes use handleTrackSwitch().
-             playbackStateController.initPlayer({ currentPosition, duration ->
-                 _durationMs.value    = duration
-                 _progressState.value = if (duration > 0) currentPosition.toFloat() / duration else 0f
-             }, playbackState = { _playBackState.value = it })
+             runPlayerAction(
+                 action = "handleInitialPlayback.initPlayer",
+                 onFailure = { _playBackState.value = PlaybackState.Error("Player initialisation failed.") }
+             ) {
+                 playbackStateController.initPlayer({ currentPosition, duration ->
+                     _durationMs.value    = duration
+                     _progressState.value = if (duration > 0) currentPosition.toFloat() / duration else 0f
+                 }, playbackState = { _playBackState.value = it })
+             }
             // Queue items AFTER initPlayer: Android initPlayer() clears ExoPlayer items.
             // Adding media first causes the startup item to be wiped before playback starts.
-            playbackStateController.addItemItems(playbackMediaItems)
-             playbackStateController.play(playbackState = { _playBackState.value = it })
-        } catch (e: Exception) {
+            runPlayerAction(action = "handleInitialPlayback.addItems") {
+                playbackStateController.addItemItems(playbackMediaItems)
+            }
+            runPlayerAction(
+                action = "handleInitialPlayback.play",
+                onFailure = { _playBackState.value = PlaybackState.Error("Playback start failed.") }
+            ) {
+                playbackStateController.play(playbackState = { _playBackState.value = it })
+            }
+        } catch (e: Throwable) {
             AppLogger.e("PlaybackVM", "Player initialisation error", e)
             _playBackState.value = PlaybackState.Error("Exception was thrown.")
         }
@@ -273,11 +303,22 @@ class PlaybackViewModel(
             _playBackState.value = PlaybackState.Buffering
             _progressState.value = 0f
             _durationMs.value    = 0L
-            playbackStateController.pause(playbackState = { _playBackState.value = it })
-            playbackStateController.addItemItems(mutableListOf(item))
-            playbackStateController.seekTo(0L)
-            playbackStateController.play(playbackState = { _playBackState.value = it })
-        } catch (e: Exception) {
+            runPlayerAction(action = "handleTrackSwitch.pause") {
+                playbackStateController.pause(playbackState = { _playBackState.value = it })
+            }
+            runPlayerAction(action = "handleTrackSwitch.addItems") {
+                playbackStateController.addItemItems(mutableListOf(item))
+            }
+            runPlayerAction(action = "handleTrackSwitch.seekToStart") {
+                playbackStateController.seekTo(0L)
+            }
+            runPlayerAction(
+                action = "handleTrackSwitch.play",
+                onFailure = { _playBackState.value = PlaybackState.Error("Track switch failed.") }
+            ) {
+                playbackStateController.play(playbackState = { _playBackState.value = it })
+            }
+        } catch (e: Throwable) {
             AppLogger.e("PlaybackVM", "Track switch error", e)
             _playBackState.value = PlaybackState.Error("Track switch failed.")
         }
@@ -288,48 +329,62 @@ class PlaybackViewModel(
     // and avoids unnecessary coroutine allocations + event-loop round-trips.
 
     fun onSeekChanged(seekValue: Float) {
-        val targetMs = (seekValue * playbackStateController.duration()).toLong()
-        // Emit Buffering immediately so the UI reflects the seek rather than
-        // flashing Playing→Buffering→Playing when the buffer hasn't loaded yet.
-        _playBackState.value = PlaybackState.Buffering
-        _progressState.value = seekValue
-        playbackStateController.seekTo(targetMs)
-        // Resume play after seek — the timer will transition to Playing once
-        // AVFoundation reports isPlaybackLikelyToKeepUp = true at the new position.
-        playbackStateController.resume()
+        runPlayerAction(
+            action = "onSeekChanged",
+            onFailure = { _playBackState.value = PlaybackState.Error("Seek failed.") }
+        ) {
+            val targetMs = (seekValue * playbackStateController.duration()).toLong()
+            // Emit Buffering immediately so the UI reflects the seek rather than
+            // flashing Playing→Buffering→Playing when the buffer hasn't loaded yet.
+            _playBackState.value = PlaybackState.Buffering
+            _progressState.value = seekValue
+            playbackStateController.seekTo(targetMs)
+            // Resume play after seek — the timer will transition to Playing once
+            // AVFoundation reports isPlaybackLikelyToKeepUp = true at the new position.
+            playbackStateController.resume()
+        }
     }
 
     fun playPause() {
-        if (playPauseToggleLocked) return
-        playPauseToggleLocked = true
-        viewModelScope.launch {
-            delay(220)
-            playPauseToggleLocked = false
-        }
+        runPlayerAction(
+            action = "playPause",
+            onFailure = { _playBackState.value = PlaybackState.Error("Play/pause failed.") }
+        ) {
+            if (playPauseToggleLocked) return@runPlayerAction
+            playPauseToggleLocked = true
+            viewModelScope.launch {
+                delay(220)
+                playPauseToggleLocked = false
+            }
 
-        // Use the platform player's real-time state to avoid stale UI-state races
-        // from timer-based playback updates (seen most on iOS AVPlayer).
-        if (playbackStateController.isPlaying()) {
-            playbackStateController.pause(playbackState = { _playBackState.value = it })
-        } else {
-            playbackStateController.play(playbackState = { _playBackState.value = it })
+            // Use the platform player's real-time state to avoid stale UI-state races
+            // from timer-based playback updates (seen most on iOS AVPlayer).
+            if (playbackStateController.isPlaying()) {
+                playbackStateController.pause(playbackState = { _playBackState.value = it })
+            } else {
+                playbackStateController.play(playbackState = { _playBackState.value = it })
+            }
         }
     }
 
     fun skipForward() {
-        val dur    = playbackStateController.duration()
-        val target = (playbackStateController.currentPosition() + 10_000L).coerceAtMost(dur)
-        playbackStateController.seekTo(target)
-        // Immediately reflect the new position so the seek bar jumps to the
-        // correct spot without waiting for the next timer tick.
-        if (dur > 0) _progressState.value = target.toFloat() / dur
+        runPlayerAction(action = "skipForward") {
+            val dur    = playbackStateController.duration()
+            val target = (playbackStateController.currentPosition() + 10_000L).coerceAtMost(dur)
+            playbackStateController.seekTo(target)
+            // Immediately reflect the new position so the seek bar jumps to the
+            // correct spot without waiting for the next timer tick.
+            if (dur > 0) _progressState.value = target.toFloat() / dur
+        }
     }
 
     fun skipBackward() {
-        val dur    = playbackStateController.duration()
-        val target = (playbackStateController.currentPosition() - 10_000L).coerceAtLeast(0L)
-        playbackStateController.seekTo(target)
-        if (dur > 0) _progressState.value = target.toFloat() / dur
+        runPlayerAction(action = "skipBackward") {
+            val dur    = playbackStateController.duration()
+            val target = (playbackStateController.currentPosition() - 10_000L).coerceAtLeast(0L)
+            playbackStateController.seekTo(target)
+            if (dur > 0) _progressState.value = target.toFloat() / dur
+        }
     }
 
     fun selectTrack(item: PlaybackMediaItem) {
@@ -346,9 +401,10 @@ class PlaybackViewModel(
                 val localPlaybackItem = withContext(Dispatchers.IO) { resolveLocalPlaybackItem(item) }
                 if (localPlaybackItem != null) {
                     diag("selectTrack local_source media=${item.id}")
-                    AppLogger.i("PlaybackVM", "Local playback source detected for track ${item.id}; skipping auth/session bootstrap")
+                    AppLogger.i("PlaybackVM", "Local playback source detected for track ${item.id}; preparing best-effort auth/session headers")
                     if (selectionVersion != trackSelectionVersion) return@launch
-                    playbackStateController.setAuthHeaders(emptyMap())
+                    val localHeaders = withContext(Dispatchers.IO) { prepareBestEffortPlaybackHeaders(item.id) }
+                    playbackStateController.setAuthHeaders(localHeaders)
                     handleTrackSwitch(localPlaybackItem)
                     return@launch
                 }
@@ -423,7 +479,8 @@ class PlaybackViewModel(
 
                 if (selectionVersion != trackSelectionVersion) return@launch
                 val localPath = withContext(Dispatchers.IO) { downloadController.getLocalPath(item.id) }
-                val candidate = if (localPath != null) item.copy(streamUrl = localPath, hlsStreamUrl = localPath) else item
+                val useLocalCandidate = localPath != null && !(osType == OsType.IOS && localPath.trim().lowercase().endsWith(".m3u8"))
+                val candidate = if (useLocalCandidate) item.copy(streamUrl = localPath!!, hlsStreamUrl = localPath) else item
                 // Always prefetch on IO — see initialise() comment above.
                 val playItem = withContext(Dispatchers.IO) {
                     playbackStateController.prefetchForPlayback(candidate)
@@ -436,7 +493,7 @@ class PlaybackViewModel(
                 handleTrackSwitch(playItem)
             } catch (_: CancellationException) {
                 diag("selectTrack cancelled media=${item.id}")
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 diag("selectTrack exception=${e.message}")
                 AppLogger.e("PlaybackVM", "Track selection failed", e)
                 _playBackState.value = PlaybackState.Error("Track selection failed.")
@@ -445,13 +502,19 @@ class PlaybackViewModel(
     }
 
     fun setQuality(q: PlaybackQuality) {
-        _quality.value = q
-        playbackStateController.setQuality(q)
+        runPlayerAction(action = "setQuality:$q") {
+            _quality.value = q
+            playbackStateController.setQuality(q)
+        }
     }
 
     private suspend fun resolveLocalPlaybackItem(item: PlaybackMediaItem): PlaybackMediaItem? {
         val localPath = downloadController.getLocalPath(item.id)
         if (localPath != null) {
+            if (osType == OsType.IOS && localPath.trim().lowercase().endsWith(".m3u8")) {
+                AppLogger.i("PlaybackVM", "iOS downloaded HLS detected for ${item.id}; using remote manifest playback path")
+                return null
+            }
             return item.copy(isDownloaded = true, streamUrl = localPath, hlsStreamUrl = localPath)
         }
 
@@ -460,6 +523,35 @@ class PlaybackViewModel(
             item.copy(isDownloaded = true, streamUrl = current, hlsStreamUrl = current)
         } else {
             null
+        }
+    }
+
+    /**
+     * Downloaded iOS playback may still fetch remote segment/key URLs from a local manifest.
+     * Prepare session headers when possible, but never block local playback if auth bootstrap fails.
+     */
+    private suspend fun prepareBestEffortPlaybackHeaders(mediaId: String): Map<String, String> {
+        val jwt = authRepository.ensureValidJwt()
+        if (jwt.isNullOrBlank()) {
+            AppLogger.w("PlaybackVM", "Local playback for $mediaId: JWT unavailable; proceeding without auth headers")
+            return emptyMap()
+        }
+
+        val regResult = sessionRepository.ensureDeviceRegistered()
+        if (regResult is ResultState.Error) {
+            AppLogger.w("PlaybackVM", "Local playback for $mediaId: device registration failed: ${regResult.exception.message}")
+        }
+
+        val sessionResult = sessionRepository.startSession(jwt, mediaId)
+        return if (sessionResult is ResultState.Success) {
+            mapOf(
+                HEADER_AUTHORIZATION to "Bearer $jwt",
+                HEADER_SESSION_TOKEN to sessionResult.data.sessionToken
+            )
+        } else {
+            val cause = (sessionResult as? ResultState.Error)?.exception?.message ?: "unknown"
+            AppLogger.w("PlaybackVM", "Local playback for $mediaId: session start failed ($cause); proceeding without auth headers")
+            emptyMap()
         }
     }
 
@@ -476,6 +568,8 @@ class PlaybackViewModel(
         super.onCleared()
         // Session cleanup is handled server-side via TTL / 401 revocation —
         // no client-side DELETE call needed.
-        playbackStateController.release()
+        runPlayerAction(action = "onCleared.release") {
+            playbackStateController.release()
+        }
     }
 }

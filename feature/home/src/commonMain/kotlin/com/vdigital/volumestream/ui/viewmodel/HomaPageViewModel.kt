@@ -39,11 +39,15 @@ class HomaPageViewModel(
             // Fire-and-forget: register the device's RSA public key once per install.
             // 409 (already registered) is silently ignored by ensureDeviceRegistered().
             launch(Dispatchers.IO) {
-                when (val registration = sessionRepository.ensureDeviceRegistered()) {
-                    is ResultState.Error -> {
-                        AppLogger.w("HomeVM", "device registration skipped/failed: ${registration.exception.message}")
+                try {
+                    when (val registration = sessionRepository.ensureDeviceRegistered()) {
+                        is ResultState.Error -> {
+                            AppLogger.w("HomeVM", "device registration skipped/failed: ${registration.exception.message}")
+                        }
+                        else -> Unit
                     }
-                    else -> Unit
+                } catch (t: Throwable) {
+                    AppLogger.e("HomeVM", "device registration coroutine failed", t as? Exception ?: Exception(t))
                 }
             }
 

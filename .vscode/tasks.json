@@ -37,7 +37,7 @@
         {
             "label": "iOS: Build & Run Simulator",
             "type": "shell",
-            "command": "xcrun simctl boot '4949D2C4-547A-47C2-8333-95CF84AB615B' 2>/dev/null || true && open -a Simulator && xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 16e' -derivedDataPath build/ios build && xcrun simctl install '4949D2C4-547A-47C2-8333-95CF84AB615B' $(find build/ios/Build/Products -name '*.app' | head -1) && xcrun simctl launch '4949D2C4-547A-47C2-8333-95CF84AB615B' com.vdigital.volumestream.VolumeStream",
+            "command": "open -a Simulator && xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 16e' -derivedDataPath build/ios build && BOOTED_UDID=$(xcrun simctl list devices booted | sed -n 's/.*(\\([A-F0-9-]\\{36\\}\\)).*/\\1/p' | head -1) && if [ -z \"$BOOTED_UDID\" ]; then echo 'No booted iOS simulator found. Boot one in Simulator and rerun.'; exit 1; fi && xcrun simctl install \"$BOOTED_UDID\" $(find build/ios/Build/Products -name '*.app' | head -1) && xcrun simctl launch \"$BOOTED_UDID\" com.vdigital.volumestream.VolumeStream",
             "group": "build",
             "presentation": { "reveal": "always", "panel": "shared" },
             "problemMatcher": []

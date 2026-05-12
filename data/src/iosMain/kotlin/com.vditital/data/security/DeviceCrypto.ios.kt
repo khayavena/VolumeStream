@@ -166,7 +166,9 @@ actual class DeviceCrypto(private val alias: String = DEFAULT_KEY_ALIAS) {
         if (sigB64 == null) {
             val msg = "[DeviceCrypto] signPayload: all signing attempts failed for payload len=${payloadBytes.size}"
             println(msg)
-            error(msg)  // throw so callers surface a meaningful error, not a silent 403
+            // Never hard-crash on iOS signing failures; callers can handle blank signatures
+            // as recoverable session-start failures.
+            return ""
         }
         println("[DeviceCrypto] signPayload: OK (sig len=${sigB64.length})")
         return sigB64

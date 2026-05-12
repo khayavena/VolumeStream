@@ -12,8 +12,10 @@ fun initKoinIfNeeded() {
             configureKoin()
             modules(appModule)
         }
-    } catch (e: IllegalStateException) {
-        if (!e.message.orEmpty().contains("already been started", ignoreCase = true)) throw e
+    } catch (e: Exception) {
+        val alreadyStarted =
+            e::class.simpleName.orEmpty().contains("AlreadyStartedException") ||
+                e.message.orEmpty().contains("already been started", ignoreCase = true)
+        if (!alreadyStarted) throw e
     }
 }
-

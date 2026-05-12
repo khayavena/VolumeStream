@@ -6,6 +6,7 @@ import com.vdigital.volumestream.core.player.SelectedMediaItemHolder
 import com.vdigital.volumestream.core.player.download.DownloadController
 import com.vdigital.volumestream.core.player.download.DownloadItem
 import com.vdigital.volumestream.core.player.download.DownloadState
+import com.vdigital.volumestream.platform.enum.OsType
 import com.vditital.data.config.StreamVaultConfig
 import com.vditital.data.model.PlaybackMediaItem
 import com.vditital.data.repository.AuthRepository
@@ -34,6 +35,7 @@ class DownloadViewModel(
     private val authRepository: AuthRepository,
     private val sessionRepository: SessionRepository,
     private val config: StreamVaultConfig,
+    private val osType: OsType,
 ) : ViewModel() {
 
     private companion object {
@@ -116,9 +118,12 @@ class DownloadViewModel(
     private suspend fun buildDownloadRequest(item: PlaybackMediaItem): DownloadRequest? {
         val directUrl = item.downloadUrl.trim()
         if (directUrl.isNotBlank()) {
-            val normalizedManifestUrl = DownloadUrlResolver.toDownloadManifestUrl(directUrl, item.id, config)
+            val normalizedManifestUrl = when (osType) {
+                OsType.IOS -> DownloadUrlResolver.toHlsManifestUrl(directUrl, item.id, config)
+                OsType.ANDROID -> DownloadUrlResolver.toDashManifestUrl(directUrl, item.id, config)
+            }
             if (normalizedManifestUrl != null) {
-                return buildDashManifestDownloadRequest(item.id, normalizedManifestUrl)
+                return buildManifestDownloadRequest(item.id, normalizedManifestUrl)
             }
 
             val jwt = authRepository.ensureValidJwt()
@@ -127,19 +132,22 @@ class DownloadViewModel(
         }
 
         // Fallback for catalog items without direct downloadUrl:
-        // request the online DASH manifest so segment URLs are fetchable.
+        // request the canonical HLS user manifest so local playback stays AVPlayer-compatible.
         val sourceManifest = item.hlsStreamUrl.ifBlank { item.streamUrl }
-        val downloadManifestUrl = DownloadUrlResolver.toDownloadManifestUrl(sourceManifest, item.id, config)
+        val downloadManifestUrl = when (osType) {
+            OsType.IOS -> DownloadUrlResolver.toHlsManifestUrl(sourceManifest, item.id, config)
+            OsType.ANDROID -> DownloadUrlResolver.toDashManifestUrl(sourceManifest, item.id, config)
+        }
         if (downloadManifestUrl == null) {
             AppLogger.w("DownloadVM", "Skipping download for ${item.id}: no downloadUrl and download manifest rewrite failed")
             return null
         }
 
-        return buildDashManifestDownloadRequest(item.id, downloadManifestUrl)
+        return buildManifestDownloadRequest(item.id, downloadManifestUrl)
     }
 
     @OptIn(ExperimentalEncodingApi::class)
-    private suspend fun buildDashManifestDownloadRequest(mediaId: String, manifestUrl: String): DownloadRequest? {
+    private suspend fun buildManifestDownloadRequest(mediaId: String, manifestUrl: String): DownloadRequest? {
         val jwt = authRepository.ensureValidJwt() ?: return null
         when (val reg = sessionRepository.ensureDeviceRegistered()) {
             is ResultState.Error -> {
@@ -159,26 +167,26 @@ class DownloadViewModel(
             return null
         }
 
-        val keyResult = sessionRepository.fetchAesKey(
-            mediaId = mediaId,
-            sessionId = session.data.sessionId,
-            sessionToken = session.data.sessionToken
+        val baseHeaders = mutableMapOf(
+            "Authorization" to "Bearer $jwt",
+            "X-Session-Token" to session.data.sessionToken
         )
-        if (keyResult !is ResultState.Success) {
-            val message = (keyResult as? ResultState.Error)?.exception?.message ?: "unknown"
-            AppLogger.w("DownloadVM", "Download AES key fetch failed for ${mediaId}: $message")
-            return null
+
+        if (osType == OsType.ANDROID) {
+            val keyResult = sessionRepository.fetchAesKey(
+                mediaId = mediaId,
+                sessionId = session.data.sessionId,
+                sessionToken = session.data.sessionToken
+            )
+            if (keyResult !is ResultState.Success) {
+                val message = (keyResult as? ResultState.Error)?.exception?.message ?: "unknown"
+                AppLogger.w("DownloadVM", "Download AES key fetch failed for ${mediaId}: $message")
+                return null
+            }
+            baseHeaders[HEADER_AES_KEY_B64] = Base64.encode(keyResult.data)
         }
 
-        val aesB64 = Base64.encode(keyResult.data)
-        return DownloadRequest(
-            url = manifestUrl,
-            headers = mapOf(
-                "Authorization" to "Bearer $jwt",
-                "X-Session-Token" to session.data.sessionToken,
-                HEADER_AES_KEY_B64 to aesB64
-            )
-        )
+        return DownloadRequest(url = manifestUrl, headers = baseHeaders)
     }
 
 
@@ -288,14 +296,17 @@ class DownloadViewModel(
 
     /** Select a downloaded item for playback via the shared holder. */
     fun selectForPlayback(item: DownloadItem) {
-        val localPath = item.localPath ?: return
+        val localPath = downloadController.getLocalPath(item.id)
+        val useRemoteHls = osType == OsType.IOS && localPath?.lowercase()?.endsWith(".m3u8") == true
+        val stream = if (useRemoteHls) item.url.ifBlank { localPath.orEmpty() } else localPath.orEmpty()
+        val isDownloadedSelection = !useRemoteHls && stream.isNotBlank()
         selectedMediaItemHolder.select(
             PlaybackMediaItem(
                 id         = item.id,
                 title      = item.title,
-                isDownloaded = true,
-                streamUrl  = localPath,
-                hlsStreamUrl = localPath,
+                isDownloaded = isDownloadedSelection,
+                streamUrl  = stream,
+                hlsStreamUrl = stream,
                 artworkUrl = item.artworkUrl
             )
         )
@@ -310,4 +321,3 @@ class DownloadViewModel(
         _observedStates.clear()
     }
 }
-
