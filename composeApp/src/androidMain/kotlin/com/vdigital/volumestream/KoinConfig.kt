@@ -3,6 +3,7 @@ package com.vdigital.volumestream
 import android.os.Build
 import com.vdigital.volumestream.BuildConfig
 import com.vditital.data.config.StreamVaultConfig
+import com.vditital.data.config.ArtworkProfile
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.KoinApplication
 import org.koin.core.qualifier.named
@@ -45,9 +46,15 @@ actual fun KoinApplication.configureKoin() {
         single<String>(named("apiHost"))  { runtimeHost }
         single<String>(named("authHost")) { runtimeHost }
         single {
+            val profile = if (BuildConfig.FLAVOR.contains("tv", ignoreCase = true)) {
+                ArtworkProfile.TV
+            } else {
+                ArtworkProfile.MOBILE
+            }
             StreamVaultConfig(
                 authPort = BuildConfig.AUTH_PORT,
                 apiPort  = BuildConfig.API_PORT,
+                artworkProfile = profile,
             )
         }
     })

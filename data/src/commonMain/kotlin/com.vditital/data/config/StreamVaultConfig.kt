@@ -1,5 +1,10 @@
 package com.vditital.data.config
 
+enum class ArtworkProfile {
+    MOBILE,
+    TV,
+}
+
 /**
  * All runtime-configurable parameters for the StreamVault data layer.
  *
@@ -65,5 +70,9 @@ data class StreamVaultConfig(
      * Change this if multiple SDK consumers share the same keystore namespace.
      */
     val deviceKeyAlias: String = "streamvault_device_key",
+
+    // ── Artwork mapping ───────────────────────────────────────────────────────
+    /** Which artwork variant to prefer when feed items contain sample image URLs. */
+    val artworkProfile: ArtworkProfile = ArtworkProfile.MOBILE,
 )
 

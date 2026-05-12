@@ -1,6 +1,7 @@
 package com.vditital.data.model
 
 import com.vditital.data.config.StreamVaultConfig
+import com.vditital.data.config.ArtworkProfile
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.JsonNames
 import kotlinx.serialization.SerialName
@@ -68,7 +69,11 @@ private fun remapArtworkSource(rawArtworkUrl: String?, mediaId: String, config: 
 
     return if (raw.startsWith(sampleArtworkPrefix, ignoreCase = true)) {
         // Route sample catalog artwork through local API by media id.
-        "http://localhost:${config.apiPort}/art/tv/$mediaId.svg"
+        val variant = when (config.artworkProfile) {
+            ArtworkProfile.TV -> "tv"
+            ArtworkProfile.MOBILE -> "mobile"
+        }
+        "http://localhost:${config.apiPort}/art/$variant/$mediaId.svg"
     } else {
         raw
     }
