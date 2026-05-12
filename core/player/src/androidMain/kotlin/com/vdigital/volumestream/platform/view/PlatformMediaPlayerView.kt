@@ -10,6 +10,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import android.view.ViewGroup
 import com.vdigital.volumestream.platform.controller.PlaybackStateController
 
 @OptIn(UnstableApi::class)
@@ -24,6 +25,14 @@ actual fun PlatformMediaPlayerView(
     val playerView = remember {
         PlayerView(context).apply {
             useController = false
+            // Never let the PlayerView (or any of its children) receive focus.
+            // If focus lands on PlayerView, Android dispatches key events (including
+            // KEYCODE_DPAD_CENTER) directly to it via View.dispatchKeyEvent, completely
+            // bypassing Compose's onPreviewKeyEvent. With KEYCODE_DPAD_CENTER reaching
+            // ExoPlayer, it toggles play/pause and triggers buffering.
+            isFocusable = false
+            isFocusableInTouchMode = false
+            descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
             // Start in FIT mode; zoom is toggled in the update block via resizeMode.
             resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
             // NOTE: do NOT wrap this AndroidView in graphicsLayer() with a non-identity

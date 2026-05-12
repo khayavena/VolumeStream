@@ -30,7 +30,10 @@ private fun Long.toFormattedTime(): String {
 }
 
 @Composable
-fun PlaybackSeekBar(viewModel: PlaybackViewModel) {
+fun PlaybackSeekBar(
+    viewModel: PlaybackViewModel,
+    isTvLayout: Boolean = false,
+) {
     val progress   = viewModel.progressStateUI.collectAsState()
     val durationMs = viewModel.durationMsUI.collectAsState()
 
@@ -39,6 +42,9 @@ fun PlaybackSeekBar(viewModel: PlaybackViewModel) {
 
     val displayValue      = if (isDragging) dragValue else progress.value
     val displayPositionMs = (displayValue * durationMs.value).toLong()
+
+    val horizontalPadding = if (isTvLayout) 2.dp else 8.dp
+    val timeFontSize = if (isTvLayout) 13.sp else 12.sp
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Slider(
@@ -53,14 +59,14 @@ fun PlaybackSeekBar(viewModel: PlaybackViewModel) {
                 activeTrackColor   = SeekGreen,
                 inactiveTrackColor = Color(0xFF2E2E2E)
             ),
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+            modifier = Modifier.fillMaxWidth().padding(horizontal = horizontalPadding)
         )
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(displayPositionMs.toFormattedTime(), color = SeekGreen, fontSize = 12.sp)
-            Text(durationMs.value.toFormattedTime(), color = SeekGreen, fontSize = 12.sp)
+            Text(displayPositionMs.toFormattedTime(), color = SeekGreen, fontSize = timeFontSize)
+            Text(durationMs.value.toFormattedTime(), color = SeekGreen, fontSize = timeFontSize)
         }
     }
 }

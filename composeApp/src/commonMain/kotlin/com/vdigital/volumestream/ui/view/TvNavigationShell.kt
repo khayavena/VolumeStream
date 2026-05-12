@@ -300,6 +300,7 @@ fun TvNavigationShell(
                 Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
                     PlaybackView(
                         playbackInstanceKey = "tv-play:$playbackSessionId",
+                        isTvLayout = true,
                         onBack = onBackFromPlayer
                     )
                 }

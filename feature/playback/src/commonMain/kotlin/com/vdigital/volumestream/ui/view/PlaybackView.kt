@@ -7,7 +7,9 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +21,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
@@ -36,11 +41,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -71,12 +86,16 @@ private val TopScrimBrush = Brush.verticalGradient(
 private val BottomScrimBrush = Brush.verticalGradient(
     colors = listOf(Color.Transparent, Color(0x96000000))
 )
+private val TvChipBg = Color(0xB3000000)
+private val TvChipFocusedBg = Color(0x6600E676)
 private const val CONTROLS_HIDE_DELAY_MS = 4_000L
+private const val TV_CONTROLS_HIDE_DELAY_MS = 7_000L
 
 @OptIn(KoinExperimentalAPI::class)
 @Composable
 fun PlaybackView(
     playbackInstanceKey: String = "playback-default",
+    isTvLayout: Boolean = false,
     onBack: () -> Unit = {}
 ) {
     LockLandscapeOrientation()
@@ -118,11 +137,25 @@ fun PlaybackView(
     var isZoomed          by remember { mutableStateOf(true) }
     var controlsResetTick by remember { mutableStateOf(0) }
     var didInitialise     by remember { mutableStateOf(false) }
+    var activeTvControlKey by remember { mutableStateOf<String?>(null) }
     val currentQuality    by viewModel.qualityUI.collectAsState()
+    val playbackState     by viewModel.playBackStateUI.collectAsState()
 
-    LaunchedEffect(controlsResetTick) {
+    LaunchedEffect(
+        controlsResetTick,
+        isTvLayout,
+        showTrackPanel,
+        showQualityPanel,
+        playbackState is PlaybackState.Error
+    ) {
+        if (showTrackPanel || showQualityPanel || playbackState is PlaybackState.Error) {
+            showControls = true
+            return@LaunchedEffect
+        }
+
+        val hideDelayMs = if (isTvLayout) TV_CONTROLS_HIDE_DELAY_MS else CONTROLS_HIDE_DELAY_MS
         showControls = true
-        delay(CONTROLS_HIDE_DELAY_MS)
+        delay(hideDelayMs)
         showControls = false
         showTrackPanel = false
         showQualityPanel = false
@@ -143,7 +176,32 @@ fun PlaybackView(
     }
 
     // Auto-navigate back when the stream ends.
-    val playbackState by viewModel.playBackStateUI.collectAsState()
+    val backChipFocus = remember { FocusRequester() }
+    val zoomChipFocus = remember { FocusRequester() }
+    val qualityChipFocus = remember { FocusRequester() }
+    val tracksChipFocus = remember { FocusRequester() }
+    val rewindChipFocus = remember { FocusRequester() }
+    val playChipFocus = remember { FocusRequester() }
+    val forwardChipFocus = remember { FocusRequester() }
+    val qualityPanelFirstFocus = remember { FocusRequester() }
+    val trackPanelFirstFocus = remember { FocusRequester() }
+
+    LaunchedEffect(isTvLayout, showControls, showTrackPanel, showQualityPanel) {
+        if (!isTvLayout || !showControls) return@LaunchedEffect
+        if (showTrackPanel || showQualityPanel) return@LaunchedEffect
+        runCatching { playChipFocus.requestFocus() }
+    }
+
+    LaunchedEffect(isTvLayout, showQualityPanel) {
+        if (!isTvLayout || !showQualityPanel) return@LaunchedEffect
+        runCatching { qualityPanelFirstFocus.requestFocus() }
+    }
+
+    LaunchedEffect(isTvLayout, showTrackPanel) {
+        if (!isTvLayout || !showTrackPanel) return@LaunchedEffect
+        runCatching { trackPanelFirstFocus.requestFocus() }
+    }
+
     LaunchedEffect(playbackState) {
         AppLogger.d(
             "Diag.UI",
@@ -182,16 +240,135 @@ fun PlaybackView(
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .pointerInput(Unit) {
-                detectTapGestures {
-                    controlsResetTick++
+    val rootModifier = Modifier
+        .fillMaxSize()
+        .background(Color.Black)
+        // Keep Compose focus inside this Box at all times on TV.
+        // Without this, when chips are hidden (AnimatedVisibility exit), the Android
+        // View system reclaims focus and delivers KEYCODE_DPAD_CENTER directly to
+        // ExoPlayer's PlayerView — causing spurious play/pause and the loading spinner.
+        .let { if (isTvLayout) it.focusable() else it }
+        .let { base ->
+            if (isTvLayout) {
+                base.onPreviewKeyEvent { event ->
+                    // Consume KeyUp for Enter/DpadCenter so ExoPlayer's PlayerView never
+                    // sees the up-event and interprets it as play/pause.
+                    if (event.type != KeyEventType.KeyDown) {
+                        return@onPreviewKeyEvent when (event.key) {
+                            Key.Enter,
+                            Key.NumPadEnter,
+                            Key.DirectionCenter -> true
+                            else -> false
+                        }
+                    }
+                    val revealOnlyKey = when (event.key) {
+                        Key.DirectionUp,
+                        Key.DirectionDown,
+                        Key.DirectionLeft,
+                        Key.DirectionRight,
+                        Key.DirectionCenter,
+                        Key.Enter,
+                        Key.NumPadEnter -> true
+                        else -> false
+                    }
+                    val mediaActionKey = when (event.key) {
+                        Key.MediaPlayPause,
+                        Key.MediaPlay,
+                        Key.MediaPause,
+                        Key.MediaFastForward,
+                        Key.MediaRewind,
+                        Key.MediaNext,
+                        Key.MediaPrevious -> true
+                        else -> false
+                    }
+                    val shouldRevealControls = revealOnlyKey || mediaActionKey
+                    if (shouldRevealControls) {
+                        controlsResetTick++
+                        if (!showControls) {
+                            showControls = true
+                            if (revealOnlyKey) return@onPreviewKeyEvent true
+                        }
+                    }
+                    val hasOpenPanel = showTrackPanel || showQualityPanel
+                    when (event.key) {
+                        Key.Back,
+                        Key.Escape -> {
+                            when {
+                                hasOpenPanel -> {
+                                    // Close open panel first, keep overlay visible.
+                                    showTrackPanel = false
+                                    showQualityPanel = false
+                                    controlsResetTick++
+                                }
+                                showControls -> {
+                                    // YouTube TV style: first Back press hides the overlay
+                                    // while video keeps playing. Second Back navigates away.
+                                    showControls = false
+                                }
+                                else -> handleBack()
+                            }
+                            true
+                        }
+                        Key.DirectionLeft -> {
+                            controlsResetTick++
+                            false
+                        }
+                        Key.DirectionRight -> {
+                            controlsResetTick++
+                            false
+                        }
+                        Key.DirectionUp,
+                        Key.DirectionDown -> {
+                            controlsResetTick++
+                            false
+                        }
+                        Key.Enter,
+                        Key.NumPadEnter,
+                        Key.DirectionCenter -> {
+                            // Always consume Enter/DpadCenter so it never reaches the
+                            // underlying ExoPlayer PlayerView, which would otherwise
+                            // intercept KEYCODE_DPAD_CENTER as play/pause and cause the
+                            // player to stop + buffer unexpectedly.
+                            controlsResetTick++
+                            if (showControls && !hasOpenPanel) {
+                                when (activeTvControlKey) {
+                                    "tv-play"    -> viewModel.playPause()
+                                    "tv-rewind"  -> viewModel.skipBackward()
+                                    "tv-forward" -> viewModel.skipForward()
+                                    "tv-back"    -> handleBack()
+                                    "tv-zoom"    -> { isZoomed = !isZoomed }
+                                    "tv-quality" -> {
+                                        showQualityPanel = !showQualityPanel
+                                        if (showQualityPanel) showTrackPanel = false
+                                    }
+                                    "tv-tracks"  -> {
+                                        showTrackPanel = !showTrackPanel
+                                        if (showTrackPanel) showQualityPanel = false
+                                    }
+                                }
+                            }
+                            true  // Always consume
+                        }
+                        Key.MediaPlayPause,
+                        Key.MediaPlay,
+                        Key.MediaPause -> {
+                            controlsResetTick++
+                            viewModel.playPause()
+                            true
+                        }
+                        else -> false
+                    }
+                }
+            } else {
+                base.pointerInput(Unit) {
+                    detectTapGestures {
+                        controlsResetTick++
+                    }
                 }
             }
-    ) {
+        }
+
+    Box(modifier = rootModifier) {
         when (viewModel.osType) {
             OsType.IOS -> PlatformMediaPlayerView(
                 modifier = Modifier.fillMaxSize(),
@@ -243,14 +420,18 @@ fun PlaybackView(
                     // Tappable back link — important because showControls auto-hides
                     // after 4 s and the overlay would otherwise trap the user.
                     Text(
-                        text = "Tap Back to go back",
+                        text = if (isTvLayout) "Press Back to go back" else "Tap Back to go back",
                         color = Color(0xFF00E676),
                         fontSize = 13.sp,
                         textAlign = TextAlign.Center,
                         modifier = Modifier
-                            .pointerInput(Unit) {
-                                detectTapGestures {
-                                    handleBack()
+                            .let { textModifier ->
+                                if (isTvLayout) textModifier else {
+                                    textModifier.pointerInput(Unit) {
+                                        detectTapGestures {
+                                            handleBack()
+                                        }
+                                    }
                                 }
                             }
                             .padding(vertical = 8.dp)
@@ -259,157 +440,335 @@ fun PlaybackView(
             }
         }
 
-        AnimatedVisibility(
-            visible = showControls || playbackState is PlaybackState.Error,
-            modifier = Modifier.align(Alignment.TopStart),
-            enter = fadeIn(), exit = fadeOut()
-        ) {
-            IconButton(
-                onClick = handleBack,
-                modifier = Modifier
-                    .padding(8.dp)
-                    .size(44.dp)
-                    .semantics { contentDescription = "Back" }
+        if (isTvLayout) {
+            AnimatedVisibility(
+                visible = showControls || playbackState is PlaybackState.Error,
+                modifier = Modifier.align(Alignment.TopStart),
+                enter = fadeIn(),
+                exit = fadeOut()
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = GreenAccent,
-                    modifier = Modifier.size(24.dp)
+                TvOverlayChip(
+                    label = "Back",
+                    selected = false,
+                    focusKey = "tv-back",
+                    onFocusKeyChanged = { key -> activeTvControlKey = key },
+                    modifier = Modifier
+                        .padding(start = 16.dp, top = 16.dp)
+                        .focusRequester(backChipFocus)
+                        .focusProperties {
+                            up = backChipFocus
+                            right = zoomChipFocus
+                            down = rewindChipFocus
+                        },
+                    onClick = handleBack
                 )
             }
-        }
 
-        AnimatedVisibility(
-            visible = showControls,
-            modifier = Modifier.align(Alignment.TopEnd),
-            enter = fadeIn(), exit = fadeOut()
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(TopScrimBrush)
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
+            AnimatedVisibility(
+                visible = showControls,
+                modifier = Modifier.align(Alignment.TopEnd),
+                enter = fadeIn(),
+                exit = fadeOut()
             ) {
-                IconButton(
-                    onClick = {
-                        isZoomed = !isZoomed
-                        controlsResetTick++
-                    },
+                Row(
                     modifier = Modifier
-                        .size(38.dp)
-                        .background(ControlsBarBg, CircleShape)
-                        .border(
-                            1.dp,
-                            if (isZoomed) GreenAccent else Color(0xFF444444),
-                            CircleShape
-                        )
-                        .semantics {
-                            contentDescription = if (isZoomed) {
-                                "Video mode fill. Tap to switch to fit"
-                            } else {
-                                "Video mode fit. Tap to switch to fill"
-                            }
-                        }
+                        .focusGroup()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Text(
-                        if (isZoomed) "FILL" else "FIT",
-                        color = if (isZoomed) GreenAccent else Color.White,
-                        fontSize = 10.sp,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                    TvOverlayChip(
+                        label = if (isZoomed) "FILL" else "FIT",
+                        selected = isZoomed,
+                        focusKey = "tv-zoom",
+                        onFocusKeyChanged = { key -> activeTvControlKey = key },
+                        modifier = Modifier
+                            .focusRequester(zoomChipFocus)
+                            .focusProperties {
+                                left = backChipFocus
+                                right = qualityChipFocus
+                                up = zoomChipFocus
+                                down = rewindChipFocus
+                            },
+                        onClick = {
+                            isZoomed = !isZoomed
+                            controlsResetTick++
+                        }
                     )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                IconButton(
-                    onClick = {
-                        showQualityPanel = !showQualityPanel
-                        if (showQualityPanel) showTrackPanel = false
-                        controlsResetTick++
-                    },
-                    modifier = Modifier
-                        .size(38.dp)
-                        .background(ControlsBarBg, CircleShape)
-                        .border(
-                            1.dp,
-                            if (showQualityPanel) GreenAccent else Color(0xFF444444),
-                            CircleShape
-                        )
-                        .semantics {
-                            contentDescription = if (showQualityPanel) {
-                                "Close quality options"
-                            } else {
-                                "Open quality options"
-                            }
+                    TvOverlayChip(
+                        label = if (currentQuality == PlaybackQuality.Auto) "HD" else currentQuality.label,
+                        selected = showQualityPanel,
+                        focusKey = "tv-quality",
+                        onFocusKeyChanged = { key -> activeTvControlKey = key },
+                        modifier = Modifier
+                            .focusRequester(qualityChipFocus)
+                            .focusProperties {
+                                left = zoomChipFocus
+                                right = tracksChipFocus
+                                up = qualityChipFocus
+                                down = if (showQualityPanel) qualityPanelFirstFocus else playChipFocus
+                            },
+                        onClick = {
+                            showQualityPanel = !showQualityPanel
+                            if (showQualityPanel) showTrackPanel = false
+                            controlsResetTick++
                         }
-                ) {
-                    Text(
-                        if (currentQuality == PlaybackQuality.Auto) "HD" else currentQuality.label,
-                        color = if (showQualityPanel) GreenAccent else Color.White,
-                        fontSize = 10.sp,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                     )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                IconButton(
-                    onClick = {
-                        showTrackPanel = !showTrackPanel
-                        if (showTrackPanel) showQualityPanel = false
-                        controlsResetTick++
-                    },
-                    modifier = Modifier
-                        .size(38.dp)
-                        .background(ControlsBarBg, CircleShape)
-                        .border(
-                            1.dp,
-                            if (showTrackPanel) GreenAccent else Color(0xFF444444),
-                            CircleShape
-                        )
-                        .semantics {
-                            contentDescription = if (showTrackPanel) {
-                                "Close track list"
-                            } else {
-                                "Open track list"
-                            }
+                    TvOverlayChip(
+                        label = if (showTrackPanel) "TRACKS ON" else "TRACKS",
+                        selected = showTrackPanel,
+                        focusKey = "tv-tracks",
+                        onFocusKeyChanged = { key -> activeTvControlKey = key },
+                        modifier = Modifier
+                            .focusRequester(tracksChipFocus)
+                            .focusProperties {
+                                left = qualityChipFocus
+                                up = tracksChipFocus
+                                down = if (showTrackPanel) trackPanelFirstFocus else forwardChipFocus
+                            },
+                        onClick = {
+                            showTrackPanel = !showTrackPanel
+                            if (showTrackPanel) showQualityPanel = false
+                            controlsResetTick++
                         }
-                ) {
-                    Icon(
-                        imageVector = if (showTrackPanel) Icons.Default.Close else Icons.Default.Menu,
-                        contentDescription = if (showTrackPanel) "Close track list" else "Open track list",
-                        tint = if (showTrackPanel) GreenAccent else Color.White,
-                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
-        }
 
-        AnimatedVisibility(
-            visible = showControls,
-            modifier = Modifier.align(Alignment.BottomCenter),
-            enter = fadeIn(), exit = fadeOut()
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(BottomScrimBrush)
-                    .padding(horizontal = 8.dp, vertical = 10.dp)
+            AnimatedVisibility(
+                visible = showControls,
+                modifier = Modifier.align(Alignment.BottomCenter),
+                enter = fadeIn(),
+                exit = fadeOut()
             ) {
-                Column(
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(ControlsBarBg)
-                        .padding(horizontal = 10.dp, vertical = 10.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .background(BottomScrimBrush)
+                        .padding(horizontal = 24.dp, vertical = 18.dp)
                 ) {
-                    PlayPauseControl(
-                        viewModel = viewModel,
-                        onPlayPause = {
-                        viewModel.playPause()
-                        controlsResetTick++
-                    })
-                    Spacer(modifier = Modifier.height(6.dp))
-                    PlaybackSeekBar(viewModel = viewModel)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(ControlsBarBg, RoundedCornerShape(10.dp))
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            TvOverlayChip(
+                                label = "-10s",
+                                selected = false,
+                                focusKey = "tv-rewind",
+                                onFocusKeyChanged = { key -> activeTvControlKey = key },
+                                modifier = Modifier
+                                    .focusRequester(rewindChipFocus)
+                                    .focusProperties {
+                                        left = rewindChipFocus
+                                        right = playChipFocus
+                                        up = zoomChipFocus
+                                        down = rewindChipFocus
+                                    },
+                                onClick = viewModel::skipBackward
+                            )
+                            TvOverlayChip(
+                                label = if (playbackState == PlaybackState.Playing) "Pause" else "Play",
+                                selected = playbackState == PlaybackState.Playing,
+                                focusKey = "tv-play",
+                                onFocusKeyChanged = { key -> activeTvControlKey = key },
+                                modifier = Modifier
+                                    .focusRequester(playChipFocus)
+                                    .focusProperties {
+                                        left = rewindChipFocus
+                                        right = forwardChipFocus
+                                        up = qualityChipFocus
+                                        down = playChipFocus
+                                    },
+                                onClick = {
+                                    // Enter/DpadCenter is consumed in onPreviewKeyEvent and
+                                    // dispatched centrally (no double-fire). This onClick only
+                                    // fires on touch/mouse click events.
+                                    viewModel.playPause()
+                                    controlsResetTick++
+                                }
+                            )
+                            TvOverlayChip(
+                                label = "+10s",
+                                selected = false,
+                                focusKey = "tv-forward",
+                                onFocusKeyChanged = { key -> activeTvControlKey = key },
+                                modifier = Modifier
+                                    .focusRequester(forwardChipFocus)
+                                    .focusProperties {
+                                        left = playChipFocus
+                                        right = forwardChipFocus
+                                        up = tracksChipFocus
+                                        down = forwardChipFocus
+                                    },
+                                onClick = viewModel::skipForward
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                        PlaybackSeekBar(
+                            viewModel = viewModel,
+                            isTvLayout = true
+                        )
+                    }
+                }
+            }
+        } else {
+            AnimatedVisibility(
+                visible = showControls || playbackState is PlaybackState.Error,
+                modifier = Modifier.align(Alignment.TopStart),
+                enter = fadeIn(), exit = fadeOut()
+            ) {
+                IconButton(
+                    onClick = handleBack,
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .size(44.dp)
+                        .semantics { contentDescription = "Back" }
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = GreenAccent,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+
+            AnimatedVisibility(
+                visible = showControls,
+                modifier = Modifier.align(Alignment.TopEnd),
+                enter = fadeIn(), exit = fadeOut()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(TopScrimBrush)
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = {
+                            isZoomed = !isZoomed
+                            controlsResetTick++
+                        },
+                        modifier = Modifier
+                            .size(38.dp)
+                            .background(ControlsBarBg, CircleShape)
+                            .border(
+                                1.dp,
+                                if (isZoomed) GreenAccent else Color(0xFF444444),
+                                CircleShape
+                            )
+                            .semantics {
+                                contentDescription = if (isZoomed) {
+                                    "Video mode fill. Tap to switch to fit"
+                                } else {
+                                    "Video mode fit. Tap to switch to fill"
+                                }
+                            }
+                    ) {
+                        Text(
+                            if (isZoomed) "FILL" else "FIT",
+                            color = if (isZoomed) GreenAccent else Color.White,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    IconButton(
+                        onClick = {
+                            showQualityPanel = !showQualityPanel
+                            if (showQualityPanel) showTrackPanel = false
+                            controlsResetTick++
+                        },
+                        modifier = Modifier
+                            .size(38.dp)
+                            .background(ControlsBarBg, CircleShape)
+                            .border(
+                                1.dp,
+                                if (showQualityPanel) GreenAccent else Color(0xFF444444),
+                                CircleShape
+                            )
+                            .semantics {
+                                contentDescription = if (showQualityPanel) {
+                                    "Close quality options"
+                                } else {
+                                    "Open quality options"
+                                }
+                            }
+                    ) {
+                        Text(
+                            if (currentQuality == PlaybackQuality.Auto) "HD" else currentQuality.label,
+                            color = if (showQualityPanel) GreenAccent else Color.White,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    IconButton(
+                        onClick = {
+                            showTrackPanel = !showTrackPanel
+                            if (showTrackPanel) showQualityPanel = false
+                            controlsResetTick++
+                        },
+                        modifier = Modifier
+                            .size(38.dp)
+                            .background(ControlsBarBg, CircleShape)
+                            .border(
+                                1.dp,
+                                if (showTrackPanel) GreenAccent else Color(0xFF444444),
+                                CircleShape
+                            )
+                            .semantics {
+                                contentDescription = if (showTrackPanel) {
+                                    "Close track list"
+                                } else {
+                                    "Open track list"
+                                }
+                            }
+                    ) {
+                        Icon(
+                            imageVector = if (showTrackPanel) Icons.Default.Close else Icons.Default.Menu,
+                            contentDescription = if (showTrackPanel) "Close track list" else "Open track list",
+                            tint = if (showTrackPanel) GreenAccent else Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+
+            AnimatedVisibility(
+                visible = showControls,
+                modifier = Modifier.align(Alignment.BottomCenter),
+                enter = fadeIn(), exit = fadeOut()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(BottomScrimBrush)
+                        .padding(horizontal = 8.dp, vertical = 10.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(ControlsBarBg)
+                            .padding(horizontal = 10.dp, vertical = 10.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        PlayPauseControl(
+                            viewModel = viewModel,
+                            onPlayPause = {
+                                viewModel.playPause()
+                                controlsResetTick++
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        PlaybackSeekBar(viewModel = viewModel)
+                    }
                 }
             }
         }
@@ -420,7 +779,12 @@ fun PlaybackView(
             enter = slideInVertically(initialOffsetY = { it }),
             exit = slideOutVertically(targetOffsetY = { it })
         ) {
-            TrackSelectionPanel(viewModel = viewModel)
+            TrackSelectionPanel(
+                viewModel = viewModel,
+                isTvLayout = isTvLayout,
+                initialItemFocus = trackPanelFirstFocus,
+                returnFocus = tracksChipFocus
+            )
         }
 
         AnimatedVisibility(
@@ -431,8 +795,55 @@ fun PlaybackView(
         ) {
             QualitySelectionPanel(
                 viewModel = viewModel,
+                isTvLayout = isTvLayout,
+                initialItemFocus = qualityPanelFirstFocus,
+                returnFocus = qualityChipFocus,
                 onSelect = { showQualityPanel = false }
             )
         }
     }
 }
+
+@Composable
+private fun TvOverlayChip(
+    label: String,
+    selected: Boolean,
+    focusKey: String,
+    onFocusKeyChanged: (String?) -> Unit,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    var isFocused by remember { mutableStateOf(false) }
+    val borderColor = when {
+        selected -> GreenAccent
+        isFocused -> GreenAccent.copy(alpha = 0.85f)
+        else -> Color(0xFF444444)
+    }
+
+    Box(
+        modifier = modifier
+            .background(if (isFocused) TvChipFocusedBg else TvChipBg, RoundedCornerShape(8.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(8.dp))
+            .onFocusChanged {
+                isFocused = it.isFocused
+                onFocusKeyChanged(if (it.isFocused) focusKey else null)
+            }
+            // .focusable() removed — .clickable() below already makes this node
+            // focusable. Keeping both created a duplicate focus node that could
+            // cause Enter/DpadCenter to be processed twice on Android TV.
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = label,
+            color = if (selected || isFocused) GreenAccent else Color.White,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+}
+

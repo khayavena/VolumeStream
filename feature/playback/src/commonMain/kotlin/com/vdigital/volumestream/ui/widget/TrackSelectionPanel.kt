@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,15 +15,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Divider
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -38,7 +46,12 @@ private val PanelBg       = Color(0xFF0A0A0A)
 private val PanelDivider  = Color(0xFF1C1C1C)
 
 @Composable
-fun TrackSelectionPanel(viewModel: PlaybackViewModel) {
+fun TrackSelectionPanel(
+    viewModel: PlaybackViewModel,
+    isTvLayout: Boolean = false,
+    initialItemFocus: FocusRequester? = null,
+    returnFocus: FocusRequester? = null,
+) {
     val tracks     = viewModel.trackListUI.collectAsState()
     val selectedId = viewModel.selectedTrackIdUI.collectAsState()
 
@@ -65,10 +78,24 @@ fun TrackSelectionPanel(viewModel: PlaybackViewModel) {
         Spacer(Modifier.height(8.dp))
         Divider(color = PanelDivider)
         LazyColumn(modifier = Modifier.fillMaxWidth()) {
-            items(tracks.value) { track ->
+            items(tracks.value.size) { index ->
+                val track = tracks.value[index]
                 TrackRow(
                     track = track,
                     isSelected = track.id == selectedId.value,
+                    isTvLayout = isTvLayout,
+                    modifier = Modifier
+                        .then(
+                            if (isTvLayout && index == 0 && initialItemFocus != null) {
+                                Modifier
+                                    .focusRequester(initialItemFocus)
+                                    .focusProperties {
+                                        up = returnFocus ?: initialItemFocus
+                                    }
+                            } else {
+                                Modifier
+                            }
+                        ),
                     onClick = { viewModel.selectTrack(track) }
                 )
                 Divider(color = PanelDivider)
@@ -78,14 +105,29 @@ fun TrackSelectionPanel(viewModel: PlaybackViewModel) {
 }
 
 @Composable
-private fun TrackRow(track: PlaybackMediaItem, isSelected: Boolean, onClick: () -> Unit) {
-    val borderColor = if (isSelected) Color(0xFF00E676) else Color.Transparent
+private fun TrackRow(
+    track: PlaybackMediaItem,
+    isSelected: Boolean,
+    isTvLayout: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    var isFocused by remember { mutableStateOf(false) }
+    val borderColor = when {
+        isSelected -> Color(0xFF00E676)
+        isFocused && isTvLayout -> Color(0x9900E676)
+        else -> Color.Transparent
+    }
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
+            .onFocusChanged { isFocused = it.isFocused }
+            .focusable(enabled = isTvLayout)
             .clickable(onClick = onClick)
             .border(1.dp, borderColor, RoundedCornerShape(8.dp))
+            .background(if (isFocused && isTvLayout) Color(0x22111111) else Color.Transparent)
             .padding(12.dp)
     ) {
         Image(

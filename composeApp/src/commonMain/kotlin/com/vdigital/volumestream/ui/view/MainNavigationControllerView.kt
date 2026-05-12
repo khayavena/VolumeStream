@@ -86,6 +86,7 @@ fun MainNavigationControllerView() {
             composable(Screen.Play.route) { backStackEntry ->
                 PlaybackView(
                     playbackInstanceKey = "play:${backStackEntry.hashCode()}",
+                    isTvLayout = false,
                     onBack = { navController.popBackStack() }
                 )
             }
