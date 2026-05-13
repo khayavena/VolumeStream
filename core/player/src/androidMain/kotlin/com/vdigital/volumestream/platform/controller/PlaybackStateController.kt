@@ -11,7 +11,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.session.MediaController
-import com.vdigital.volumestream.compnent.Media3PlayerComponent
+import com.vdigital.volumestream.compnent.AndroidPlayerEngine
 import com.vdigital.volumestream.ui.viewmodel.state.PlaybackQuality
 import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState
 import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState.Buffering
@@ -19,24 +19,24 @@ import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState.Playing
 import com.vditital.data.model.PlaybackMediaItem
 
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
-actual class PlaybackStateController(private val media3PlayerComponent: Media3PlayerComponent) {
+actual class PlaybackStateController(private val androidPlayerEngine: AndroidPlayerEngine) {
 
     private var released = false
     private var progressHandler: Handler? = null
     private var progressRunnable: Runnable? = null
 
     actual fun setAuthHeaders(headers: Map<String, String>) {
-        media3PlayerComponent.setDefaultHeaders(headers)
+        androidPlayerEngine.setDefaultHeaders(headers)
     }
 
     actual fun setAesKey(key: ByteArray) {
-        media3PlayerComponent.setAesKey(key)
+        androidPlayerEngine.setAesKey(key)
     }
 
     actual suspend fun prefetchForPlayback(mediaItem: PlaybackMediaItem): PlaybackMediaItem = mediaItem
 
     actual fun addItem(mediaItem: PlaybackMediaItem) {
-        media3PlayerComponent.addMediaItem(mediaItem)
+        androidPlayerEngine.addMediaItem(mediaItem)
     }
 
     actual fun initPlayer(callback: (Long, Long) -> Unit, playbackState: (PlaybackState) -> Unit) {
@@ -46,14 +46,14 @@ actual class PlaybackStateController(private val media3PlayerComponent: Media3Pl
         progressRunnable?.let { progressHandler?.removeCallbacks(it) }
         progressHandler = null
         progressRunnable = null
-        media3PlayerComponent.initPlayer {
+        androidPlayerEngine.initPlayer {
             if (released) return@initPlayer
-            media3PlayerComponent.setControllerListener(PlaybackControllerListener(playbackState))
+            androidPlayerEngine.setControllerListener(PlaybackControllerListener(playbackState))
             val handler = Handler(Looper.getMainLooper())
             val runnable = object : Runnable {
                 override fun run() {
                     if (released) return   // player was released mid-playback
-                    val exo = media3PlayerComponent.getExoPlayer()
+                    val exo = androidPlayerEngine.getExoPlayer()
                     // C.TIME_UNSET == Long.MIN_VALUE — normalise to 0 so the
                     // ViewModel can safely divide position / duration.
                     val dur = exo.duration.coerceAtLeast(0L)
@@ -80,7 +80,7 @@ actual class PlaybackStateController(private val media3PlayerComponent: Media3Pl
     }
 
     actual fun pause(playbackState: (PlaybackState) -> Unit) {
-        media3PlayerComponent.getMediaController()?.pause()
+        androidPlayerEngine.getMediaController()?.pause()
         playbackState(PlaybackState.Paused)
     }
 
@@ -90,36 +90,36 @@ actual class PlaybackStateController(private val media3PlayerComponent: Media3Pl
         progressRunnable?.let { progressHandler?.removeCallbacks(it) }
         progressHandler = null
         progressRunnable = null
-        media3PlayerComponent.releasePlayer()
+        androidPlayerEngine.releasePlayer()
     }
 
-    actual fun resume() { media3PlayerComponent.play() }
+    actual fun resume() { androidPlayerEngine.play() }
 
     actual fun isPlaying(): Boolean =
-        media3PlayerComponent.getMediaController()?.isPlaying == true
+        androidPlayerEngine.getMediaController()?.isPlaying == true
 
     actual fun duration(): Long =
-        media3PlayerComponent.getMediaController()?.duration ?: 0L
+        androidPlayerEngine.getMediaController()?.duration ?: 0L
 
     actual fun currentPosition(): Long =
-        media3PlayerComponent.getMediaController()?.currentPosition ?: 0L
+        androidPlayerEngine.getMediaController()?.currentPosition ?: 0L
 
     actual fun seekTo(position: Long) {
-        media3PlayerComponent.getMediaController()?.seekTo(position)
+        androidPlayerEngine.getMediaController()?.seekTo(position)
     }
 
     actual fun play(playbackState: (PlaybackState) -> Unit) {
-        media3PlayerComponent.getMediaController()?.play()
+        androidPlayerEngine.getMediaController()?.play()
         playbackState(Playing)
     }
 
-    internal fun getController(): MediaController? = media3PlayerComponent.getMediaController()
+    internal fun getController(): MediaController? = androidPlayerEngine.getMediaController()
 
     internal fun getExoPlayer(): androidx.media3.exoplayer.ExoPlayer =
-        media3PlayerComponent.getExoPlayer()
+        androidPlayerEngine.getExoPlayer()
 
     actual fun addItemItems(items: List<PlaybackMediaItem>) {
-        media3PlayerComponent.addAll(items)
+        androidPlayerEngine.addAll(items)
     }
 
     actual fun downloadDashManifest(playbackItem: PlaybackMediaItem) {}
@@ -127,7 +127,7 @@ actual class PlaybackStateController(private val media3PlayerComponent: Media3Pl
     @OptIn(UnstableApi::class)
     actual fun setQuality(quality: PlaybackQuality) {
         try {
-            val selector = media3PlayerComponent.getExoPlayer().trackSelector as? DefaultTrackSelector ?: run {
+            val selector = androidPlayerEngine.getExoPlayer().trackSelector as? DefaultTrackSelector ?: run {
                 Log.w("VolumeStream", "setQuality: trackSelector is not DefaultTrackSelector")
                 return
             }

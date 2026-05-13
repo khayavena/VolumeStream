@@ -24,11 +24,11 @@ import com.vdigital.volumestream.config.PlayerConfig
 import com.vdigital.volumestream.platform.controller.PlaybackStateController
 import com.vditital.data.model.PlaybackMediaItem
 
-class Media3Media3PlayerComponentImpl(
+class AndroidPlayerEngineImpl(
     private val context: Application,
     private val cachedPlaybackDataSourceFactory: CachedPlaybackDataSourceFactory,
     private val playerConfig: PlayerConfig = PlayerConfig()
-) : Media3PlayerComponent {
+) : AndroidPlayerEngine {
 
     private var player: ExoPlayer = buildPlayer()
     private var mediaController: MediaController? = null

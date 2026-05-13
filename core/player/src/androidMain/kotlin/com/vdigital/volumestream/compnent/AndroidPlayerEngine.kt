@@ -4,7 +4,7 @@ import androidx.media3.session.MediaController
 import com.vdigital.volumestream.platform.controller.PlaybackStateController
 import com.vditital.data.model.PlaybackMediaItem
 
-interface Media3PlayerComponent {
+interface AndroidPlayerEngine {
     fun setDefaultHeaders(headers: Map<String, String>)
     /** Pass the 16-byte AES-128 session key so DASH segments can be decrypted. */
     fun setAesKey(key: ByteArray)

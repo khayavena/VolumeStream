@@ -2,8 +2,8 @@ package com.vdigital.volumestream.core.player.di
 
 import com.vdigital.volumestream.cache.CachedPlaybackDataSourceFactory
 import com.vdigital.volumestream.cache.CachedPlaybackDataSourceFactoryImpl
-import com.vdigital.volumestream.compnent.Media3Media3PlayerComponentImpl
-import com.vdigital.volumestream.compnent.Media3PlayerComponent
+import com.vdigital.volumestream.compnent.AndroidPlayerEngineImpl
+import com.vdigital.volumestream.compnent.AndroidPlayerEngine
 import com.vdigital.volumestream.config.PlayerConfig
 import com.vdigital.volumestream.core.player.download.DownloadController
 import com.vdigital.volumestream.platform.controller.PlaybackStateController
@@ -22,8 +22,8 @@ internal actual val platformPlayerModule: Module = module {
     }
     // Factory scope: each PlaybackStateController gets an isolated player component,
     // so leaving/re-entering playback does not reuse a previously released player.
-    factory<Media3PlayerComponent> {
-        Media3Media3PlayerComponentImpl(androidApplication(), get(), get())
+    factory<AndroidPlayerEngine> {
+        AndroidPlayerEngineImpl(androidApplication(), get(), get())
     }
     factory { PlaybackStateController(get()) }
     single<OsType> { OsType.ANDROID }
