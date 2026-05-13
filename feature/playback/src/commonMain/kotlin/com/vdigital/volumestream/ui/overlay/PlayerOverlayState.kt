@@ -4,6 +4,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.vditital.data.model.PlaybackMediaItem
 
 /**
  * Single source-of-truth for the player overlay UI state.
@@ -40,6 +41,14 @@ class PlayerOverlayState {
      * Enter/DpadCenter actions centrally without propagating to ExoPlayer.
      */
     var activeTvControlKey by mutableStateOf<String?>(null)
+
+    /**
+     * The [PlaybackMediaItem] currently focused in the inline tracks carousel, or `null`
+     * when no carousel card has focus.  Written by [PlayerOverlayTv]'s `onTrackFocusKey`
+     * callback; read by PlaybackView's key handler to dispatch Enter/DpadCenter as a
+     * `selectTrack` call.
+     */
+    var focusedCarouselTrack by mutableStateOf<PlaybackMediaItem?>(null)
 
     /** Increment [controlsResetTick] to restart the auto-hide countdown. */
     fun resetControlsTimer() { controlsResetTick++ }

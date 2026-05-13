@@ -206,13 +206,12 @@ fun PlaybackView(
                     }
                 }
 
-                val hasOpenPanel = overlay.showTrackPanel || overlay.showQualityPanel
+                val hasOpenPanel = overlay.showQualityPanel
                 when (event.key) {
                     // Back: close panel → hide overlay → navigate away (YouTube TV style)
                     Key.Back, Key.Escape -> {
                         when {
                             hasOpenPanel -> {
-                                overlay.showTrackPanel   = false
                                 overlay.showQualityPanel = false
                                 overlay.resetControlsTimer()
                             }
@@ -232,18 +231,16 @@ fun PlaybackView(
                         overlay.resetControlsTimer()
                         if (overlay.showControls && !hasOpenPanel) {
                             when (overlay.activeTvControlKey) {
-                                "tv-play"    -> viewModel.playPause()
-                                "tv-rewind"  -> viewModel.skipBackward()
-                                "tv-forward" -> viewModel.skipForward()
-                                "tv-back"    -> handleBack()
-                                "tv-zoom"    -> { overlay.isZoomed = !overlay.isZoomed }
-                                "tv-quality" -> {
+                                "tv-play"     -> viewModel.playPause()
+                                "tv-rewind"   -> viewModel.skipBackward()
+                                "tv-forward"  -> viewModel.skipForward()
+                                "tv-back"     -> handleBack()
+                                "tv-zoom"     -> { overlay.isZoomed = !overlay.isZoomed }
+                                "tv-quality"  -> {
                                     overlay.showQualityPanel = !overlay.showQualityPanel
-                                    if (overlay.showQualityPanel) overlay.showTrackPanel = false
                                 }
-                                "tv-tracks" -> {
-                                    overlay.showTrackPanel = !overlay.showTrackPanel
-                                    if (overlay.showTrackPanel) overlay.showQualityPanel = false
+                                "tv-carousel" -> {
+                                    overlay.focusedCarouselTrack?.let { viewModel.selectTrack(it) }
                                 }
                             }
                         }

@@ -41,7 +41,7 @@ import com.vdigital.volumestream.ui.viewmodel.state.PlaybackQuality
 import com.vdigital.volumestream.ui.viewmodel.state.PlaybackState
 import com.vdigital.volumestream.ui.widget.PlaybackSeekBar
 import com.vdigital.volumestream.ui.widget.QualitySelectionPanel
-import com.vdigital.volumestream.ui.widget.TrackSelectionPanel
+import com.vdigital.volumestream.ui.widget.TvTracksCarousel
 
 // Theme tokens are defined in PlaybackOverlayTheme.kt (shared across overlays).
 
@@ -53,9 +53,11 @@ import com.vdigital.volumestream.ui.widget.TrackSelectionPanel
  *
  * Responsibilities:
  * - Owns all TV chip [FocusRequester]s and the accompanying focus [LaunchedEffect]s.
- * - Renders Back chip (top-start), Zoom/Quality/Tracks row (top-end), and the
- *   Rewind/Play/Forward row + seek bar (bottom).
- * - Renders the Track and Quality selection panels with full TV focus wiring.
+ * - Renders Back chip (top-start), Zoom/Quality row (top-end), and the
+ *   Rewind/Play/Forward row + seek bar + inline tracks carousel (bottom).
+ * - Renders the Quality selection panel with full TV focus wiring.
+ * - Tracks are surfaced via the always-visible horizontal [TvTracksCarousel] below
+ *   the seek bar — no separate Tracks button is needed.
  *
  * Note: Enter/DpadCenter key events are consumed and dispatched centrally by
  * PlaybackView's root `onPreviewKeyEvent` using [PlayerOverlayState.activeTvControlKey].
@@ -70,33 +72,28 @@ fun androidx.compose.foundation.layout.BoxScope.PlayerOverlayTv(
     onBack: () -> Unit,
 ) {
     // ── Focus requesters (owned here — only TV needs them) ────────────────────
-    val backChipFocus         = remember { FocusRequester() }
-    val zoomChipFocus         = remember { FocusRequester() }
-    val qualityChipFocus      = remember { FocusRequester() }
-    val tracksChipFocus       = remember { FocusRequester() }
-    val rewindChipFocus       = remember { FocusRequester() }
-    val playChipFocus         = remember { FocusRequester() }
-    val forwardChipFocus      = remember { FocusRequester() }
-    val qualityPanelFirstFocus = remember { FocusRequester() }
-    val trackPanelFirstFocus  = remember { FocusRequester() }
+    val backChipFocus           = remember { FocusRequester() }
+    val zoomChipFocus           = remember { FocusRequester() }
+    val qualityChipFocus        = remember { FocusRequester() }
+    val rewindChipFocus         = remember { FocusRequester() }
+    val playChipFocus           = remember { FocusRequester() }
+    val forwardChipFocus        = remember { FocusRequester() }
+    val qualityPanelFirstFocus  = remember { FocusRequester() }
+    val carouselFirstFocus      = remember { FocusRequester() }
 
     // Single cached lambda — all chips share it to avoid allocating a new
     // Function1 instance per chip on every recomposition.
     val onChipFocus: (String?) -> Unit = remember { { key -> state.activeTvControlKey = key } }
 
     // Auto-focus Play chip whenever the overlay becomes visible and no panel is open.
-    LaunchedEffect(state.showControls, state.showTrackPanel, state.showQualityPanel) {
+    LaunchedEffect(state.showControls, state.showQualityPanel) {
         if (!state.showControls) return@LaunchedEffect
-        if (state.showTrackPanel || state.showQualityPanel) return@LaunchedEffect
+        if (state.showQualityPanel) return@LaunchedEffect
         runCatching { playChipFocus.requestFocus() }
     }
     LaunchedEffect(state.showQualityPanel) {
         if (!state.showQualityPanel) return@LaunchedEffect
         runCatching { qualityPanelFirstFocus.requestFocus() }
-    }
-    LaunchedEffect(state.showTrackPanel) {
-        if (!state.showTrackPanel) return@LaunchedEffect
-        runCatching { trackPanelFirstFocus.requestFocus() }
     }
 
     // ── Back chip (top-start) ─────────────────────────────────────────────────
@@ -122,7 +119,7 @@ fun androidx.compose.foundation.layout.BoxScope.PlayerOverlayTv(
         )
     }
 
-    // ── Top-end row: Zoom / Quality / Tracks ──────────────────────────────────
+    // ── Top-end row: Zoom / Quality ───────────────────────────────────────────
     AnimatedVisibility(
         visible = state.showControls,
         modifier = Modifier.align(Alignment.TopEnd),
@@ -162,31 +159,12 @@ fun androidx.compose.foundation.layout.BoxScope.PlayerOverlayTv(
                     .focusRequester(qualityChipFocus)
                     .focusProperties {
                         left  = zoomChipFocus
-                        right = tracksChipFocus
+                        right = qualityChipFocus   // end of row — stay put
                         up    = qualityChipFocus
                         down  = if (state.showQualityPanel) qualityPanelFirstFocus else playChipFocus
                     },
                 onClick = {
                     state.showQualityPanel = !state.showQualityPanel
-                    if (state.showQualityPanel) state.showTrackPanel = false
-                    state.resetControlsTimer()
-                }
-            )
-            TvOverlayChip(
-                label = if (state.showTrackPanel) "TRACKS ON" else "TRACKS",
-                selected = state.showTrackPanel,
-                focusKey = "tv-tracks",
-                onFocusKeyChanged = onChipFocus,
-                modifier = Modifier
-                    .focusRequester(tracksChipFocus)
-                    .focusProperties {
-                        left = qualityChipFocus
-                        up   = tracksChipFocus
-                        down = if (state.showTrackPanel) trackPanelFirstFocus else forwardChipFocus
-                    },
-                onClick = {
-                    state.showTrackPanel = !state.showTrackPanel
-                    if (state.showTrackPanel) state.showQualityPanel = false
                     state.resetControlsTimer()
                 }
             )
@@ -224,7 +202,7 @@ fun androidx.compose.foundation.layout.BoxScope.PlayerOverlayTv(
                                 left  = rewindChipFocus
                                 right = playChipFocus
                                 up    = zoomChipFocus
-                                down  = rewindChipFocus
+                                down  = carouselFirstFocus
                             },
                         onClick = viewModel::skipBackward
                     )
@@ -239,7 +217,7 @@ fun androidx.compose.foundation.layout.BoxScope.PlayerOverlayTv(
                                 left  = rewindChipFocus
                                 right = forwardChipFocus
                                 up    = qualityChipFocus
-                                down  = playChipFocus
+                                down  = carouselFirstFocus
                             },
                         onClick = {
                             // Enter/DpadCenter is consumed and dispatched by PlaybackView's
@@ -259,32 +237,30 @@ fun androidx.compose.foundation.layout.BoxScope.PlayerOverlayTv(
                             .focusProperties {
                                 left  = playChipFocus
                                 right = forwardChipFocus
-                                up    = tracksChipFocus
-                                down  = forwardChipFocus
+                                up    = qualityChipFocus
+                                down  = carouselFirstFocus
                             },
                         onClick = viewModel::skipForward
                     )
                 }
                 Spacer(Modifier.height(10.dp))
                 PlaybackSeekBar(viewModel = viewModel, isTvLayout = true)
+
+                // ── Tracks carousel (YouTube TV-style horizontal strip) ──
+                TvTracksCarousel(
+                    viewModel          = viewModel,
+                    firstItemFocus     = carouselFirstFocus,
+                    upFocusRequester   = playChipFocus,
+                    onTrackFocusKey    = { track ->
+                        state.focusedCarouselTrack = track
+                        state.activeTvControlKey   = if (track != null) "tv-carousel" else null
+                    }
+                )
             }
         }
     }
 
     // ── Sliding panels (with TV focus wiring) ─────────────────────────────────
-    AnimatedVisibility(
-        visible = state.showControls && state.showTrackPanel,
-        modifier = Modifier.align(Alignment.BottomCenter),
-        enter = slideInVertically(initialOffsetY = { it }),
-        exit  = slideOutVertically(targetOffsetY  = { it })
-    ) {
-        TrackSelectionPanel(
-            viewModel = viewModel,
-            isTvLayout = true,
-            initialItemFocus = trackPanelFirstFocus,
-            returnFocus = tracksChipFocus
-        )
-    }
 
     AnimatedVisibility(
         visible = state.showControls && state.showQualityPanel,

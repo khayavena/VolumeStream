@@ -28,6 +28,8 @@ fun TvPlaybackCategoryCarousel(
     downloadsEnabled: Boolean = true,
     onPlayItem: (PlaybackMediaItem) -> Unit,
 ) {
+    val rowState = rememberLazyListState()
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -44,11 +46,15 @@ fun TvPlaybackCategoryCarousel(
         )
 
         LazyRow(
-            state = rememberLazyListState(),
+            state = rowState,
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(horizontal = 16.dp)
         ) {
-            items(playbackMediaItems, key = { "${category}_${it.id}" }) { mediaItem ->
+            items(
+                items = playbackMediaItems,
+                key = { it.id },
+                contentType = { "tvMediaCard" },
+            ) { mediaItem ->
                 TvMediaItemWidget(
                     playbackMediaItem = mediaItem,
                     downloadViewModel = downloadViewModel,

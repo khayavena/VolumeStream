@@ -49,6 +49,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -156,36 +157,43 @@ fun TvNavigationShell(
         label = "railBg"
     )
 
-    val onPlay: () -> Unit = {
-        playbackSessionId += 1
-        showPlayer = true
+
+    // Stable lambdas ─ must NOT be recreated on every recomposition.
+    // If onPlay were a plain `val` lambda, it would be a new instance each recompose,
+    // which changes NavHost's `builder` key, forces a nav-graph rebuild, re-enters
+    // HomeScreen, and fires LaunchedEffect(Unit) again → duplicate data fetch.
+    val onPlay = remember<() -> Unit> {
+        {
+            playbackSessionId += 1
+            showPlayer = true
+        }
     }
-    val onBackFromPlayer: () -> Unit = { showPlayer = false }
+    val onBackFromPlayer = remember<() -> Unit> { { showPlayer = false } }
 
     val items = remember(downloadsEnabled) { navItems(downloadsEnabled) }
 
-    val navHost: @Composable () -> Unit = {
-        NavHost(
-            navController    = navController,
-            startDestination = Screen.Splash.route,
-            modifier         = Modifier.fillMaxSize()
-        ) {
+    // Stable builder: remember-ed on `downloadsEnabled` only (onPlay / onBackFromPlayer are
+    // already remember-ed stable lambdas; navController is stable from rememberNavController).
+    // A new builder object on every recompose would cause NavHost to rebuild its nav graph,
+    // re-enter HomeScreen, and re-fire LaunchedEffect(Unit) → duplicate data fetch.
+    val stableBuilder: NavGraphBuilder.() -> Unit = remember(downloadsEnabled) {
+        {
             composable(Screen.Splash.route)    { SplashScreen(navController = navController) }
             composable(Screen.Login.route)     { LoginScreen(navController = navController) }
             composable(Screen.Register.route)  { RegisterScreen(navController = navController) }
             composable(Screen.Home.route)      {
                 HomeScreen(
-                    navController = navController,
-                    isTvLayout = true,
+                    navController    = navController,
+                    isTvLayout       = true,
                     downloadsEnabled = downloadsEnabled,
-                    onPlay = onPlay,
+                    onPlay           = onPlay,
                 )
             }
             composable(Screen.Search.route)    {
                 SearchScreen(
                     navController = navController,
-                    isTvLayout = true,
-                    onPlay = onPlay,
+                    isTvLayout    = true,
+                    onPlay        = onPlay,
                 )
             }
             if (downloadsEnabled) {
@@ -193,13 +201,14 @@ fun TvNavigationShell(
             }
             composable(Screen.Profile.route)   {
                 ProfileScreen(
-                    navController = navController,
+                    navController     = navController,
                     showDownloadItems = downloadsEnabled,
                 )
             }
             composable(Screen.Settings.route)  { SettingsScreen() }
         }
     }
+
 
     Box(
         modifier = Modifier
@@ -289,9 +298,18 @@ fun TvNavigationShell(
             }
 
             // ── Main content ──────────────────────────────────────────────
-            // weight(1f) only — fillMaxWidth() conflicts with weight in a Row.
+            // NavHost is called INLINE (not via a lambda variable) so Compose
+            // tracks its slot by call-site position, not lambda identity.
+            // A lambda variable would be a new object every recompose, causing
+            // Compose to treat NavHost as a new composable → HomeScreen re-enters
+            // → LaunchedEffect(Unit) fires → duplicate data fetch.
             Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                navHost()
+                NavHost(
+                    navController    = navController,
+                    startDestination = Screen.Splash.route,
+                    modifier         = Modifier.fillMaxSize(),
+                    builder          = stableBuilder,
+                )
             }
         }
 
