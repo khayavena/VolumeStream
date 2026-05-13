@@ -28,6 +28,12 @@ class HomaPageViewModel(
     private var fetchJob: Job? = null
 
     fun fetchData(forceRefresh: Boolean = false) {
+        // Skip entirely if we already have data — prevents spurious re-fetches triggered by
+        // Compose recompositions (e.g. NavHost graph rebuild on back-from-player).
+        if (!forceRefresh && homeDataState.value is ResultState.Success) {
+            AppLogger.d("HomeVM", "fetchData skipped — data already loaded")
+            return
+        }
         // If a non-forced fetch is already in flight, don't launch a duplicate.
         if (!forceRefresh && fetchJob?.isActive == true) {
             AppLogger.d("HomeVM", "fetchData skipped — job already active")
