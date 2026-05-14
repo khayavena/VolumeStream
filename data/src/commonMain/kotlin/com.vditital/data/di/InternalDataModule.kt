@@ -2,6 +2,8 @@ package com.vditital.data.di
 
 import com.vditital.data.datasource.AuthDataSource
 import com.vditital.data.datasource.AuthDataSourceImpl
+import com.vditital.data.datasource.ProfileDataSource
+import com.vditital.data.datasource.ProfileDataSourceImpl
 import com.vditital.data.datasource.RemoteApiClientFactory
 import com.vditital.data.datasource.RemotePlaybackDataSource
 import com.vditital.data.datasource.RemotePlaybackDataSourceImpl
@@ -11,6 +13,8 @@ import com.vditital.data.repository.AuthRepository
 import com.vditital.data.repository.AuthRepositoryImpl
 import com.vditital.data.repository.PlaybackMediaItemRepository
 import com.vditital.data.repository.PlaybackMediaItemRepositoryImpl
+import com.vditital.data.repository.ProfileRepository
+import com.vditital.data.repository.ProfileRepositoryImpl
 import com.vditital.data.repository.SessionRepository
 import com.vditital.data.repository.SessionRepositoryImpl
 import io.ktor.client.HttpClient
@@ -33,6 +37,9 @@ val internalDataModule = module {
     single<AuthDataSource> {
         AuthDataSourceImpl(get(), get(named("authHost")), get())
     }
+    single<ProfileDataSource> {
+        ProfileDataSourceImpl(get(), get(named("authHost")), get())
+    }
     single<SessionDataSource> {
         SessionDataSourceImpl(get(), get(named("apiHost")), get(), get(), get())
     }
@@ -40,5 +47,6 @@ val internalDataModule = module {
     // Repositories
     single<PlaybackMediaItemRepository> { PlaybackMediaItemRepositoryImpl(get()) }
     single<AuthRepository>    { AuthRepositoryImpl(get(), get()) }
+    single<ProfileRepository> { ProfileRepositoryImpl(get(), get()) }
     single<SessionRepository> { SessionRepositoryImpl(get(), get()) }
 }

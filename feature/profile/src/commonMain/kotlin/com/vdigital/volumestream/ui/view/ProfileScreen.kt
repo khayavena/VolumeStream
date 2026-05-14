@@ -13,13 +13,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Card
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Divider
+import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
+import androidx.compose.material.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -47,6 +53,13 @@ fun ProfileScreen(
 ) {
     val signedOut by viewModel.signedOut.collectAsState()
     val userEmail by viewModel.userEmail.collectAsState()
+    val fullName by viewModel.fullName.collectAsState()
+    val phone by viewModel.phone.collectAsState()
+    val address by viewModel.address.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val isSaving by viewModel.isSaving.collectAsState()
+    val error by viewModel.error.collectAsState()
+    val status by viewModel.status.collectAsState()
 
     // When sign-out completes, clear the entire back stack and go to Login.
     LaunchedEffect(signedOut) {
@@ -60,7 +73,7 @@ fun ProfileScreen(
     }
 
     // Derive initials from the email address (e.g. "alice@example.com" → "AL")
-    val email    = userEmail ?: "user@volumestream.com"
+    val email = userEmail ?: "user@volumestream.com"
     val initials = email.take(2).uppercase()
 
     Column(
@@ -85,11 +98,77 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        Text("VolumeStream User", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Text(
+            text = fullName.takeIf { it.isNotBlank() } ?: "VolumeStream User",
+            color = Color.White,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+        )
         Spacer(modifier = Modifier.height(4.dp))
         Text(email, color = Color.Gray, fontSize = 14.sp)
 
         Spacer(modifier = Modifier.height(24.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            backgroundColor = Color(0xFF1E1E1E)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Profile Details", color = Color.Gray, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                Spacer(modifier = Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = fullName,
+                    onValueChange = viewModel::onFullNameChanged,
+                    label = { Text("Full Name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = profileFieldColors(),
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = phone,
+                    onValueChange = viewModel::onPhoneChanged,
+                    label = { Text("Phone") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = profileFieldColors(),
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = address,
+                    onValueChange = viewModel::onAddressChanged,
+                    label = { Text("Address") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = profileFieldColors(),
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = { viewModel.saveProfile() },
+                    enabled = !isSaving,
+                    colors = ButtonDefaults.buttonColors(backgroundColor = GreenAccent),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Update Profile", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+
+                if (error != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(error!!, color = Color(0xFFE53935), fontSize = 13.sp)
+                }
+                if (status != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(status!!, color = GreenAccent, fontSize = 13.sp)
+                }
+                if (isLoading) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Loading profile...", color = Color.Gray, fontSize = 12.sp)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Subscription card
         Card(
@@ -152,19 +231,15 @@ fun ProfileScreen(
             backgroundColor = Color(0xFF1E1E1E)
         ) {
             Column {
-                if (showDownloadItems) {
-                    ProfileMenuItem(
-                        label   = "Watch History",
-                        onClick = { navController.navigate(Screen.Downloads.route) }
-                    )
-                    Divider(color = Color(0xFF2E2E2E), thickness = 0.5.dp)
-                    ProfileMenuItem(
-                        label   = "My Downloads",
-                        onClick = { navController.navigate(Screen.Downloads.route) }
-                    )
-                    Divider(color = Color(0xFF2E2E2E), thickness = 0.5.dp)
-                }
-                ProfileMenuItem(label = "Manage Account")
+                ProfileMenuItem(
+                    label = "Save Profile",
+                    onClick = { viewModel.saveProfile() }
+                )
+                Divider(color = Color(0xFF2E2E2E), thickness = 0.5.dp)
+                ProfileMenuItem(
+                    label = "Upgrade To Admin",
+                    onClick = { viewModel.upgradeToAdmin() }
+                )
                 Divider(color = Color(0xFF2E2E2E), thickness = 0.5.dp)
                 ProfileMenuItem(
                     label      = "Sign Out",
@@ -174,9 +249,34 @@ fun ProfileScreen(
             }
         }
 
+        if (isSaving) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = {},
+                enabled = false,
+                colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF1E1E1E)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), color = GreenAccent, strokeWidth = 2.dp)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Please wait...", color = Color.White)
+            }
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
     }
 }
+
+@Composable
+private fun profileFieldColors() = TextFieldDefaults.outlinedTextFieldColors(
+    textColor = Color.White,
+    cursorColor = GreenAccent,
+    focusedBorderColor = GreenAccent,
+    unfocusedBorderColor = Color(0xFF2E2E2E),
+    backgroundColor = Color(0xFF1A1A1A),
+    focusedLabelColor = GreenAccent,
+    unfocusedLabelColor = Color.Gray,
+)
 
 @Composable
 private fun WatchStatItem(value: String, label: String) {
