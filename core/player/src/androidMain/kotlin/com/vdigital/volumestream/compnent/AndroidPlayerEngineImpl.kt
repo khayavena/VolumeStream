@@ -155,11 +155,6 @@ class AndroidPlayerEngineImpl(
     }
 
     override fun addAll(mediaItems: List<PlaybackMediaItem>) {
-        // stop() guarantees the player is in STATE_IDLE regardless of its current
-        // state (PLAYING, READY, ENDED, etc.) before we reload media.  Without this,
-        // clearMediaItems() on a STATE_ENDED player can leave it in a non-IDLE state
-        // where the subsequent prepare() call silently fails to re-enable the video
-        // renderer — producing audio-only playback on every track after the first.
         player.stop()
         player.clearMediaItems()
         mediaItems.forEach {

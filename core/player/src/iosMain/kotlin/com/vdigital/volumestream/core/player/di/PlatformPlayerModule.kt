@@ -2,6 +2,7 @@ package com.vdigital.volumestream.core.player.di
 
 import com.vdigital.volumestream.config.PlayerConfig
 import com.vdigital.volumestream.core.player.download.DownloadController
+import com.vdigital.volumestream.platform.component.IosPlayerEngine
 import com.vdigital.volumestream.platform.controller.PlaybackStateController
 import com.vdigital.volumestream.platform.enum.OsType
 import org.koin.core.module.Module
@@ -13,6 +14,7 @@ internal actual val platformPlayerModule: Module = module {
 
     // Single scope keeps one stable AVQueuePlayer-backed controller instance on iOS,
     // matching the current playback/view lifecycle expectations.
+    single { IosPlayerEngine(get()) }
     single { PlaybackStateController(get()) }
     single<OsType> { OsType.IOS }
     single { DownloadController() }
