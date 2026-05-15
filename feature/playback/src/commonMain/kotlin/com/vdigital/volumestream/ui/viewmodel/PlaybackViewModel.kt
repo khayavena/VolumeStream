@@ -165,11 +165,12 @@ class PlaybackViewModel(
                     diag("session started id=${sessionResult.data.sessionId} media=${item.id}")
                     AppLogger.i("PlaybackVM",
                         "Session started: sessionId=${sessionResult.data.sessionId} mediaId=${item.id}")
+                    val playbackJwt = withContext(Dispatchers.IO) { latestJwtOrFallback(jwt) }
                     // 4. Inject headers into the player's HTTP layer BEFORE
                     //    initPlayer() builds ExoPlayer / AVPlayer.
                     playbackStateController.setAuthHeaders(
                         mapOf(
-                            HEADER_AUTHORIZATION to "Bearer $jwt",
+                            HEADER_AUTHORIZATION to "Bearer $playbackJwt",
                             HEADER_SESSION_TOKEN to sessionResult.data.sessionToken
                         )
                     )
@@ -439,9 +440,10 @@ class PlaybackViewModel(
                     diag("selectTrack session_started id=${sessionResult.data.sessionId} media=${item.id}")
                     AppLogger.i("PlaybackVM", "Track switch session: ${sessionResult.data.sessionId} mediaId=${item.id}")
                     if (selectionVersion != trackSelectionVersion) return@launch
+                    val playbackJwt = withContext(Dispatchers.IO) { latestJwtOrFallback(jwt) }
                     playbackStateController.setAuthHeaders(
                         mapOf(
-                            HEADER_AUTHORIZATION to "Bearer $jwt",
+                            HEADER_AUTHORIZATION to "Bearer $playbackJwt",
                             HEADER_SESSION_TOKEN to sessionResult.data.sessionToken
                         )
                     )
@@ -544,8 +546,9 @@ class PlaybackViewModel(
 
         val sessionResult = sessionRepository.startSession(jwt, mediaId)
         return if (sessionResult is ResultState.Success) {
+            val playbackJwt = latestJwtOrFallback(jwt)
             mapOf(
-                HEADER_AUTHORIZATION to "Bearer $jwt",
+                HEADER_AUTHORIZATION to "Bearer $playbackJwt",
                 HEADER_SESSION_TOKEN to sessionResult.data.sessionToken
             )
         } else {
@@ -559,6 +562,9 @@ class PlaybackViewModel(
         val p = path.trim().lowercase()
         return p.startsWith("file://") || p.startsWith("/")
     }
+
+    private suspend fun latestJwtOrFallback(fallbackJwt: String): String =
+        authRepository.ensureValidJwt()?.takeIf { it.isNotBlank() } ?: fallbackJwt
 
     // viewModelScope is already cancelled by ViewModel.onCleared() — no need to
     // call viewModelScope.cancel() manually; doing so is redundant and can mask

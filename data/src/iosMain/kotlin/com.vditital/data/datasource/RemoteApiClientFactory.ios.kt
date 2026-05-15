@@ -1,13 +1,11 @@
 package com.vditital.data.datasource
 
-import com.vditital.data.security.SessionRevokedBus
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.darwin.Darwin
 import io.ktor.client.plugins.HttpSend
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.plugin
-import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
@@ -16,7 +14,9 @@ import kotlinx.serialization.json.Json
 // in the Kotlin/Native (iOS) binary strip. Logging is intentionally omitted here
 // to avoid the IrLinkageError crash at startup on iOS.
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
-actual class RemoteApiClientFactory {
+actual class RemoteApiClientFactory actual constructor(
+    private val interceptor: AuthRefreshRetryInterceptor,
+) {
     @OptIn(ExperimentalSerializationApi::class)
     actual fun create(): HttpClient {
         val client = HttpClient(Darwin) {
@@ -36,18 +36,8 @@ actual class RemoteApiClientFactory {
             }
         }
 
-        // Same 401 guard as Android: only signal revocation when the request
-        // already had a Bearer JWT — prevents a failed login (wrong password)
-        // from triggering a forced-logout navigation.
         client.plugin(HttpSend).intercept { request ->
-            val call = execute(request)
-            if (call.response.status == HttpStatusCode.Unauthorized) {
-                val hasJwt = request.headers["Authorization"]?.startsWith("Bearer ") == true
-                if (hasJwt) {
-                    SessionRevokedBus.emit()
-                }
-            }
-            call
+            interceptor.intercept(request, ::execute)
         }
 
         return client

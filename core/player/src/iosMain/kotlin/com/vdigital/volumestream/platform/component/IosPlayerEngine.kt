@@ -18,6 +18,8 @@ import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.Headers
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -187,7 +189,7 @@ class IosPlayerEngine(
             }
             AppLogger.i("iOS.Prefetch", "  ← HTTP ${response.status.value} ${response.status.description}")
 
-            if (response.status == HttpStatusCode.Unauthorized) {
+            if (isInvalidTokenResponse(response.status, response.headers)) {
                 com.vditital.data.security.SessionRevokedBus.emit()
             }
             if (response.status != HttpStatusCode.OK) {
@@ -291,7 +293,15 @@ class IosPlayerEngine(
                     "AVPlayerItem error: code=${itemErr.code()} domain=${itemErr.domain()} " +
                     "desc=${itemErr.localizedDescription()} source=${failedSource ?: "<unknown>"}", null)
                 val desc = itemErr.localizedDescription()?.lowercase() ?: ""
-                if (desc.contains("401") || desc.contains("unauthorized")) {
+                if (
+                    desc.contains("401") ||
+                    desc.contains("403") ||
+                    desc.contains("unauthorized") ||
+                    desc.contains("forbidden") ||
+                    desc.contains("token_invalid") ||
+                    desc.contains("token expired") ||
+                    desc.contains("invalid_token")
+                ) {
                     com.vditital.data.security.SessionRevokedBus.emit()
                     emitPlaybackStateIfChanged(PlaybackState.SessionExpired, playbackState)
                 } else {
@@ -452,6 +462,19 @@ class IosPlayerEngine(
             avPlayer.error != null -> Error(avPlayer.error!!.code().toString())
             else -> Buffering
         }
+    }
+
+    private fun isInvalidTokenResponse(status: HttpStatusCode, headers: Headers): Boolean {
+        if (status == HttpStatusCode.Unauthorized) return true
+        if (status != HttpStatusCode.Forbidden) return false
+
+        val wwwAuth = headers[HttpHeaders.WWWAuthenticate]?.lowercase().orEmpty()
+        val errorCode = headers["X-Error-Code"]?.lowercase().orEmpty()
+        return wwwAuth.contains("invalid_token") ||
+            wwwAuth.contains("token_invalid") ||
+            wwwAuth.contains("token_expired") ||
+            errorCode.contains("token_invalid") ||
+            errorCode.contains("token_expired")
     }
 }
 
