@@ -54,7 +54,7 @@ private fun buildAbsoluteApiUrl(
     apiPath: String,
     originOverride: String? = null
 ): String {
-    val origin = originOverride ?: "${if (config.useHttps) "https" else "http"}://$apiHost:${config.apiPort}"
+    val origin = originOverride ?: "${if (config.apiUseHttps) "https" else "http"}://$apiHost:${config.apiPort}"
     return "$origin/${apiPath.trimStart('/')}"
 }
 
@@ -83,7 +83,7 @@ private fun normalizeMediaUrl(rawUrl: String?, apiHost: String, config: StreamVa
     val raw = rawUrl?.trim().orEmpty()
     if (raw.isBlank()) return ""
 
-    val preferredScheme = if (config.useHttps) "https" else "http"
+    val preferredScheme = if (config.apiUseHttps) "https" else "http"
 
     // Supports backend values like "art/mobile/..." (without a leading slash).
     if (!raw.startsWith("http://", ignoreCase = true) && !raw.startsWith("https://", ignoreCase = true)) {
@@ -134,7 +134,7 @@ fun MediaItemDto.toPlaybackMediaItem(apiHost: String, config: StreamVaultConfig 
                 config = config,
                 apiPath = "${config.apiBasePath}/${config.userManifestPath}/$id",
                 originOverride = extractOrigin(normalizeMediaUrl(streamUrl, apiHost, config))
-                    ?: "${if (config.useHttps) "https" else "http"}://$apiHost:${config.apiPort}"
+                    ?: "${if (config.apiUseHttps) "https" else "http"}://$apiHost:${config.apiPort}"
             )
         }
     },

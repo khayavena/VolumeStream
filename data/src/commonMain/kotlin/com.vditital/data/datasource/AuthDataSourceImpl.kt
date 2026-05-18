@@ -26,7 +26,7 @@ class AuthDataSourceImpl(
         get() = when {
             authHost.startsWith("https://", ignoreCase = true) -> URLProtocol.HTTPS
             authHost.startsWith("http://", ignoreCase = true) -> URLProtocol.HTTP
-            config.useHttps -> URLProtocol.HTTPS
+            config.authUseHttps -> URLProtocol.HTTPS
             else -> URLProtocol.HTTP
         }
 

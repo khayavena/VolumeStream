@@ -23,7 +23,7 @@ class RemotePlaybackDataSourceImpl(
     private val config: StreamVaultConfig = StreamVaultConfig()
 ) : RemotePlaybackDataSource {
 
-    private val protocol  get() = if (config.useHttps) URLProtocol.HTTPS else URLProtocol.HTTP
+    private val protocol  get() = if (config.apiUseHttps) URLProtocol.HTTPS else URLProtocol.HTTP
     private val port      get() = config.apiPort
     private val feedPath  get() = "${config.apiBasePath}/media/feed"
 

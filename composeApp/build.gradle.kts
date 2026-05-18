@@ -21,10 +21,12 @@ val localProps = Properties().also { props: Properties ->
     val f = rootProject.file("local.properties")
     if (f.exists()) props.load(f.inputStream())
 }
-val apiHostValue: String  = localProps.getProperty("API_HOST",  "localhost")
+val apiHostValueRaw: String  = localProps.getProperty("API_HOST",  "localhost")
 val authPortValue: String = localProps.getProperty("AUTH_PORT", "8080")
 val apiPortValue: String  = localProps.getProperty("API_PORT",  "8081")
 val useHttpsValue: String = localProps.getProperty("USE_HTTPS", "")
+val authUseHttpsValue: String = localProps.getProperty("AUTH_USE_HTTPS", useHttpsValue)
+val apiUseHttpsValue: String = localProps.getProperty("API_USE_HTTPS", useHttpsValue)
 
 fun readProp(name: String): String? =
     localProps.getProperty(name)?.trim()?.takeIf { it.isNotEmpty() }
@@ -54,6 +56,12 @@ fun parseHostParts(rawHost: String): HostParts {
     }
 }
 
+fun parseBooleanProp(raw: String?): Boolean? = when (raw?.trim()?.lowercase()) {
+    "true", "1", "yes", "y", "on" -> true
+    "false", "0", "no", "n", "off" -> false
+    else -> null
+}
+
 val iosEnvValue: String = when (readProp("IOS_ENV")?.lowercase()) {
     "prod", "production" -> "prod"
     "qa", "staging", "dev", "development" -> "qa"
@@ -62,9 +70,9 @@ val iosEnvValue: String = when (readProp("IOS_ENV")?.lowercase()) {
 }
 
 val iosHostRawValue: String = if (iosEnvValue == "prod") {
-    readProp("PROD_API_HOST") ?: apiHostValue
+    readProp("PROD_API_HOST") ?: apiHostValueRaw
 } else {
-    readProp("QA_API_HOST") ?: apiHostValue
+    readProp("QA_API_HOST") ?: apiHostValueRaw
 }
 
 val iosAuthPortValue: String = if (iosEnvValue == "prod") {
@@ -79,15 +87,29 @@ val iosApiPortValue: String = if (iosEnvValue == "prod") {
     readProp("QA_API_PORT") ?: apiPortValue
 }
 
-val iosHostParts = parseHostParts(iosHostRawValue)
-val iosUseHttpsValue: Boolean = iosHostParts.useHttps || iosEnvValue == "prod"
-
-val androidHostParts = parseHostParts(apiHostValue)
-val androidUseHttpsValue: Boolean = when (useHttpsValue.lowercase()) {
-    "true", "1", "yes", "y", "on" -> true
-    "false", "0", "no", "n", "off" -> false
-    else -> androidHostParts.useHttps || authPortValue == "443" || apiPortValue == "443"
+val iosAuthUseHttpsRaw: String? = if (iosEnvValue == "prod") {
+    readProp("PROD_AUTH_USE_HTTPS") ?: authUseHttpsValue
+} else {
+    readProp("QA_AUTH_USE_HTTPS") ?: authUseHttpsValue
 }
+
+val iosApiUseHttpsRaw: String? = if (iosEnvValue == "prod") {
+    readProp("PROD_API_USE_HTTPS") ?: apiUseHttpsValue
+} else {
+    readProp("QA_API_USE_HTTPS") ?: apiUseHttpsValue
+}
+
+val iosHostParts = parseHostParts(iosHostRawValue)
+val iosAuthUseHttpsValue: Boolean = parseBooleanProp(iosAuthUseHttpsRaw)
+    ?: (iosHostParts.useHttps || iosAuthPortValue == "443" || iosAuthPortValue == "18443")
+val iosApiUseHttpsValue: Boolean = parseBooleanProp(iosApiUseHttpsRaw)
+    ?: (iosHostParts.useHttps || iosApiPortValue == "443")
+
+val androidHostParts = parseHostParts(apiHostValueRaw)
+val androidAuthUseHttpsValue: Boolean = parseBooleanProp(authUseHttpsValue)
+    ?: (androidHostParts.useHttps || authPortValue == "443" || authPortValue == "18443")
+val androidApiUseHttpsValue: Boolean = parseBooleanProp(apiUseHttpsValue)
+    ?: (androidHostParts.useHttps || apiPortValue == "443")
 
 val updateApiHostFromNetwork by tasks.registering {
     group = "configuration"
@@ -165,7 +187,9 @@ val generateIosAppConfig by tasks.registering {
             "internal val API_HOST:   String = \"${iosHostParts.host}\"\n" +
             "internal val AUTH_PORT:  Int    = $iosAuthPortValue\n" +
             "internal val API_PORT:   Int    = $iosApiPortValue\n" +
-            "internal val USE_HTTPS: Boolean = $iosUseHttpsValue\n"
+            "internal val AUTH_USE_HTTPS: Boolean = $iosAuthUseHttpsValue\n" +
+            "internal val API_USE_HTTPS:  Boolean = $iosApiUseHttpsValue\n" +
+            "internal val USE_HTTPS:      Boolean = ${iosAuthUseHttpsValue || iosApiUseHttpsValue}\n"
         )
     }
 }
@@ -246,10 +270,12 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
-        buildConfigField("String", "API_HOST",  "\"$apiHostValue\"")
+        buildConfigField("String", "API_HOST",  "\"${androidHostParts.host}\"")
         buildConfigField("int",    "AUTH_PORT", authPortValue)
         buildConfigField("int",    "API_PORT",  apiPortValue)
-        buildConfigField("boolean", "USE_HTTPS", androidUseHttpsValue.toString())
+        buildConfigField("boolean", "AUTH_USE_HTTPS", androidAuthUseHttpsValue.toString())
+        buildConfigField("boolean", "API_USE_HTTPS", androidApiUseHttpsValue.toString())
+        buildConfigField("boolean", "USE_HTTPS", (androidAuthUseHttpsValue || androidApiUseHttpsValue).toString())
     }
     packaging {
         resources {

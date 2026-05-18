@@ -42,9 +42,11 @@ private fun emulatorHost(): String =
 actual fun KoinApplication.configureKoin() {
     androidContext(AndroidApp.getAppInstance())
     val runtimeHost = if (isEmulator()) emulatorHost() else PHYSICAL_HOST
-    val configuredHttps = BuildConfig.USE_HTTPS ||
+    val configuredAuthHttps = BuildConfig.AUTH_USE_HTTPS ||
         BuildConfig.API_HOST.startsWith("https://", ignoreCase = true) ||
-        BuildConfig.AUTH_PORT == 443 ||
+        BuildConfig.AUTH_PORT == 443 || BuildConfig.AUTH_PORT == 18443
+    val configuredApiHttps = BuildConfig.API_USE_HTTPS ||
+        BuildConfig.API_HOST.startsWith("https://", ignoreCase = true) ||
         BuildConfig.API_PORT == 443
     modules(module {
         single<String>(named("apiHost"))  { runtimeHost }
@@ -58,7 +60,8 @@ actual fun KoinApplication.configureKoin() {
             StreamVaultConfig(
                 authPort = BuildConfig.AUTH_PORT,
                 apiPort  = BuildConfig.API_PORT,
-                useHttps = configuredHttps,
+                authUseHttps = configuredAuthHttps,
+                apiUseHttps = configuredApiHttps,
                 artworkProfile = profile,
             )
         }

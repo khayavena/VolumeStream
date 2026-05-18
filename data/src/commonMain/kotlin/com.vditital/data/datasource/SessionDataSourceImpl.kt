@@ -34,7 +34,7 @@ class SessionDataSourceImpl(
     private val config: StreamVaultConfig = StreamVaultConfig()
 ) : SessionDataSource {
 
-    private val protocol get() = if (config.useHttps) URLProtocol.HTTPS else URLProtocol.HTTP
+    private val protocol get() = if (config.apiUseHttps) URLProtocol.HTTPS else URLProtocol.HTTP
     private val port     get() = config.apiPort
     private val base     get() = config.apiBasePath
 

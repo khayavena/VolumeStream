@@ -36,7 +36,7 @@ class AuthRefreshRetryInterceptor(
     private val authProtocol: URLProtocol = when {
         cleanedAuthHost.startsWith("https://", ignoreCase = true) -> URLProtocol.HTTPS
         cleanedAuthHost.startsWith("http://", ignoreCase = true) -> URLProtocol.HTTP
-        config.useHttps -> URLProtocol.HTTPS
+        config.authUseHttps -> URLProtocol.HTTPS
         else -> URLProtocol.HTTP
     }
 
