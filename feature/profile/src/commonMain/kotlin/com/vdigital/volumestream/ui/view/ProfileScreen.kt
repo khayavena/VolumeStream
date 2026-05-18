@@ -242,8 +242,15 @@ fun ProfileScreen(
                 )
                 Divider(color = Color(0xFF2E2E2E), thickness = 0.5.dp)
                 ProfileMenuItem(
+                    label = "Test Token Refresh",
+                    enabled = !isSaving,
+                    onClick = { viewModel.testTokenRefresh() }
+                )
+                Divider(color = Color(0xFF2E2E2E), thickness = 0.5.dp)
+                ProfileMenuItem(
                     label      = "Sign Out",
                     labelColor = Color(0xFFE50914),
+                    enabled    = !isSaving,
                     onClick    = { viewModel.signOut() }
                 )
             }
@@ -291,17 +298,20 @@ private fun WatchStatItem(value: String, label: String) {
 private fun ProfileMenuItem(
     label: String,
     labelColor: Color = Color.White,
+    enabled: Boolean = true,
     onClick: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, color = labelColor, fontSize = 15.sp)
-        Text("›", color = GreenAccent, fontSize = 20.sp)
+        val effectiveLabelColor = if (enabled) labelColor else labelColor.copy(alpha = 0.55f)
+        val effectiveChevronColor = if (enabled) GreenAccent else GreenAccent.copy(alpha = 0.55f)
+        Text(label, color = effectiveLabelColor, fontSize = 15.sp)
+        Text("›", color = effectiveChevronColor, fontSize = 20.sp)
     }
 }

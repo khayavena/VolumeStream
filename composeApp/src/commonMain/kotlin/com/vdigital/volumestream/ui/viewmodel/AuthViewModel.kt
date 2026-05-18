@@ -26,6 +26,12 @@ sealed class AuthUiState {
 
 class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
 
+    private companion object {
+        // Keep in sync with backend PasswordPolicy.STRONG_PASSWORD_REGEX.
+        val STRONG_PASSWORD_REGEX =
+            Regex("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z\\d]).{12,128}$")
+    }
+
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
     val uiState = _uiState.asStateFlow()
 
@@ -61,6 +67,7 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
     }
 
     fun login(email: String, password: String) {
+        if (_uiState.value is AuthUiState.Loading) return
         if (email.isBlank() || password.isBlank()) {
             _uiState.value = AuthUiState.Error("Please fill in all fields.")
             return
@@ -79,13 +86,16 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
     }
 
     fun register(email: String, password: String, confirmPassword: String) {
+        if (_uiState.value is AuthUiState.Loading) return
         when {
             email.isBlank() || password.isBlank() ->
                 _uiState.value = AuthUiState.Error("Please fill in all fields.")
             password != confirmPassword ->
                 _uiState.value = AuthUiState.Error("Passwords do not match.")
-            password.length < 6 ->
-                _uiState.value = AuthUiState.Error("Password must be at least 6 characters.")
+            !STRONG_PASSWORD_REGEX.matches(password) ->
+                _uiState.value = AuthUiState.Error(
+                    "Password must be 12-128 chars and include uppercase, lowercase, number, and special character."
+                )
             else -> safeLaunch("register") {
                 _uiState.value = AuthUiState.Loading
                 val result = withContext(Dispatchers.IO) { authRepository.register(email, password) }

@@ -22,8 +22,29 @@ class AuthDataSourceImpl(
     private val config: StreamVaultConfig = StreamVaultConfig()
 ) : AuthDataSource {
 
-    private val protocol get() = if (config.useHttps) URLProtocol.HTTPS else URLProtocol.HTTP
-    private val port     get() = config.authPort
+    private val protocol: URLProtocol
+        get() = when {
+            authHost.startsWith("https://", ignoreCase = true) -> URLProtocol.HTTPS
+            authHost.startsWith("http://", ignoreCase = true) -> URLProtocol.HTTP
+            config.useHttps -> URLProtocol.HTTPS
+            else -> URLProtocol.HTTP
+        }
+
+    private val normalizedAuthority: String
+        get() = authHost
+            .trim()
+            .removeSuffix("/")
+            .substringAfter("://", missingDelimiterValue = authHost.trim().removeSuffix("/"))
+            .substringBefore("/")
+
+    private val host: String
+        get() = normalizedAuthority.substringBefore(":")
+
+    private val port: Int
+        get() = normalizedAuthority.substringAfterLast(":", "")
+            .toIntOrNull()
+            ?: config.authPort
+
     private val base     get() = config.authBasePath
 
     override suspend fun login(email: String, password: String): AuthResponse {
@@ -31,7 +52,7 @@ class AuthDataSourceImpl(
         val response = httpClient.post {
             url {
                 protocol = this@AuthDataSourceImpl.protocol
-                host     = authHost
+                host     = this@AuthDataSourceImpl.host
                 port     = this@AuthDataSourceImpl.port
                 path(base, "login")
             }
@@ -56,12 +77,12 @@ class AuthDataSourceImpl(
         }
     }
 
-    override suspend fun register(email: String, password: String): AuthResponse {
+    override suspend fun register(email: String, password: String): Unit {
         AppLogger.d("AuthDS", "register → $authHost:$port")
         val response = httpClient.post {
             url {
                 protocol = this@AuthDataSourceImpl.protocol
-                host     = authHost
+                host     = this@AuthDataSourceImpl.host
                 port     = this@AuthDataSourceImpl.port
                 path(base, "register")
             }
@@ -77,7 +98,7 @@ class AuthDataSourceImpl(
             throw IllegalStateException(msg)
         }
 
-        return response.body()
+        // Backend returns plain text (e.g. "Registered") on success; status is enough here.
     }
 
     override suspend fun refreshToken(jwt: String): RefreshTokenResponse {
@@ -86,7 +107,7 @@ class AuthDataSourceImpl(
         val response = httpClient.post {
             url {
                 protocol = this@AuthDataSourceImpl.protocol
-                host     = authHost
+                host     = this@AuthDataSourceImpl.host
                 port     = this@AuthDataSourceImpl.port
                 path(base, "refresh")
             }

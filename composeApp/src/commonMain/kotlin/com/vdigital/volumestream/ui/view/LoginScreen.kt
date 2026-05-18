@@ -39,7 +39,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
@@ -60,8 +59,8 @@ fun LoginScreen(
     navController: NavHostController,
     viewModel: AuthViewModel = koinViewModel()
 ) {
-    var email    by remember { mutableStateOf("zoomuser@example.com") }
-    var password by remember { mutableStateOf("TestPassword123") }
+    var email    by remember { mutableStateOf("testuser100@example.com") }
+    var password by remember { mutableStateOf("TestPassword!123") }
 
     val uiState by viewModel.uiState.collectAsState()
 
@@ -155,16 +154,9 @@ fun LoginScreen(
                 shape = RoundedCornerShape(10.dp)
             )
 
-            // Error message
             if (uiState is AuthUiState.Error) {
                 Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    text = (uiState as AuthUiState.Error).message,
-                    color = Color(0xFFE53935),
-                    fontSize = 13.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                AuthErrorMessage(message = (uiState as AuthUiState.Error).message)
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -212,4 +204,3 @@ internal fun authFieldColors() = TextFieldDefaults.outlinedTextFieldColors(
     focusedLabelColor        = Color(0xFF00E676),
     unfocusedLabelColor      = Color.Gray
 )
-

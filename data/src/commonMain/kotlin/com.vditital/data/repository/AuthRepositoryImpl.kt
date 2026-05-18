@@ -48,6 +48,13 @@ class AuthRepositoryImpl(
         if (!isJwtExpired(current)) return current
 
         AppLogger.d("AuthRepo", "JWT expired; attempting refresh")
+        return forceRefreshJwt()
+    }
+
+    override suspend fun forceRefreshJwt(): String? {
+        val current = tokenStore.getJwt()?.takeIf { it.isNotBlank() } ?: return null
+
+        AppLogger.d("AuthRepo", "Forcing JWT refresh")
         return runCatching {
             val refreshed = authDataSource.refreshToken(current)
                 .token

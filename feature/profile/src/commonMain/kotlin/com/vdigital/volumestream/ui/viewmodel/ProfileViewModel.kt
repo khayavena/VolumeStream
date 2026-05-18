@@ -136,6 +136,23 @@ class ProfileViewModel(
         }
     }
 
+    fun testTokenRefresh() {
+        viewModelScope.launch {
+            _isSaving.value = true
+            _error.value = null
+            _status.value = null
+
+            val jwt = withContext(Dispatchers.Default) { authRepository.forceRefreshJwt() }
+            if (jwt.isNullOrBlank()) {
+                _error.value = "Token refresh failed. Please sign in again."
+            } else {
+                _status.value = "Token refresh succeeded"
+            }
+
+            _isSaving.value = false
+        }
+    }
+
     fun signOut() {
         viewModelScope.launch {
             withContext(Dispatchers.Default) { authRepository.logout() }

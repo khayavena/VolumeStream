@@ -10,5 +10,7 @@ interface AuthRepository {
     fun logout()
     /** Returns a valid JWT, refreshing it if expired. Returns null when not logged in. */
     suspend fun ensureValidJwt(): String?
+    /** Forces a refresh call using the currently stored JWT. Returns null when not logged in or refresh fails. */
+    suspend fun forceRefreshJwt(): String?
 }
 

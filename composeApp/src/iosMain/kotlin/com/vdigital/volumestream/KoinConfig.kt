@@ -3,6 +3,7 @@ package com.vdigital.volumestream
 import com.vdigital.volumestream.config.API_HOST
 import com.vdigital.volumestream.config.AUTH_PORT
 import com.vdigital.volumestream.config.API_PORT
+import com.vdigital.volumestream.config.USE_HTTPS
 import com.vditital.data.config.StreamVaultConfig
 import org.koin.core.KoinApplication
 import org.koin.core.qualifier.named
@@ -16,6 +17,7 @@ actual fun KoinApplication.configureKoin() {
             StreamVaultConfig(
                 authPort = AUTH_PORT,
                 apiPort  = API_PORT,
+                useHttps = USE_HTTPS,
             )
         }
     })

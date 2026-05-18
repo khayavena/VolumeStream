@@ -13,7 +13,8 @@ data class LoginRequest(
 data class RegisterRequest(
     @SerialName("email") val email: String,
     @SerialName("password") val password: String,
-    @SerialName("role") val role: String = "USER"
+    // Null means "do not send role"; backend defaults to ROLE_USER for public registration.
+    @SerialName("role") val role: String? = null
 )
 
 /** Body for POST /api/refresh — server expects {"token":"Bearer <jwt>"} */
