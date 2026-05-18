@@ -6,5 +6,5 @@ internal val API_HOST:   String = "localhost"
 internal val AUTH_PORT:  Int    = 18443
 internal val API_PORT:   Int    = 8081
 internal val AUTH_USE_HTTPS: Boolean = true
-internal val API_USE_HTTPS:  Boolean = false
+internal val API_USE_HTTPS:  Boolean = true
 internal val USE_HTTPS:      Boolean = true

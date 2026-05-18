@@ -101,7 +101,7 @@ private fun normalizeMediaUrl(rawUrl: String?, apiHost: String, config: StreamVa
     if (!isLoopbackHost) return raw
 
     val finalPort = if (port.isNotBlank()) port else ":${config.apiPort}"
-    return "$scheme://$apiHost$finalPort$suffix"
+    return "$preferredScheme://$apiHost$finalPort$suffix"
 }
 
 fun MediaItemDto.toPlaybackMediaItem(apiHost: String, config: StreamVaultConfig = StreamVaultConfig()) = PlaybackMediaItem(
