@@ -91,7 +91,8 @@ class SearchViewModel(
                 }
                 when (result) {
                     is ResultState.Success -> {
-                        _indexedItems.value = result.data.map { mediaItem ->
+                        val uniqueItems = result.data.distinctBy { it.id }
+                        _indexedItems.value = uniqueItems.map { mediaItem ->
                             IndexedMediaItem(
                                 item = mediaItem,
                                 searchableText = buildString {

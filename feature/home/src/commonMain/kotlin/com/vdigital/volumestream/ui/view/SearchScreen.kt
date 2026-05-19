@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -50,7 +50,9 @@ import androidx.navigation.NavHostController
 import com.seiko.imageloader.rememberImagePainter
 import com.vdigital.volumestream.core.player.SelectedMediaItemHolder
 import com.vdigital.volumestream.navigation.Screen
+import com.vdigital.volumestream.ui.viewmodel.DownloadViewModel
 import com.vdigital.volumestream.ui.viewmodel.SearchViewModel
+import com.vdigital.volumestream.ui.widget.TvMediaItemWidget
 import com.vditital.data.model.PlaybackMediaItem
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -77,6 +79,7 @@ fun SearchScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val loadError by viewModel.loadError.collectAsState()
     val holder: SelectedMediaItemHolder = koinInject()
+    val downloadViewModel: DownloadViewModel? = if (isTvLayout) koinViewModel() else null
     val keyboard = LocalSoftwareKeyboardController.current
 
     Column(
@@ -150,6 +153,8 @@ fun SearchScreen(
 
             else -> SearchResultsGrid(
                 items = results,
+                isTvLayout = isTvLayout,
+                downloadViewModel = downloadViewModel,
                 onItemClick = { item ->
                     keyboard?.hide()
                     holder.select(item)
@@ -169,8 +174,33 @@ fun SearchScreen(
 @Composable
 private fun SearchResultsGrid(
     items: List<PlaybackMediaItem>,
+    isTvLayout: Boolean,
+    downloadViewModel: DownloadViewModel?,
     onItemClick: (PlaybackMediaItem) -> Unit,
 ) {
+    if (isTvLayout && downloadViewModel != null) {
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = 256.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            itemsIndexed(items = items, key = { index, item -> "${item.id}#$index" }) { _, item ->
+                TvMediaItemWidget(
+                    playbackMediaItem = item,
+                    downloadViewModel = downloadViewModel,
+                    downloadsEnabled = false,
+                ) {
+                    onItemClick(item)
+                }
+            }
+        }
+        return
+    }
+
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
         modifier = Modifier
@@ -180,7 +210,7 @@ private fun SearchResultsGrid(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        items(items = items, key = { it.id }) { item ->
+        itemsIndexed(items = items, key = { index, item -> "${item.id}#$index" }) { _, item ->
             SearchResultCard(item = item, onClick = { onItemClick(item) })
         }
     }
