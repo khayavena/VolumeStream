@@ -97,4 +97,24 @@ class SessionRepositoryImpl(
             ResultState.Error(e)
         }
     )
+
+    override suspend fun saveRecentlyWatched(mediaId: String, playbackPosition: Long): ResultState<Unit> {
+        val jwt = tokenStore.getJwt().orEmpty()
+        if (jwt.isBlank()) {
+            return ResultState.Error(IllegalStateException("No JWT available for recently watched sync"))
+        }
+        return runCatching {
+            sessionDataSource.saveRecentlyWatched(
+                jwt = jwt,
+                mediaId = mediaId,
+                playbackPosition = playbackPosition
+            )
+        }.fold(
+            onSuccess = { ResultState.Success(Unit) },
+            onFailure = { e ->
+                AppLogger.e("SessionRepo", "saveRecentlyWatched failed", e as? Exception ?: Exception(e))
+                ResultState.Error(e)
+            }
+        )
+    }
 }

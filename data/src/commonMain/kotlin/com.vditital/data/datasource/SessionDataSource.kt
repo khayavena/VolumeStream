@@ -20,5 +20,8 @@ interface SessionDataSource {
      * Required to decrypt AES-128-GCM DASH segments.
      */
     suspend fun fetchAesKey(mediaId: String, sessionId: String, sessionToken: String): ByteArray
+
+    /** Writes playback progress for the active user and media item. */
+    suspend fun saveRecentlyWatched(jwt: String, mediaId: String, playbackPosition: Long)
     // endSession removed — session cleanup is handled server-side via TTL / 401 revocation.
 }

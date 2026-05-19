@@ -2,6 +2,7 @@ package com.vditital.data.datasource
 
 import com.vditital.data.config.StreamVaultConfig
 import com.vditital.data.model.DeviceRegisterRequest
+import com.vditital.data.model.RecentlyWatchedRequest
 import com.vditital.data.model.SessionStartRequest
 import com.vditital.data.model.SessionStartResponse
 import com.vditital.data.security.DeviceCrypto
@@ -125,6 +126,24 @@ class SessionDataSourceImpl(
         } catch (e: Exception) {
             AppLogger.e("SessionDS", "fetchAesKey failed: ${e.message}", e)
             throw e // Rethrow to propagate crash for analysis
+        }
+    }
+
+    override suspend fun saveRecentlyWatched(jwt: String, mediaId: String, playbackPosition: Long) {
+        val userId = extractUserIdFromJwt(jwt)
+        check(userId.isNotBlank()) {
+            "Unable to extract userId/sub/id claim from JWT; cannot write recently watched"
+        }
+        httpClient.post("${protocol.name.lowercase()}://$apiHost:$port/$base/media/recently-watched") {
+            bearerAuth(jwt)
+            contentType(ContentType.Application.Json)
+            setBody(
+                RecentlyWatchedRequest(
+                    userId = userId,
+                    mediaId = mediaId,
+                    playbackPosition = playbackPosition.coerceAtLeast(0L)
+                )
+            )
         }
     }
 

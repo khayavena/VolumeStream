@@ -45,6 +45,13 @@ class ProfileViewModel(
     private val _status = MutableStateFlow<String?>(null)
     val status = _status.asStateFlow()
 
+    private val _isEditMode = MutableStateFlow(false)
+    val isEditMode = _isEditMode.asStateFlow()
+
+    private var originalFullName: String = ""
+    private var originalPhone: String = ""
+    private var originalAddress: String = ""
+
     init {
         viewModelScope.launch {
             _userEmail.value = withContext(Dispatchers.Default) {
@@ -55,15 +62,33 @@ class ProfileViewModel(
     }
 
     fun onFullNameChanged(value: String) {
+        if (!_isEditMode.value) return
         _fullName.value = value
     }
 
     fun onPhoneChanged(value: String) {
+        if (!_isEditMode.value) return
         _phone.value = value
     }
 
     fun onAddressChanged(value: String) {
+        if (!_isEditMode.value) return
         _address.value = value
+    }
+
+    fun enterEditMode() {
+        _error.value = null
+        _status.value = null
+        _isEditMode.value = true
+    }
+
+    fun cancelEditMode() {
+        _fullName.value = originalFullName
+        _phone.value = originalPhone
+        _address.value = originalAddress
+        _error.value = null
+        _status.value = null
+        _isEditMode.value = false
     }
 
     fun refreshProfile() {
@@ -75,6 +100,10 @@ class ProfileViewModel(
                     _fullName.value = result.data.fullName
                     _phone.value = result.data.phone
                     _address.value = result.data.address
+                    originalFullName = result.data.fullName
+                    originalPhone = result.data.phone
+                    originalAddress = result.data.address
+                    _isEditMode.value = false
                 }
                 is ResultState.Error -> {
                     if (result.exception !is NoSuchElementException) {
@@ -88,6 +117,7 @@ class ProfileViewModel(
     }
 
     fun saveProfile() {
+        if (!_isEditMode.value) return
         if (_fullName.value.isBlank()) {
             _error.value = "Full name is required"
             return
@@ -110,7 +140,11 @@ class ProfileViewModel(
                     _fullName.value = result.data.fullName
                     _phone.value = result.data.phone
                     _address.value = result.data.address
+                    originalFullName = result.data.fullName
+                    originalPhone = result.data.phone
+                    originalAddress = result.data.address
                     _status.value = "Profile saved"
+                    _isEditMode.value = false
                 }
                 is ResultState.Error -> {
                     _error.value = result.exception.message ?: "Failed to save profile"

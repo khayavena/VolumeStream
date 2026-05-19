@@ -75,13 +75,16 @@ class PlaybackViewModel(
     /** Guards against ultra-fast duplicate play/pause taps (seen mostly on iOS overlays). */
     private var playPauseToggleLocked = false
     private var trackSelectionVersion: Long = 0L
-
+    private var recentlyWatchedTickerJob: Job? = null
+    private var activeRecentlyWatchedMediaId: String? = null
+    private var lastSyncedPlaybackPositionMs: Long = -1L
 
     companion object {
         /** Header names used by StreamVault. Centralised here so SDK consumers can
          *  override them without touching the player layer. */
         const val HEADER_AUTHORIZATION  = "Authorization"
         const val HEADER_SESSION_TOKEN  = "X-Session-Token"
+        const val RECENTLY_WATCHED_SYNC_INTERVAL_MS = 60_000L
     }
 
     fun getPlatformController(): PlaybackStateController = playbackStateController
@@ -226,6 +229,7 @@ class PlaybackViewModel(
                 AppLogger.d("PlaybackVM", "Prefetch complete for mediaId=${item.id}")
                 diag("prefetch complete media=${item.id} start_player=true")
                 handleInitialPlayback(mutableListOf(playItem))
+                startRecentlyWatchedTicker(item.id)
             } catch (e: CancellationException) {
                 // Propagate coroutine cancellation — do NOT treat it as a playback error.
                 // This fires when onCleared() cancels viewModelScope mid-initialisation.
@@ -493,6 +497,7 @@ class PlaybackViewModel(
                 // from the AndroidView / UIViewRepresentable and produce a blank frame.
                 if (selectionVersion != trackSelectionVersion) return@launch
                 handleTrackSwitch(playItem)
+                startRecentlyWatchedTicker(item.id)
             } catch (_: CancellationException) {
                 diag("selectTrack cancelled media=${item.id}")
             } catch (e: Throwable) {
@@ -566,11 +571,54 @@ class PlaybackViewModel(
     private suspend fun latestJwtOrFallback(fallbackJwt: String): String =
         authRepository.ensureValidJwt()?.takeIf { it.isNotBlank() } ?: fallbackJwt
 
+    fun onPlayerClosing() {
+        viewModelScope.launch {
+            syncRecentlyWatched(force = true, reason = "close")
+        }
+    }
+
+    private fun startRecentlyWatchedTicker(mediaId: String) {
+        activeRecentlyWatchedMediaId = mediaId
+        lastSyncedPlaybackPositionMs = -1L
+        recentlyWatchedTickerJob?.cancel()
+        recentlyWatchedTickerJob = viewModelScope.launch {
+            while (true) {
+                delay(RECENTLY_WATCHED_SYNC_INTERVAL_MS)
+                if (_playBackState.value != PlaybackState.Playing) continue
+                syncRecentlyWatched(force = false, reason = "periodic")
+            }
+        }
+    }
+
+    private suspend fun syncRecentlyWatched(force: Boolean, reason: String) {
+        val mediaId = activeRecentlyWatchedMediaId ?: selectedMediaItemHolder.current()?.id ?: return
+        val positionMs = playbackStateController.currentPosition().coerceAtLeast(0L)
+        if (!force && positionMs <= 0L) return
+        if (!force && positionMs == lastSyncedPlaybackPositionMs) return
+
+        when (val result = withContext(Dispatchers.IO) {
+            sessionRepository.saveRecentlyWatched(mediaId = mediaId, playbackPosition = positionMs)
+        }) {
+            is ResultState.Loading -> Unit
+            is ResultState.Success -> {
+                lastSyncedPlaybackPositionMs = positionMs
+                AppLogger.d("PlaybackVM", "recentlyWatched synced reason=$reason mediaId=$mediaId posMs=$positionMs")
+            }
+            is ResultState.Error -> {
+                AppLogger.w(
+                    "PlaybackVM",
+                    "recentlyWatched sync failed reason=$reason mediaId=$mediaId: ${result.exception.message}"
+                )
+            }
+        }
+    }
+
     // viewModelScope is already cancelled by ViewModel.onCleared() — no need to
     // call viewModelScope.cancel() manually; doing so is redundant and can mask
     // bugs by cancelling the scope before super.onCleared() runs.
     override fun onCleared() {
         diag("onCleared release_controller=true")
+        recentlyWatchedTickerJob?.cancel()
         super.onCleared()
         // Session cleanup is handled server-side via TTL / 401 revocation —
         // no client-side DELETE call needed.

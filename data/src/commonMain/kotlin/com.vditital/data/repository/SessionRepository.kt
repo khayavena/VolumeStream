@@ -20,5 +20,8 @@ interface SessionRepository {
      * Call immediately after [startSession] succeeds, before the player starts buffering.
      */
     suspend fun fetchAesKey(mediaId: String, sessionId: String, sessionToken: String): ResultState<ByteArray>
+
+    /** Persists playback progress for the current user/media in Stream Vault. */
+    suspend fun saveRecentlyWatched(mediaId: String, playbackPosition: Long): ResultState<Unit>
     // endSession removed — session cleanup is handled server-side via TTL / 401 revocation.
 }

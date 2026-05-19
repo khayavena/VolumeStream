@@ -75,6 +75,13 @@ data class SessionStartResponse(
 )
 
 @Serializable
+data class RecentlyWatchedRequest(
+    @SerialName("userId") val userId: String,
+    @SerialName("mediaId") val mediaId: String,
+    @SerialName("playbackPosition") val playbackPosition: Long
+)
+
+@Serializable
 data class ApiError(
     @SerialName("status") val status: Int = 0,
     @SerialName("code") val code: String = "",

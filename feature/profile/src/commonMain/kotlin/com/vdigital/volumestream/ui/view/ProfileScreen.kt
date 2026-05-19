@@ -60,6 +60,7 @@ fun ProfileScreen(
     val isSaving by viewModel.isSaving.collectAsState()
     val error by viewModel.error.collectAsState()
     val status by viewModel.status.collectAsState()
+    val isEditMode by viewModel.isEditMode.collectAsState()
 
     // When sign-out completes, clear the entire back stack and go to Login.
     LaunchedEffect(signedOut) {
@@ -122,6 +123,8 @@ fun ProfileScreen(
                     onValueChange = viewModel::onFullNameChanged,
                     label = { Text("Full Name") },
                     singleLine = true,
+                    readOnly = !isEditMode,
+                    enabled = isEditMode,
                     modifier = Modifier.fillMaxWidth(),
                     colors = profileFieldColors(),
                 )
@@ -131,6 +134,8 @@ fun ProfileScreen(
                     onValueChange = viewModel::onPhoneChanged,
                     label = { Text("Phone") },
                     singleLine = true,
+                    readOnly = !isEditMode,
+                    enabled = isEditMode,
                     modifier = Modifier.fillMaxWidth(),
                     colors = profileFieldColors(),
                 )
@@ -139,18 +144,44 @@ fun ProfileScreen(
                     value = address,
                     onValueChange = viewModel::onAddressChanged,
                     label = { Text("Address") },
+                    readOnly = !isEditMode,
+                    enabled = isEditMode,
                     modifier = Modifier.fillMaxWidth(),
                     colors = profileFieldColors(),
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
-                Button(
-                    onClick = { viewModel.saveProfile() },
-                    enabled = !isSaving,
-                    colors = ButtonDefaults.buttonColors(backgroundColor = GreenAccent),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("Update Profile", color = Color.Black, fontWeight = FontWeight.Bold)
+                if (!isEditMode) {
+                    Button(
+                        onClick = { viewModel.enterEditMode() },
+                        enabled = !isSaving,
+                        colors = ButtonDefaults.buttonColors(backgroundColor = GreenAccent),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Edit Profile", color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Button(
+                            onClick = { viewModel.cancelEditMode() },
+                            enabled = !isSaving,
+                            colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF2E2E2E)),
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text("Cancel", color = Color.White, fontWeight = FontWeight.Bold)
+                        }
+                        Button(
+                            onClick = { viewModel.saveProfile() },
+                            enabled = !isSaving,
+                            colors = ButtonDefaults.buttonColors(backgroundColor = GreenAccent),
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text("Update Profile", color = Color.Black, fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
 
                 if (error != null) {
@@ -232,8 +263,11 @@ fun ProfileScreen(
         ) {
             Column {
                 ProfileMenuItem(
-                    label = "Save Profile",
-                    onClick = { viewModel.saveProfile() }
+                    label = if (isEditMode) "Cancel Edit" else "Edit Profile",
+                    enabled = !isSaving,
+                    onClick = {
+                        if (isEditMode) viewModel.cancelEditMode() else viewModel.enterEditMode()
+                    }
                 )
                 Divider(color = Color(0xFF2E2E2E), thickness = 0.5.dp)
                 ProfileMenuItem(

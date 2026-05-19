@@ -121,6 +121,7 @@ fun PlaybackView(
         {
             runCatching {
                 AppLogger.i("Diag.UI", "back pressed controller=${controller.hashCode()}")
+                viewModel.onPlayerClosing()
                 controller.pause(playbackState = {})
                 onBack()
             }.onFailure {
