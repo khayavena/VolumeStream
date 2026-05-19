@@ -13,15 +13,31 @@ import org.koin.dsl.module
  * Returns true when the app is running inside an Android emulator.
  * Checks several Build fields that are reliably set on emulator images.
  */
-private fun isEmulator(): Boolean =
-    Build.FINGERPRINT.startsWith("generic") ||
-    Build.FINGERPRINT.startsWith("unknown") ||
-    Build.MODEL.contains("google_sdk", ignoreCase = true) ||
-    Build.MODEL.contains("Emulator", ignoreCase = true) ||
-    Build.MODEL.contains("Android SDK built for x86", ignoreCase = true) ||
-    Build.MANUFACTURER.contains("Genymotion", ignoreCase = true) ||
-    (Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic")) ||
-    Build.PRODUCT == "google_sdk"
+private fun isEmulator(): Boolean {
+    val fingerprint = Build.FINGERPRINT.lowercase()
+    val model = Build.MODEL.lowercase()
+    val manufacturer = Build.MANUFACTURER.lowercase()
+    val brand = Build.BRAND.lowercase()
+    val device = Build.DEVICE.lowercase()
+    val product = Build.PRODUCT.lowercase()
+    val hardware = Build.HARDWARE.lowercase()
+
+    // Cover modern AVD names (e.g., sdk_gphone64_*) and classic emulator markers.
+    return fingerprint.startsWith("generic") ||
+        fingerprint.startsWith("unknown") ||
+        fingerprint.contains("emulator") ||
+        model.contains("google_sdk") ||
+        model.contains("emulator") ||
+        model.contains("android sdk built for x86") ||
+        manufacturer.contains("genymotion") ||
+        (brand.startsWith("generic") && device.startsWith("generic")) ||
+        product == "google_sdk" ||
+        product.contains("sdk_gphone") ||
+        device.contains("emulator") ||
+        device.contains("emu") ||
+        hardware.contains("goldfish") ||
+        hardware.contains("ranchu")
+}
 
 /** Host used when running on a physical device (from local.properties). */
 private const val PHYSICAL_HOST = BuildConfig.API_HOST

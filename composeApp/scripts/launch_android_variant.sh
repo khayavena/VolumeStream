@@ -186,7 +186,7 @@ list_online_devices() {
   # Standard USB:     <serial>   device
   # Wireless/mDNS:    <serial> (N)._adb-tls-connect._tcp   device   product:…
   # We print "<serial> device" whenever "device" appears in the line (any field).
-  "$adb" devices | awk 'NR>1 && NF>=2 && /\bdevice\b/ {print $1 " device"}'
+  "$adb" devices | awk 'NR>1 && NF>=2 && $2=="device" {print $1 " device"}'
 }
 
 resolve_target_serial() {
@@ -265,10 +265,31 @@ resolve_target_serial() {
   return 24
 }
 
+derive_package_name() {
+  local component="$1"
+  local package="${component%%/*}"
+  if [[ -z "$package" || "$package" == "$component" ]]; then
+    echo "Invalid APP_COMPONENT '$component'. Expected '<package>/<activity>'." >&2
+    return 25
+  fi
+  echo "$package"
+}
+
 ADB_BIN="$(resolve_adb)"
 TARGET_SERIAL="$(resolve_target_serial "$ADB_BIN" "$PREFER_EMULATOR")"
+APP_PACKAGE="$(derive_package_name "$APP_COMPONENT")"
 
 echo "Using adb target: $TARGET_SERIAL"
-"$ADB_BIN" -s "$TARGET_SERIAL" install -r "$APK_PATH"
-"$ADB_BIN" -s "$TARGET_SERIAL" shell am start -W -n "$APP_COMPONENT"
+echo "Uninstalling package: $APP_PACKAGE"
+uninstall_output="$($ADB_BIN -s "$TARGET_SERIAL" uninstall "$APP_PACKAGE" 2>&1 || true)"
+if [[ "$uninstall_output" == *"Success"* ]]; then
+  echo "Uninstalled existing app package."
+elif [[ "$uninstall_output" == *"Unknown package"* || "$uninstall_output" == *"DELETE_FAILED_INTERNAL_ERROR"* ]]; then
+  echo "Package not currently installed; continuing with fresh install."
+else
+  echo "Failed to uninstall package '$APP_PACKAGE': $uninstall_output" >&2
+  exit 26
+fi
 
+"$ADB_BIN" -s "$TARGET_SERIAL" install "$APK_PATH"
+"$ADB_BIN" -s "$TARGET_SERIAL" shell am start -W -n "$APP_COMPONENT"

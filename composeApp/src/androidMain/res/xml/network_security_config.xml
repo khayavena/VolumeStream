@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+
+    <!-- Enforce HTTPS for known backend endpoints used by the app. -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">api.volumestream.com</domain>
+    </domain-config>
+
+    <!-- Local emulator/dev hosts: keep HTTPS and trust only debug anchors. -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain>localhost</domain>
+        <domain>10.0.2.2</domain>
+        <domain>10.0.3.2</domain>
+
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="@raw/auth_pulse_local" />
+            <certificates src="@raw/stream_vault_local" />
+        </trust-anchors>
+    </domain-config>
+
+    <!-- Debug builds can also trust user-installed certs for local testing. -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config>
+
