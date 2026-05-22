@@ -14,6 +14,19 @@
 		7555FF83242A565900829871 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7555FF82242A565900829871 /* ContentView.swift */; };
 		78B369B125108C7A8B451B60 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E27F7A4B033E13F5BDDE8F86 /* Foundation.framework */; };
 		8D8E011BC4BF442CA2CF1A8E /* VolumeStreamTVViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20CF175415883D7C9FA08F2B /* VolumeStreamTVViewModel.swift */; };
+		A1B2C3D40100000000000001 /* TVPrimaryButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B2C3D40100000000000001 /* TVPrimaryButtonStyle.swift */; };
+		A1B2C3D40100000000000002 /* PlayerHostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B2C3D40100000000000002 /* PlayerHostView.swift */; };
+		A1B2C3D40100000000000003 /* FocusEffect+tvOS.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B2C3D40100000000000003 /* FocusEffect+tvOS.swift */; };
+		A1B2C3D40100000000000004 /* ArtworkImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B2C3D40100000000000004 /* ArtworkImageView.swift */; };
+		A1B2C3D40100000000000005 /* TVMediaCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B2C3D40100000000000005 /* TVMediaCardView.swift */; };
+		A1B2C3D40100000000000006 /* TVFeedbackViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B2C3D40100000000000006 /* TVFeedbackViews.swift */; };
+		A1B2C3D40100000000000007 /* TVHomeScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B2C3D40100000000000007 /* TVHomeScreenView.swift */; };
+		A1B2C3D40100000000000008 /* TVSearchScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B2C3D40100000000000008 /* TVSearchScreenView.swift */; };
+		A1B2C3D40100000000000009 /* TVProfileScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B2C3D40100000000000009 /* TVProfileScreenView.swift */; };
+		A1B2C3D40100000000000010 /* TVSettingsScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B2C3D40100000000000010 /* TVSettingsScreenView.swift */; };
+		A1B2C3D40100000000000011 /* TVSideNavView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B2C3D40100000000000011 /* TVSideNavView.swift */; };
+		A1B2C3D40100000000000012 /* TVOverlayChipView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B2C3D40100000000000012 /* TVOverlayChipView.swift */; };
+		A1B2C3D40100000000000013 /* TVOverlayTrackCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B2C3D40100000000000013 /* TVOverlayTrackCardView.swift */; };
 		9683F0FA1EF1C3F27CF97BDB /* VolumeStreamTVApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA4815669E5F299C14E72AA4 /* VolumeStreamTVApp.swift */; };
 		CF27F537771DEC6266A0BAC5 /* VolumeStreamShared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 20CAE470C03292D73EEE5EF0 /* VolumeStreamShared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		D05AC0800D6A607A99DBA60D /* VolumeStreamTVShellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A995DE4AF4C39C6F48780FD1 /* VolumeStreamTVShellView.swift */; };
@@ -38,15 +51,28 @@
 		058557BA273AAA24004C7B11 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		058557D8273AAEEB004C7B11 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		20CAE470C03292D73EEE5EF0 /* VolumeStreamShared.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = VolumeStreamShared.framework; path = ../data/build/bin/tvosX64/debugFramework/VolumeStreamShared.framework; sourceTree = "<group>"; };
-		20CF175415883D7C9FA08F2B /* VolumeStreamTVViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VolumeStreamTVViewModel.swift; path = tvOSApp/VolumeStreamTVViewModel.swift; sourceTree = "<group>"; };
+		20CF175415883D7C9FA08F2B /* VolumeStreamTVViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VolumeStreamTVViewModel.swift; path = VolumeStreamTVViewModel.swift; sourceTree = "<group>"; };
 		2152FB032600AC8F00CF470E /* iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp.swift; sourceTree = "<group>"; };
 		7555FF7B242A565900829871 /* VolumeStream.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VolumeStream.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7555FF82242A565900829871 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		7555FF8C242A565B00829871 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		943FDC70B2128D64F4C44059 /* tvOSApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = tvOSApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		A995DE4AF4C39C6F48780FD1 /* VolumeStreamTVShellView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VolumeStreamTVShellView.swift; path = tvOSApp/VolumeStreamTVShellView.swift; sourceTree = "<group>"; };
+		B1B2C3D40100000000000001 /* TVPrimaryButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVPrimaryButtonStyle.swift; sourceTree = "<group>"; };
+		B1B2C3D40100000000000002 /* PlayerHostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerHostView.swift; sourceTree = "<group>"; };
+		B1B2C3D40100000000000003 /* FocusEffect+tvOS.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FocusEffect+tvOS.swift"; sourceTree = "<group>"; };
+		B1B2C3D40100000000000004 /* ArtworkImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtworkImageView.swift; sourceTree = "<group>"; };
+		B1B2C3D40100000000000005 /* TVMediaCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVMediaCardView.swift; sourceTree = "<group>"; };
+		B1B2C3D40100000000000006 /* TVFeedbackViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVFeedbackViews.swift; sourceTree = "<group>"; };
+		B1B2C3D40100000000000007 /* TVHomeScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVHomeScreenView.swift; sourceTree = "<group>"; };
+		B1B2C3D40100000000000008 /* TVSearchScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVSearchScreenView.swift; sourceTree = "<group>"; };
+		B1B2C3D40100000000000009 /* TVProfileScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVProfileScreenView.swift; sourceTree = "<group>"; };
+		B1B2C3D40100000000000010 /* TVSettingsScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVSettingsScreenView.swift; sourceTree = "<group>"; };
+		B1B2C3D40100000000000011 /* TVSideNavView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVSideNavView.swift; sourceTree = "<group>"; };
+		B1B2C3D40100000000000012 /* TVOverlayChipView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVOverlayChipView.swift; sourceTree = "<group>"; };
+		B1B2C3D40100000000000013 /* TVOverlayTrackCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVOverlayTrackCardView.swift; sourceTree = "<group>"; };
+		A995DE4AF4C39C6F48780FD1 /* VolumeStreamTVShellView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VolumeStreamTVShellView.swift; path = VolumeStreamTVShellView.swift; sourceTree = "<group>"; };
 		AB3632DC29227652001CCB65 /* Config.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
-		DDCD8546D211DCEDE358FC92 /* VolumeStreamTVConfig.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VolumeStreamTVConfig.swift; path = tvOSApp/VolumeStreamTVConfig.swift; sourceTree = "<group>"; };
+		DDCD8546D211DCEDE358FC92 /* VolumeStreamTVConfig.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VolumeStreamTVConfig.swift; path = VolumeStreamTVConfig.swift; sourceTree = "<group>"; };
 		E27F7A4B033E13F5BDDE8F86 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/AppleTVOS.platform/Developer/SDKs/AppleTVOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		EA4815669E5F299C14E72AA4 /* VolumeStreamTVApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VolumeStreamTVApp.swift; path = tvOSApp/VolumeStreamTVApp.swift; sourceTree = "<group>"; };
 		EE7187E67F39EE173FB88C9E /* Info-tvOS.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; name = "Info-tvOS.plist"; path = "tvOSApp/Info-tvOS.plist"; sourceTree = "<group>"; };
@@ -93,12 +119,89 @@
 			isa = PBXGroup;
 			children = (
 				EA4815669E5F299C14E72AA4 /* VolumeStreamTVApp.swift */,
-				DDCD8546D211DCEDE358FC92 /* VolumeStreamTVConfig.swift */,
-				20CF175415883D7C9FA08F2B /* VolumeStreamTVViewModel.swift */,
-				A995DE4AF4C39C6F48780FD1 /* VolumeStreamTVShellView.swift */,
+				C1B2C3D40100000000000008 /* Configuration */,
+				C1B2C3D40100000000000007 /* ViewModels */,
+				C1B2C3D40100000000000006 /* Coordinators */,
+				C1B2C3D40100000000000001 /* Theme */,
+				C1B2C3D40100000000000002 /* Support */,
+				C1B2C3D40100000000000003 /* Cards */,
+				C1B2C3D40100000000000004 /* Components */,
+				C1B2C3D40100000000000005 /* Screens */,
 				EE7187E67F39EE173FB88C9E /* Info-tvOS.plist */,
 			);
 			name = tvOSApp;
+			sourceTree = "<group>";
+		};
+		C1B2C3D40100000000000001 /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				B1B2C3D40100000000000001 /* TVPrimaryButtonStyle.swift */,
+			);
+			path = tvOSApp/Theme;
+			sourceTree = "<group>";
+		};
+		C1B2C3D40100000000000002 /* Support */ = {
+			isa = PBXGroup;
+			children = (
+				B1B2C3D40100000000000002 /* PlayerHostView.swift */,
+				B1B2C3D40100000000000003 /* FocusEffect+tvOS.swift */,
+				B1B2C3D40100000000000004 /* ArtworkImageView.swift */,
+			);
+			path = tvOSApp/Support;
+			sourceTree = "<group>";
+		};
+		C1B2C3D40100000000000003 /* Cards */ = {
+			isa = PBXGroup;
+			children = (
+				B1B2C3D40100000000000005 /* TVMediaCardView.swift */,
+				B1B2C3D40100000000000013 /* TVOverlayTrackCardView.swift */,
+			);
+			path = tvOSApp/Cards;
+			sourceTree = "<group>";
+		};
+		C1B2C3D40100000000000004 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				B1B2C3D40100000000000006 /* TVFeedbackViews.swift */,
+				B1B2C3D40100000000000012 /* TVOverlayChipView.swift */,
+				B1B2C3D40100000000000011 /* TVSideNavView.swift */,
+			);
+			path = tvOSApp/Components;
+			sourceTree = "<group>";
+		};
+		C1B2C3D40100000000000005 /* Screens */ = {
+			isa = PBXGroup;
+			children = (
+				B1B2C3D40100000000000007 /* TVHomeScreenView.swift */,
+				B1B2C3D40100000000000008 /* TVSearchScreenView.swift */,
+				B1B2C3D40100000000000009 /* TVProfileScreenView.swift */,
+				B1B2C3D40100000000000010 /* TVSettingsScreenView.swift */,
+			);
+			path = tvOSApp/Screens;
+			sourceTree = "<group>";
+		};
+		C1B2C3D40100000000000006 /* Coordinators */ = {
+			isa = PBXGroup;
+			children = (
+				A995DE4AF4C39C6F48780FD1 /* VolumeStreamTVShellView.swift */,
+			);
+			path = tvOSApp/Coordinators;
+			sourceTree = "<group>";
+		};
+		C1B2C3D40100000000000007 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				20CF175415883D7C9FA08F2B /* VolumeStreamTVViewModel.swift */,
+			);
+			path = tvOSApp/ViewModels;
+			sourceTree = "<group>";
+		};
+		C1B2C3D40100000000000008 /* Configuration */ = {
+			isa = PBXGroup;
+			children = (
+				DDCD8546D211DCEDE358FC92 /* VolumeStreamTVConfig.swift */,
+			);
+			path = tvOSApp/Configuration;
 			sourceTree = "<group>";
 		};
 		7555FF72242A565900829871 = {
@@ -268,6 +371,19 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A1B2C3D40100000000000013 /* TVOverlayTrackCardView.swift in Sources */,
+				A1B2C3D40100000000000012 /* TVOverlayChipView.swift in Sources */,
+				A1B2C3D40100000000000011 /* TVSideNavView.swift in Sources */,
+				A1B2C3D40100000000000007 /* TVHomeScreenView.swift in Sources */,
+				A1B2C3D40100000000000009 /* TVProfileScreenView.swift in Sources */,
+				A1B2C3D40100000000000008 /* TVSearchScreenView.swift in Sources */,
+				A1B2C3D40100000000000010 /* TVSettingsScreenView.swift in Sources */,
+				A1B2C3D40100000000000004 /* ArtworkImageView.swift in Sources */,
+				A1B2C3D40100000000000003 /* FocusEffect+tvOS.swift in Sources */,
+				A1B2C3D40100000000000002 /* PlayerHostView.swift in Sources */,
+				A1B2C3D40100000000000001 /* TVPrimaryButtonStyle.swift in Sources */,
+				A1B2C3D40100000000000006 /* TVFeedbackViews.swift in Sources */,
+				A1B2C3D40100000000000005 /* TVMediaCardView.swift in Sources */,
 				9683F0FA1EF1C3F27CF97BDB /* VolumeStreamTVApp.swift in Sources */,
 				F1E9095A7B2CF5E0C9F90094 /* VolumeStreamTVConfig.swift in Sources */,
 				8D8E011BC4BF442CA2CF1A8E /* VolumeStreamTVViewModel.swift in Sources */,
