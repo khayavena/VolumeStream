@@ -73,9 +73,17 @@ private fun remapArtworkSource(rawArtworkUrl: String?, mediaId: String, config: 
             ArtworkProfile.TV -> "tv"
             ArtworkProfile.MOBILE -> "mobile"
         }
-        "http://localhost:${config.apiPort}/art/$variant/$mediaId.svg"
+        val ext = if (config.artworkProfile == ArtworkProfile.TV) "png" else "svg"
+        "http://localhost:${config.apiPort}/art/$variant/$mediaId.$ext"
     } else {
-        raw
+        when (config.artworkProfile) {
+            // Backend feeds often return /art/mobile/...; TV clients should use /art/tv/...
+            ArtworkProfile.TV -> raw
+                .replace("/art/mobile/", "/art/tv/")
+                .replace("/art/mobile", "/art/tv")
+                .replace(".svg", ".png", ignoreCase = true)
+            ArtworkProfile.MOBILE -> raw
+        }
     }
 }
 
@@ -105,12 +113,6 @@ private fun normalizeMediaUrl(rawUrl: String?, apiHost: String, config: StreamVa
 }
 
 fun MediaItemDto.toPlaybackMediaItem(apiHost: String, config: StreamVaultConfig = StreamVaultConfig()) = PlaybackMediaItem(
-    // The server's feed `streamUrl` is already the canonical HLS manifest URL:
-    //   http(s)://{host}:{port}/api/v1/manifest/{id}
-    // `hlsStreamUrl` is used directly by iOS (prefetched to a local .m3u8 file).
-    // `streamUrl` is remapped to the DASH manifest path for Android/Web.
-    // The replace("/manifest/dash/", "/manifest/") guard in PlaybackStateController
-    // covers the case where hlsStreamUrl falls through to streamUrl on iOS.
     id           = id,
     title        = title,
     isDownloaded = false,

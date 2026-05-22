@@ -19,6 +19,9 @@ kotlin {
     iosX64()
     iosArm64()
     iosSimulatorArm64()
+    tvosArm64()
+    tvosSimulatorArm64()
+    tvosX64()
 
     sourceSets {
         commonMain.dependencies {
@@ -42,6 +45,9 @@ kotlin {
         }
         // Shared source set for all iOS targets — hierarchy template creates it automatically.
         val iosMain by getting
+        val tvosMain by getting {
+            dependsOn(iosMain)
+        }
     }
 }
 

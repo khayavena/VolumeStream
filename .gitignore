@@ -2,27 +2,51 @@
 .kotlin
 .gradle
 **/build/
-xcuserdata
 !src/**/build/
-local.properties
-# Generated iOS app config (machine-specific values from local.properties)
-composeApp/src/iosMain/kotlin/com/vdigital/volumestream/config/AppConfig.kt
+
+# Local IDE and OS files
 .idea
 .DS_Store
+.history/
 captures
 .externalNativeBuild
 .cxx
+local.properties
+
+# Generated iOS app config (machine-specific values from local.properties)
+composeApp/src/iosMain/kotlin/com/vdigital/volumestream/config/AppConfig.kt
+
+# Xcode project/workspace user data
+xcuserdata
 *.xcodeproj/*
 !*.xcodeproj/project.pbxproj
 !*.xcodeproj/xcshareddata/
 !*.xcodeproj/project.xcworkspace/
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
-/.history/
 
 # Xcode build output directories (CLI and GUI builds)
 iosApp/build_cli/
 iosApp/build_ios/
+iosApp/build_tvos/
 build/ios_build/
 build/ios_derived/
+
+# Xcode index/module cache noise
+iosApp/**/Index.noindex/
+iosApp/**/ModuleCache.noindex/
+iosApp/**/SDKStatCaches.noindex/
+iosApp/**/CompilationCache.noindex/
+
+# Local tvOS helper logs/status files
+iosApp/build_tvos_last.log
+iosApp/build_tvos_last.status
+iosApp/install_launch_last.log
+iosApp/install_launch_last.status
+iosApp/runtime_tvos_auth.log
+iosApp/tvos_stdout.log
+iosApp/tvos_stderr.log
+
+# Local helper scripts
+scripts/add_tvos_target.rb
 

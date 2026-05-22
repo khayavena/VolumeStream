@@ -20,9 +20,19 @@ kotlin {
         }
     }
 
-    iosX64()
-    iosArm64()
-    iosSimulatorArm64()
+    listOf(
+        iosX64(),
+        iosArm64(),
+        iosSimulatorArm64(),
+        tvosArm64(),
+        tvosSimulatorArm64(),
+        tvosX64(),
+    ).forEach { appleTarget ->
+        appleTarget.binaries.framework {
+            baseName = "VolumeStreamShared"
+            isStatic = true
+        }
+    }
 
 
     sourceSets {
@@ -32,6 +42,7 @@ kotlin {
             implementation(libs.androidx.security.crypto)
         }
         commonMain.dependencies {
+            implementation(project(":core:navigation"))
             implementation(libs.napier)
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.logging)
@@ -40,9 +51,14 @@ kotlin {
             implementation(libs.ktor.client.encoding)
             implementation(libs.koin.core)
         }
-        iosMain.dependencies {
-            implementation(libs.koin.core)
-            implementation(libs.ktor.client.darwin)
+        val iosMain by getting {
+            dependencies {
+                implementation(libs.koin.core)
+                implementation(libs.ktor.client.darwin)
+            }
+        }
+        val tvosMain by getting {
+            dependsOn(iosMain)
         }
     }
 }

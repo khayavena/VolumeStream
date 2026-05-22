@@ -51,8 +51,14 @@ class AuthRefreshRetryInterceptor(
         request: HttpRequestBuilder,
         execute: suspend (HttpRequestBuilder) -> HttpClientCall,
     ): HttpClientCall {
+        val requestUrl = request.url.toString()
         val call = execute(request)
         val hasJwt = request.headers[HttpHeaders.Authorization]?.startsWith(BEARER_PREFIX) == true
+
+        AppLogger.d(
+            LOG_TAG,
+            "intercept status=${call.response.status.value} method=${request.method.value} url=$requestUrl hasJwt=$hasJwt retry=${isRetryRequest(request)} refresh=${isRefreshRequest(request)}",
+        )
 
         if (!hasJwt || isRetryRequest(request) || isRefreshRequest(request)) {
             return call
@@ -62,12 +68,13 @@ class AuthRefreshRetryInterceptor(
             ?: tokenStore.getJwt()?.takeIf { it.isNotBlank() }
 
         if (!isRefreshableAuthFailure(call, currentJwt)) {
+            AppLogger.d(LOG_TAG, "no refresh needed status=${call.response.status.value} url=$requestUrl")
             return call
         }
 
         val refreshedJwt = currentJwt?.let { refreshToken(it, execute) }
         if (refreshedJwt.isNullOrBlank()) {
-            AppLogger.w(LOG_TAG, "Refresh failed after ${call.response.status.value}; signalling session revoked")
+            AppLogger.w(LOG_TAG, "refresh failed status=${call.response.status.value}; signalling session revoked")
             SessionRevokedBus.emit()
             return call
         }
@@ -83,6 +90,7 @@ class AuthRefreshRetryInterceptor(
         }
 
         val retryCall = execute(retryRequest)
+        AppLogger.d(LOG_TAG, "retry status=${retryCall.response.status.value} url=$requestUrl")
         if (isRefreshableAuthFailure(retryCall, refreshedJwt)) {
             AppLogger.w(LOG_TAG, "Retry also returned ${retryCall.response.status.value}; signalling session revoked")
             SessionRevokedBus.emit()
@@ -90,7 +98,7 @@ class AuthRefreshRetryInterceptor(
         return retryCall
     }
 
-     suspend fun refreshToken(
+    suspend fun refreshToken(
         jwt: String,
         execute: suspend (HttpRequestBuilder) -> HttpClientCall,
     ): String? {
@@ -108,7 +116,9 @@ class AuthRefreshRetryInterceptor(
         }
 
         return runCatching {
+            AppLogger.d(LOG_TAG, "calling refresh endpoint host=$authHostName port=$authPort")
             val refreshCall = execute(refreshRequest)
+            AppLogger.d(LOG_TAG, "refresh response status=${refreshCall.response.status.value}")
             if (refreshCall.response.status.value !in 200..299) {
                 null
             } else {
@@ -153,4 +163,3 @@ class AuthRefreshRetryInterceptor(
         request.url.toString().contains("/${config.authBasePath.trim('/')}/refresh") ||
             request.url.toString().contains("/refresh")
 }
-

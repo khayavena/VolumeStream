@@ -20,6 +20,7 @@ actual class RemoteApiClientFactory actual constructor(
     @OptIn(ExperimentalSerializationApi::class)
     actual fun create(): HttpClient {
         val client = HttpClient(Darwin) {
+
             install(ContentNegotiation) {
                 json(Json {
                     prettyPrint = true

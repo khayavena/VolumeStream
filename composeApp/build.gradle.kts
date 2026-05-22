@@ -208,6 +208,9 @@ kotlin {
         iosX64(),
         iosArm64(),
         iosSimulatorArm64(),
+        tvosArm64(),
+        tvosSimulatorArm64(),
+        tvosX64(),
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "ComposeApp"
@@ -248,10 +251,13 @@ kotlin {
             implementation(libs.navigation.compose)
             implementation(libs.image.loader)
         }
-        iosMain {
+        val iosMain by getting {
             dependencies {
                 implementation(libs.koin.core)
             }
+        }
+        val tvosMain by getting {
+            dependsOn(iosMain)
         }
     }
 }
@@ -323,6 +329,7 @@ tasks.named("preBuild") {
 // Keep AppConfig.kt up to date whenever iOS Kotlin sources are compiled.
 tasks.matching {
     it.name.startsWith("compileKotlinIos") ||
+    it.name.startsWith("compileKotlinTvos") ||
     it.name == "compileIosMainKotlinMetadata"
 }.configureEach {
     dependsOn(generateIosAppConfig)

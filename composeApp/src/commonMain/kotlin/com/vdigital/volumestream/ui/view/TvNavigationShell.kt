@@ -55,6 +55,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.vdigital.volumestream.navigation.Screen
+import com.vdigital.volumestream.navigation.tvNavSpecs
 import com.vdigital.volumestream.ui.viewmodel.AuthUiState
 import com.vdigital.volumestream.ui.viewmodel.AuthViewModel
 import org.koin.compose.viewmodel.koinViewModel
@@ -86,15 +87,23 @@ private data class TvNavItem(
     val icon: ImageVector,
 )
 
-private fun navItems(downloadsEnabled: Boolean): List<TvNavItem> = buildList {
-    add(TvNavItem("Home",    Screen.Home.route,    Icons.Default.Home))
-    add(TvNavItem("Search",  Screen.Search.route,  Icons.Default.Search))
-    if (downloadsEnabled) {
-        add(TvNavItem("Downloads", Screen.Downloads.route, Icons.AutoMirrored.Filled.List))
-    }
-    add(TvNavItem("Profile", Screen.Profile.route, Icons.Default.Person))
-    add(TvNavItem("Settings", Screen.Settings.route, Icons.Default.Settings))
+private fun iconForToken(token: String): ImageVector = when (token) {
+    "home" -> Icons.Default.Home
+    "search" -> Icons.Default.Search
+    "downloads" -> Icons.AutoMirrored.Filled.List
+    "profile" -> Icons.Default.Person
+    "settings" -> Icons.Default.Settings
+    else -> Icons.Default.Home
 }
+
+private fun navItems(downloadsEnabled: Boolean): List<TvNavItem> =
+    tvNavSpecs(downloadsEnabled).map { spec ->
+        TvNavItem(
+            label = spec.label,
+            route = spec.route,
+            icon = iconForToken(spec.iconToken),
+        )
+    }
 
 /**
  * DStv / Leanback-style TV navigation shell.

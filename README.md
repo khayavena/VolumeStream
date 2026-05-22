@@ -1,4 +1,4 @@
-This is a Kotlin Multiplatform project targeting Android, iOS.
+This is a Kotlin Multiplatform project targeting Android, iOS, and tvOS (Apple TV).
 
 * `/composeApp` is for code that will be shared across your Compose Multiplatform applications.
   It contains several subfolders:
@@ -12,6 +12,65 @@ This is a Kotlin Multiplatform project targeting Android, iOS.
 
 
 Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+
+## Apple TV (tvOS) enablement
+
+The shared modules now expose tvOS targets (`tvosArm64`, `tvosSimulatorArm64`, `tvosX64`) and reuse `iosMain`
+implementations through source-set dependency (`tvosMain -> iosMain`) to bootstrap Apple TV support.
+
+At the moment, Compose UI dependencies still do not resolve for tvOS in this project, so the practical Apple TV
+path is: **SwiftUI tvOS host app + shared KMP data framework**.
+
+Production tvOS app sources now live under `iosApp/tvOSApp`.
+
+Build the shared data framework for Apple TV simulator/device from Gradle:
+
+```bash
+cd /Users/khayavena/Documents/auth-pulse-service/software
+./gradlew :data:linkDebugFrameworkTvosSimulatorArm64
+./gradlew :data:linkDebugFrameworkTvosArm64
+```
+
+The framework is generated as `VolumeStreamShared.framework`.
+
+Initialize shared services from Swift/tvOS before using repositories:
+
+```swift
+import VolumeStreamShared
+
+_ = AppleDataBootstrapKt.initializeAppleDataLayer(
+    apiHost: "your-api-host",
+    authHost: "your-auth-host",
+    apiPort: 18443,
+    authPort: 18443,
+    apiUseHttps: true,
+    authUseHttps: true,
+    artworkProfile: "TV"
+)
+```
+
+To keep behavior aligned with your existing Kotlin iOS player implementation, use
+`ApplePlaybackBridge` helpers from Swift:
+
+```swift
+import VolumeStreamShared
+
+let normalized = ApplePlaybackBridge.shared.normalizeManifestUrl(url: rawManifestUrl)
+ApplePlaybackBridge.shared.createPlaybackHeaders(mediaId: mediaId) { headers, error in
+    // headers contains Authorization + X-Session-Token when session bootstrap succeeds.
+}
+```
+
+ComposeApp framework commands (for future use once tvOS Compose dependencies are resolved):
+
+```bash
+cd /Users/khayavena/Documents/auth-pulse-service/software
+./gradlew :composeApp:linkDebugFrameworkTvosSimulatorArm64
+./gradlew :composeApp:linkDebugFrameworkTvosArm64
+```
+
+Next step in Xcode is to add a tvOS app target (or a dedicated tvOS project) and point it at the generated
+`ComposeApp.framework` similarly to how the existing iOS target is wired.
 
 ## Auth Service (Login/Register/Profile)
 

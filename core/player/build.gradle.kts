@@ -23,6 +23,9 @@ kotlin {
     iosX64()
     iosArm64()
     iosSimulatorArm64()
+    tvosArm64()
+    tvosSimulatorArm64()
+    tvosX64()
 
     sourceSets {
         commonMain.dependencies {
@@ -44,9 +47,14 @@ kotlin {
             implementation(libs.androidx.media3.ui)
             implementation(libs.androidx.activity.compose)
         }
-        iosMain.dependencies {
-            implementation(libs.koin.core)
-            implementation(libs.ktor.client.darwin)
+        val iosMain by getting {
+            dependencies {
+                implementation(libs.koin.core)
+                implementation(libs.ktor.client.darwin)
+            }
+        }
+        val tvosMain by getting {
+            dependsOn(iosMain)
         }
     }
 }
