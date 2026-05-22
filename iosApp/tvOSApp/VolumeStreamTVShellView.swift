@@ -1186,24 +1186,28 @@ private struct ArtworkImageView: View {
             Rectangle().fill(placeholderColor)
 
             if let image = loader.image {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipped()
-            } else {
+                // Preserve intrinsic image ratio and avoid stretch/crop artifacts.
+                 Image(uiImage: image)
+                     .resizable()
+                     .aspectRatio(image.size, contentMode: .fill)
+                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                     .scaleEffect(1.06, anchor: .top)
+                     .clipped()
+             } else {
                 Image(systemName: "film")
                     .foregroundStyle(.white.opacity(0.8))
-            }
-        }
-        .onAppear {
-            loader.load(urlString: urlString)
-        }
-        .onChange(of: urlString) { value in
-            loader.load(urlString: value)
-        }
-    }
-}
+             }
+         }
+         .background(placeholderColor)
+         .clipped()
+         .onAppear {
+             loader.load(urlString: urlString)
+         }
+         .onChange(of: urlString) { value in
+             loader.load(urlString: value)
+         }
+     }
+ }
 
 @MainActor
 private final class LocalTLSArtworkLoader: NSObject, ObservableObject, URLSessionDelegate {
