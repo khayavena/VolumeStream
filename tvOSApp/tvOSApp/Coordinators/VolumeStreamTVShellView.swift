@@ -53,9 +53,9 @@ struct VolumeStreamTVShellView: View {
     private let controlsBarBg = Color.black.opacity(0.55) // #8C000000
     private let chipBg = Color.black.opacity(0.70) // #B3000000
     private let tvCardBg = Color(red: 17 / 255.0, green: 17 / 255.0, blue: 17 / 255.0, opacity: 0.80) // #CC111111
-    private let carouselLabel = Color(red: 170 / 255.0, green: 170 / 255.0, blue: 170 / 255.0) // #AAAAAA
-    private let carouselIdleBorder = Color(red: 51 / 255.0, green: 51 / 255.0, blue: 51 / 255.0) // #333333
-    private let neutralStroke = Color.white.opacity(0.20)
+    private let carouselLabel = Color(red: 116 / 255.0, green: 186 / 255.0, blue: 152 / 255.0) // #74BA98
+    private let carouselIdleBorder = Color(red: 0 / 255.0, green: 230 / 255.0, blue: 118 / 255.0, opacity: 0.28) // #4700E676
+    private let neutralStroke = Color(red: 0 / 255.0, green: 230 / 255.0, blue: 118 / 255.0, opacity: 0.24)
     private let topScrim = LinearGradient(
         colors: [Color.black.opacity(0.72), Color.black.opacity(0.30), Color.clear],
         startPoint: .top,
@@ -272,6 +272,7 @@ struct VolumeStreamTVShellView: View {
                 selectRoute(route)
             }
         )
+        .focusSection()
      }
 
      private var mainContent: some View {
@@ -374,6 +375,7 @@ struct VolumeStreamTVShellView: View {
          }
          .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
          .padding(32)
+          .focusSection()
      }
 
       @ViewBuilder
@@ -812,7 +814,7 @@ struct VolumeStreamTVShellView: View {
           let seconds = Int(totalSeconds)
           let h = seconds / 3600
           let m = (seconds % 3600) / 60
-          let s = seconds % 66
+          let s = seconds % 60
           if h > 0 {
               return String(format: "%d:%02d:%02d", h, m, s)
           }
@@ -884,13 +886,10 @@ struct VolumeStreamTVShellView: View {
       private func handleShellMove(_ direction: MoveCommandDirection) {
           guard !viewModel.isPlayerVisible else { return }
 
-          if moveHomeCardFocus(direction) {
-              return
-          }
-
           switch direction {
           case .left:
-              if focusedMediaId != nil {
+              // Only hand off to nav when content focus is already at its leading edge.
+              if focusedMediaId != nil && isAtLeadingContentBoundary() {
                   focusedMediaId = nil
                   focusedRoute = selectedRoute
               }
@@ -903,40 +902,24 @@ struct VolumeStreamTVShellView: View {
           }
       }
 
-      private func moveHomeCardFocus(_ direction: MoveCommandDirection) -> Bool {
-          guard selectedRoute == RouteKey.home,
-                let focusedId = focusedMediaId,
-                let current = homeFocusPosition(for: focusedId) else {
+      private func isAtLeadingContentBoundary() -> Bool {
+          guard let focusedId = focusedMediaId else {
               return false
           }
 
-          let sections = viewModel.homeSections
-          let sectionItems = sections[current.sectionIndex].items
-
-          switch direction {
-          case .left:
-              guard current.itemIndex > 0 else { return false }
-              focusedMediaId = sectionItems[current.itemIndex - 1].id
-              return true
-          case .right:
-              guard current.itemIndex + 1 < sectionItems.count else { return false }
-              focusedMediaId = sectionItems[current.itemIndex + 1].id
-              return true
-          case .up:
-              guard current.sectionIndex > 0 else { return false }
-              let targetItems = sections[current.sectionIndex - 1].items
-              guard !targetItems.isEmpty else { return false }
-              focusedMediaId = targetItems[min(current.itemIndex, targetItems.count - 1)].id
-              return true
-          case .down:
-              guard current.sectionIndex + 1 < sections.count else { return false }
-              let targetItems = sections[current.sectionIndex + 1].items
-              guard !targetItems.isEmpty else { return false }
-              focusedMediaId = targetItems[min(current.itemIndex, targetItems.count - 1)].id
-              return true
+          switch selectedRoute {
+          case RouteKey.home:
+              guard let homePosition = homeFocusPosition(for: focusedId) else { return false }
+              return homePosition.itemIndex == 0
+          case RouteKey.search:
+              return searchFocusIndex(for: focusedId) == 0
           default:
               return false
           }
+      }
+
+      private func searchFocusIndex(for mediaId: String) -> Int? {
+          viewModel.searchResults.firstIndex(where: { $0.id == mediaId })
       }
 
       private func homeFocusPosition(for mediaId: String) -> (sectionIndex: Int, itemIndex: Int)? {

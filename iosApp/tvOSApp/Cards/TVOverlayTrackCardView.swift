@@ -2,6 +2,11 @@ import SwiftUI
 import VolumeStreamShared
 
 struct TVOverlayTrackCardView: View {
+    private enum Layout {
+        static let artworkWidth: CGFloat = 130
+        static let artworkHeight: CGFloat = 72
+    }
+
     let item: VolumeStreamTVViewModel.MediaItem
     let isFocused: Bool
     let isSelected: Bool
@@ -13,7 +18,7 @@ struct TVOverlayTrackCardView: View {
     let durationText: String?
 
     var body: some View {
-        let active = isFocused || isSelected
+        let titleColor: Color = (isFocused || isSelected) ? accent : carouselLabel
         let borderColor: Color = isSelected ? accent : (isFocused ? accent.opacity(0.80) : idleBorder)
         let background: Color = isSelected ? Color.black.opacity(0.36) : (isFocused ? focusedChipBg : cardBackground)
 
@@ -23,7 +28,8 @@ struct TVOverlayTrackCardView: View {
                     urlString: item.artworkUrl,
                     placeholderColor: Color(red: 26 / 255.0, green: 26 / 255.0, blue: 26 / 255.0)
                 )
-                .frame(width: 130, height: 72)
+                .frame(width: Layout.artworkWidth)
+                .frame(height: Layout.artworkHeight)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
 
                 if isSelected {
@@ -41,7 +47,7 @@ struct TVOverlayTrackCardView: View {
             Text(item.title)
                 .lineLimit(2)
                 .font(.system(size: 11, weight: isSelected ? .bold : .medium))
-                .foregroundStyle(active ? accent : .white)
+                .foregroundStyle(titleColor)
 
             if let durationText {
                 Text(durationText)
@@ -49,7 +55,7 @@ struct TVOverlayTrackCardView: View {
                     .foregroundStyle(carouselLabel)
             }
         }
-        .frame(width: 130, alignment: .leading)
+        .frame(width: Layout.artworkWidth, alignment: .leading)
         .padding(8)
         .background(background)
         .overlay(

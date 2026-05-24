@@ -14,16 +14,31 @@ struct TVSearchScreenView: View {
     let onPlay: (VolumeStreamTVViewModel.MediaItem) -> Void
     let onRetry: () -> Void
 
+    @FocusState private var isSearchFieldFocused: Bool
+
+    private let searchFieldBackground = Color.black.opacity(0.78)
+
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Search")
                 .font(.system(size: 44, weight: .bold))
                 .foregroundStyle(.white)
 
-            HStack {
+            HStack(spacing: 14) {
                 TextField("Search title or description", text: $searchQuery)
                     .textFieldStyle(.plain)
                     .frame(width: 520)
+                    .foregroundStyle(.white)
+                    .tint(accent)
+                    .focused($isSearchFieldFocused)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .background(searchFieldBackground)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(accent.opacity(isSearchFieldFocused ? 0.95 : 0.42), lineWidth: isSearchFieldFocused ? 2.0 : 1.2)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                     .onSubmit {
                         onSubmitSearch()
                     }
@@ -35,7 +50,7 @@ struct TVSearchScreenView: View {
             }
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 10) {
+                LazyVStack(alignment: .leading, spacing: TVCardLayout.verticalSpacing) {
                     ForEach(searchResults) { item in
                         TVMediaCardView(
                             item: item,
@@ -43,7 +58,8 @@ struct TVSearchScreenView: View {
                             accent: accent,
                             placeholderColor: cardPlaceholderColor
                         )
-                        .contentShape(RoundedRectangle(cornerRadius: 10))
+                        .frame(width: TVCardLayout.mediaWidth, height: TVCardLayout.totalHeight, alignment: .topLeading)
+                        .contentShape(RoundedRectangle(cornerRadius: TVCardLayout.cornerRadius))
                         .focusable(true)
                         .disableSystemFocusEffectIfAvailable()
                         .focused(focusedMediaId, equals: item.id)
@@ -52,6 +68,7 @@ struct TVSearchScreenView: View {
                         }
                     }
                 }
+                .padding(.vertical, 6)
             }
 
             if !errorMessage.isEmpty {

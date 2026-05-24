@@ -11,7 +11,6 @@ struct TVOverlayChipView: View {
     let onPress: () -> Void
 
     var body: some View {
-        let active = selected || isFocused
         Button(title) {
             onPress()
         }
@@ -28,7 +27,7 @@ struct TVOverlayChipView: View {
                 )
         )
         .clipShape(RoundedRectangle(cornerRadius: 10))
-        .foregroundStyle(active ? accent : .white)
+        .foregroundStyle(.white)
         .font(.system(size: 24, weight: .semibold))
         .animation(.easeInOut(duration: 0.08), value: isFocused)
     }

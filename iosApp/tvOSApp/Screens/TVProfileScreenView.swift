@@ -17,6 +17,10 @@ struct TVProfileScreenView: View {
     let onLogin: () -> Void
     let onRetry: () -> Void
 
+    private let inputBackground = Color.black.opacity(0.72)
+    private let inputBorder = Color(red: 0 / 255.0, green: 230 / 255.0, blue: 118 / 255.0, opacity: 0.42)
+    private let formPanelBackground = Color.black.opacity(0.52)
+
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Profile")
@@ -38,13 +42,14 @@ struct TVProfileScreenView: View {
                     Button("Refresh") {
                         onRefreshProfile()
                     }
-                    .buttonStyle(.bordered)
-                    .tint(accent)
+                    .buttonStyle(TVPrimaryButtonStyle(accent: accent))
+                    .frame(width: 180)
 
                     Button("Logout") {
                         onLogout()
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(TVPrimaryButtonStyle(accent: accent.opacity(0.82)))
+                    .frame(width: 180)
                 }
             } else {
                 VStack(alignment: .leading, spacing: 14) {
@@ -57,16 +62,28 @@ struct TVProfileScreenView: View {
 
                     TextField("Email", text: $loginEmail)
                         .textFieldStyle(.plain)
+                        .foregroundStyle(.white)
+                        .tint(accent)
                         .padding(.horizontal, 14)
                         .frame(width: 520, height: 48)
-                        .background(Color.white.opacity(0.1))
+                        .background(inputBackground)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(inputBorder, lineWidth: 1.2)
+                        )
                         .clipShape(RoundedRectangle(cornerRadius: 10))
 
                     SecureField("Password", text: $loginPassword)
                         .textFieldStyle(.plain)
+                        .foregroundStyle(.white)
+                        .tint(accent)
                         .padding(.horizontal, 14)
                         .frame(width: 520, height: 48)
-                        .background(Color.white.opacity(0.1))
+                        .background(inputBackground)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(inputBorder, lineWidth: 1.2)
+                        )
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                         .onSubmit {
                             onLogin()
@@ -81,11 +98,15 @@ struct TVProfileScreenView: View {
 
                     if isLoginSubmitting {
                         ProgressView("Signing in...")
-                            .tint(.white)
+                            .tint(accent)
                     }
                 }
                 .padding(18)
-                .background(Color.white.opacity(0.05))
+                .background(formPanelBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(inputBorder, lineWidth: 1.0)
+                )
                 .clipShape(RoundedRectangle(cornerRadius: 14))
             }
 

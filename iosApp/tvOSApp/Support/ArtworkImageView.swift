@@ -5,6 +5,8 @@ struct ArtworkImageView: View {
     let urlString: String
     let placeholderColor: Color
 
+    private let placeholderIconColor = Color(red: 0 / 255.0, green: 230 / 255.0, blue: 118 / 255.0, opacity: 0.78)
+
     @StateObject private var loader = LocalTLSArtworkLoader()
 
     var body: some View {
@@ -15,13 +17,13 @@ struct ArtworkImageView: View {
             if let image = loader.image {
                 Image(uiImage: image)
                     .resizable()
+                    // Fill card width/height for a denser, TV-style visual treatment.
                     .aspectRatio(image.size, contentMode: .fill)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    .scaleEffect(1.06, anchor: .top)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                     .clipped()
             } else {
                 Image(systemName: "film")
-                    .foregroundStyle(.white.opacity(0.8))
+                    .foregroundStyle(placeholderIconColor)
             }
         }
         .background(placeholderColor)

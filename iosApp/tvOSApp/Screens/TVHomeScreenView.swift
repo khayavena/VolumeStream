@@ -35,8 +35,8 @@ struct TVHomeScreenView: View {
                                     .font(.title3)
                                     .foregroundStyle(.white)
 
-                                ScrollView(.horizontal) {
-                                    HStack(spacing: 12) {
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: TVCardLayout.horizontalSpacing) {
                                         ForEach(section.items) { item in
                                             TVMediaCardView(
                                                 item: item,
@@ -44,7 +44,8 @@ struct TVHomeScreenView: View {
                                                 accent: accent,
                                                 placeholderColor: cardPlaceholderColor
                                             )
-                                            .contentShape(RoundedRectangle(cornerRadius: 10))
+                                            .frame(width: TVCardLayout.mediaWidth, height: TVCardLayout.totalHeight, alignment: .topLeading)
+                                            .contentShape(RoundedRectangle(cornerRadius: TVCardLayout.cornerRadius))
                                             .focusable(true)
                                             .disableSystemFocusEffectIfAvailable()
                                             .focused(focusedMediaId, equals: item.id)
@@ -53,7 +54,9 @@ struct TVHomeScreenView: View {
                                             }
                                         }
                                     }
+                                    .padding(.vertical, 6)
                                 }
+                                .frame(height: TVCardLayout.totalHeight + 12)
                             }
                         }
                     }
