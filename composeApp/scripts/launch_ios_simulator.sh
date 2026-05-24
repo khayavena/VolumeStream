@@ -1,13 +1,21 @@
-#!/bin/zsh
+#!/usr/bin/env bash
 set -euo pipefail
 
-# Required env vars are injected by :composeApp:launchIosSimulatorFromIde.
-: "${SIMULATOR:?SIMULATOR is required}"
-: "${SCHEME:?SCHEME is required}"
-: "${BUNDLE_ID:?BUNDLE_ID is required}"
-: "${PROJECT_PATH:?PROJECT_PATH is required}"
-: "${DERIVED_DATA:?DERIVED_DATA is required}"
-: "${APP_PATH:?APP_PATH is required}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SOFTWARE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# Supports both new IOS_* env vars and legacy names from older IDE tasks.
+SIMULATOR="${IOS_SIMULATOR:-${SIMULATOR:-iPhone 16e}}"
+SCHEME="${IOS_SCHEME:-${SCHEME:-iosApp}}"
+BUNDLE_ID="${IOS_BUNDLE_ID:-${BUNDLE_ID:-com.vdigital.volumestream.VolumeStream}}"
+PROJECT_PATH="${IOS_PROJECT_PATH:-${PROJECT_PATH:-$SOFTWARE_DIR/iosApp/iosApp.xcodeproj}}"
+DERIVED_DATA="${IOS_DERIVED_DATA:-${DERIVED_DATA:-$SOFTWARE_DIR/build/ios_derived/script}}"
+APP_PATH="${IOS_APP_PATH:-${APP_PATH:-$DERIVED_DATA/Build/Products/Debug-iphonesimulator/$SCHEME.app}}"
+
+if [[ ! -d "$PROJECT_PATH" ]]; then
+    echo "iOS Xcode project not found at: $PROJECT_PATH" >&2
+    exit 2
+fi
 
 SIMCTL_JSON="$(xcrun simctl list devices available -j)"
 SIMULATOR_UDID="$(SIMCTL_JSON="$SIMCTL_JSON" /usr/bin/python3 - "$SIMULATOR" <<'PY'
@@ -62,8 +70,16 @@ fi
 echo "Using iOS simulator: $SIMULATOR (UDID=$SIMULATOR_UDID)"
 xcrun simctl boot "$SIMULATOR_UDID" >/dev/null 2>&1 || true
 xcrun simctl bootstatus "$SIMULATOR_UDID" -b
+open -a Simulator
 
-xcodebuild -project "$PROJECT_PATH" -scheme "$SCHEME" -configuration Debug -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" -derivedDataPath "$DERIVED_DATA" build
+echo "▶ Building $SCHEME..."
+xcodebuild \
+  -project "$PROJECT_PATH" \
+  -scheme "$SCHEME" \
+  -configuration Debug \
+  -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
+  -derivedDataPath "$DERIVED_DATA" \
+  build
 
 EFFECTIVE_APP_PATH="$APP_PATH"
 if [[ ! -d "$EFFECTIVE_APP_PATH" ]]; then
@@ -74,11 +90,15 @@ if [[ -z "$EFFECTIVE_APP_PATH" || ! -d "$EFFECTIVE_APP_PATH" ]]; then
     exit 3
 fi
 
-xcrun simctl install "$SIMULATOR_UDID" "$EFFECTIVE_APP_PATH"
 
 EFFECTIVE_BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print:CFBundleIdentifier' "$EFFECTIVE_APP_PATH/Info.plist" 2>/dev/null || true)"
 if [[ -z "$EFFECTIVE_BUNDLE_ID" ]]; then
     EFFECTIVE_BUNDLE_ID="$BUNDLE_ID"
 fi
+
+echo "▶ Installing $EFFECTIVE_APP_PATH..."
+xcrun simctl install "$SIMULATOR_UDID" "$EFFECTIVE_APP_PATH"
+echo "▶ Launching $EFFECTIVE_BUNDLE_ID..."
 xcrun simctl launch "$SIMULATOR_UDID" "$EFFECTIVE_BUNDLE_ID"
+echo "✅ iOS app launched on $SIMULATOR"
 

@@ -12,10 +12,10 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 /**
- * Apple TV content/auth bridge for Swift hosts.
+ * tvOS content/auth bridge for Swift hosts.
  * Keeps app/UI code in iosApp while data orchestration stays in the data module.
  */
-object AppleTvContentBridge {
+object TvosContentBridge {
     private val json = Json { ignoreUnknownKeys = true }
 
     @Serializable
@@ -182,4 +182,5 @@ object AppleTvContentBridge {
         address = address,
     )
 }
+
 

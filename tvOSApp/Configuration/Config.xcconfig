@@ -1,0 +1,7 @@
+// tvOSApp Configuration
+// Fill in TEAM_ID to enable code signing for device builds.
+// BUNDLE_ID is the base App Store bundle identifier for the tvOS app.
+TEAM_ID=
+BUNDLE_ID=com.vdigital.volumestream.tvos
+APP_NAME=VolumeStreamTV
+

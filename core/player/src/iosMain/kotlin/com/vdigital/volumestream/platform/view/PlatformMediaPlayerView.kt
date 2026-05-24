@@ -32,7 +32,7 @@ import platform.UIKit.UIViewAutoresizingFlexibleWidth
 @OptIn(ExperimentalForeignApi::class, kotlinx.cinterop.BetaInteropApi::class)
 @Composable
 actual fun PlatformMediaPlayerView(
-    modifier: Modifier,
+    modifier: Any,
     playbackStateController: PlaybackStateController,
     onTap: () -> Unit,
     isZoomed: Boolean
@@ -115,6 +115,6 @@ actual fun PlatformMediaPlayerView(
             tapOverlay.removeFromSuperview()
             playerVC.player = null
         },
-        modifier = modifier
+        modifier = modifier as Modifier
     )
 }

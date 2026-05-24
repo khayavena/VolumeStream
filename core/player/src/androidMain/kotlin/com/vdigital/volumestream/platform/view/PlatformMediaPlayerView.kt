@@ -16,7 +16,7 @@ import com.vdigital.volumestream.platform.controller.PlaybackStateController
 @OptIn(UnstableApi::class)
 @Composable
 actual fun PlatformMediaPlayerView(
-    modifier: Modifier,
+    modifier: Any,
     playbackStateController: PlaybackStateController,
     onTap: () -> Unit,
     isZoomed: Boolean
@@ -68,6 +68,6 @@ actual fun PlatformMediaPlayerView(
                 view.player = currentPlayer
             }
         },
-        modifier = modifier  // No graphicsLayer — SurfaceView must not be inside a hardware layer
+        modifier = modifier as Modifier  // No graphicsLayer — SurfaceView must not be inside a hardware layer
     )
 }

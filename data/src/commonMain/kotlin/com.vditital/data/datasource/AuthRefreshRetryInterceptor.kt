@@ -33,12 +33,7 @@ class AuthRefreshRetryInterceptor(
 
     private val cleanedAuthHost: String = authHost.trim().removeSuffix("/")
 
-    private val authProtocol: URLProtocol = when {
-        cleanedAuthHost.startsWith("https://", ignoreCase = true) -> URLProtocol.HTTPS
-        cleanedAuthHost.startsWith("http://", ignoreCase = true) -> URLProtocol.HTTP
-        config.authUseHttps -> URLProtocol.HTTPS
-        else -> URLProtocol.HTTP
-    }
+    private val authProtocol: URLProtocol = if (config.authUseHttps) URLProtocol.HTTPS else URLProtocol.HTTP
 
     private val normalizedAuthAuthority: String = cleanedAuthHost
         .substringAfter("://", missingDelimiterValue = cleanedAuthHost)

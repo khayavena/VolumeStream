@@ -22,13 +22,8 @@ class AuthDataSourceImpl(
     private val config: StreamVaultConfig = StreamVaultConfig()
 ) : AuthDataSource {
 
-    private val protocol: URLProtocol
-        get() = when {
-            authHost.startsWith("https://", ignoreCase = true) -> URLProtocol.HTTPS
-            authHost.startsWith("http://", ignoreCase = true) -> URLProtocol.HTTP
-            config.authUseHttps -> URLProtocol.HTTPS
-            else -> URLProtocol.HTTP
-        }
+    private val configuredProtocol: URLProtocol
+        get() = if (config.authUseHttps) URLProtocol.HTTPS else URLProtocol.HTTP
 
     private val normalizedAuthority: String
         get() = authHost
@@ -51,7 +46,7 @@ class AuthDataSourceImpl(
         AppLogger.d("AuthDS", "login → $authHost:$port")
         val response = httpClient.post {
             url {
-                protocol = this@AuthDataSourceImpl.protocol
+                protocol = configuredProtocol
                 host     = this@AuthDataSourceImpl.host
                 port     = this@AuthDataSourceImpl.port
                 path(base, "login")
@@ -81,7 +76,7 @@ class AuthDataSourceImpl(
         AppLogger.d("AuthDS", "register → $authHost:$port")
         val response = httpClient.post {
             url {
-                protocol = this@AuthDataSourceImpl.protocol
+                protocol = configuredProtocol
                 host     = this@AuthDataSourceImpl.host
                 port     = this@AuthDataSourceImpl.port
                 path(base, "register")
@@ -106,7 +101,7 @@ class AuthDataSourceImpl(
         AppLogger.d("AuthDS", "refreshToken → $authHost:$port")
         val response = httpClient.post {
             url {
-                protocol = this@AuthDataSourceImpl.protocol
+                protocol = configuredProtocol
                 host     = this@AuthDataSourceImpl.host
                 port     = this@AuthDataSourceImpl.port
                 path(base, "refresh")

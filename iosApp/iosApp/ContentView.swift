@@ -5,7 +5,10 @@ import ComposeApp
 // Bridges the Kotlin/Compose root into a SwiftUI-compatible UIViewController
 struct ComposeView: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIViewController {
-        MainViewControllerKt.MainViewController()
+        print("[iOS][Swift] makeUIViewController start")
+        let vc = MainViewControllerKt.MainViewController()
+        print("[iOS][Swift] makeUIViewController returned Kotlin controller")
+        return vc
     }
 
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
@@ -23,6 +26,3 @@ struct ContentView: View {
             .statusBarHidden(true)           // immersive — no status bar over video
     }
 }
-
-
-

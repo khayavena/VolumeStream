@@ -1,0 +1,526 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		TV0001000000000000000001 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = TV0001000000000000000030 /* Foundation.framework */; };
+		TV0001000000000000000002 /* VolumeStreamShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = TV0001000000000000000031 /* VolumeStreamShared.framework */; };
+		TV0001000000000000000010 /* VolumeStreamTVApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = TV0001000000000000000040 /* VolumeStreamTVApp.swift */; };
+		TV0001000000000000000011 /* VolumeStreamTVConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = TV0001000000000000000041 /* VolumeStreamTVConfig.swift */; };
+		TV0001000000000000000012 /* VolumeStreamTVViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = TV0001000000000000000042 /* VolumeStreamTVViewModel.swift */; };
+		TV0001000000000000000013 /* VolumeStreamTVShellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = TV0001000000000000000043 /* VolumeStreamTVShellView.swift */; };
+		TV0001000000000000000014 /* TVPrimaryButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = TV0001000000000000000044 /* TVPrimaryButtonStyle.swift */; };
+		TV0001000000000000000015 /* PlayerHostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = TV0001000000000000000045 /* PlayerHostView.swift */; };
+		TV0001000000000000000016 /* FocusEffect+tvOS.swift in Sources */ = {isa = PBXBuildFile; fileRef = TV0001000000000000000046 /* FocusEffect+tvOS.swift */; };
+		TV0001000000000000000017 /* ArtworkImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = TV0001000000000000000047 /* ArtworkImageView.swift */; };
+		TV0001000000000000000018 /* TVMediaCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = TV0001000000000000000048 /* TVMediaCardView.swift */; };
+		TV0001000000000000000019 /* TVOverlayTrackCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = TV0001000000000000000049 /* TVOverlayTrackCardView.swift */; };
+		TV000100000000000000001A /* TVFeedbackViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = TV000100000000000000004A /* TVFeedbackViews.swift */; };
+		TV000100000000000000001B /* TVOverlayChipView.swift in Sources */ = {isa = PBXBuildFile; fileRef = TV000100000000000000004B /* TVOverlayChipView.swift */; };
+		TV000100000000000000001C /* TVSideNavView.swift in Sources */ = {isa = PBXBuildFile; fileRef = TV000100000000000000004C /* TVSideNavView.swift */; };
+		TV000100000000000000001D /* TVHomeScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = TV000100000000000000004D /* TVHomeScreenView.swift */; };
+		TV000100000000000000001E /* TVSearchScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = TV000100000000000000004E /* TVSearchScreenView.swift */; };
+		TV000100000000000000001F /* TVProfileScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = TV000100000000000000004F /* TVProfileScreenView.swift */; };
+		TV0001000000000000000020 /* TVSettingsScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = TV0001000000000000000050 /* TVSettingsScreenView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		TV0001000000000000000030 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		TV0001000000000000000031 /* VolumeStreamShared.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = VolumeStreamShared.framework; path = VolumeStreamShared.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		TV0001000000000000000038 /* tvOSApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = tvOSApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		TV0001000000000000000039 /* Info-tvOS.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-tvOS.plist"; sourceTree = "<group>"; };
+		TV000100000000000000003A /* Config.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
+		TV0001000000000000000040 /* VolumeStreamTVApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeStreamTVApp.swift; sourceTree = "<group>"; };
+		TV0001000000000000000041 /* VolumeStreamTVConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeStreamTVConfig.swift; sourceTree = "<group>"; };
+		TV0001000000000000000042 /* VolumeStreamTVViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeStreamTVViewModel.swift; sourceTree = "<group>"; };
+		TV0001000000000000000043 /* VolumeStreamTVShellView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeStreamTVShellView.swift; sourceTree = "<group>"; };
+		TV0001000000000000000044 /* TVPrimaryButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVPrimaryButtonStyle.swift; sourceTree = "<group>"; };
+		TV0001000000000000000045 /* PlayerHostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerHostView.swift; sourceTree = "<group>"; };
+		TV0001000000000000000046 /* FocusEffect+tvOS.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FocusEffect+tvOS.swift"; sourceTree = "<group>"; };
+		TV0001000000000000000047 /* ArtworkImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtworkImageView.swift; sourceTree = "<group>"; };
+		TV0001000000000000000048 /* TVMediaCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVMediaCardView.swift; sourceTree = "<group>"; };
+		TV0001000000000000000049 /* TVOverlayTrackCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVOverlayTrackCardView.swift; sourceTree = "<group>"; };
+		TV000100000000000000004A /* TVFeedbackViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVFeedbackViews.swift; sourceTree = "<group>"; };
+		TV000100000000000000004B /* TVOverlayChipView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVOverlayChipView.swift; sourceTree = "<group>"; };
+		TV000100000000000000004C /* TVSideNavView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVSideNavView.swift; sourceTree = "<group>"; };
+		TV000100000000000000004D /* TVHomeScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVHomeScreenView.swift; sourceTree = "<group>"; };
+		TV000100000000000000004E /* TVSearchScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVSearchScreenView.swift; sourceTree = "<group>"; };
+		TV000100000000000000004F /* TVProfileScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVProfileScreenView.swift; sourceTree = "<group>"; };
+		TV0001000000000000000050 /* TVSettingsScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVSettingsScreenView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		TV0001000000000000000060 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				TV0001000000000000000001 /* Foundation.framework in Frameworks */,
+				TV0001000000000000000002 /* VolumeStreamShared.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		TV0001000000000000000070 = {
+			isa = PBXGroup;
+			children = (
+				TV000100000000000000007A /* Configuration */,
+				TV0001000000000000000071 /* tvOSApp */,
+				TV0001000000000000000072 /* Products */,
+				TV0001000000000000000079 /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		TV0001000000000000000071 /* tvOSApp */ = {
+			isa = PBXGroup;
+			children = (
+				TV0001000000000000000040 /* VolumeStreamTVApp.swift */,
+				TV0001000000000000000039 /* Info-tvOS.plist */,
+				TV000100000000000000007B /* Configuration */,
+				TV000100000000000000007C /* ViewModels */,
+				TV000100000000000000007D /* Coordinators */,
+				TV000100000000000000007E /* Theme */,
+				TV000100000000000000007F /* Support */,
+				TV0001000000000000000080 /* Cards */,
+				TV0001000000000000000081 /* Components */,
+				TV0001000000000000000082 /* Screens */,
+			);
+			path = tvOSApp;
+			sourceTree = "<group>";
+		};
+		TV0001000000000000000072 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				TV0001000000000000000038 /* tvOSApp.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		TV0001000000000000000079 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				TV0001000000000000000030 /* Foundation.framework */,
+				TV0001000000000000000031 /* VolumeStreamShared.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		TV000100000000000000007A /* Configuration */ = {
+			isa = PBXGroup;
+			children = (
+				TV000100000000000000003A /* Config.xcconfig */,
+			);
+			path = Configuration;
+			sourceTree = "<group>";
+		};
+		TV000100000000000000007B /* Configuration */ = {
+			isa = PBXGroup;
+			children = (
+				TV0001000000000000000041 /* VolumeStreamTVConfig.swift */,
+			);
+			path = Configuration;
+			sourceTree = "<group>";
+		};
+		TV000100000000000000007C /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				TV0001000000000000000042 /* VolumeStreamTVViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		TV000100000000000000007D /* Coordinators */ = {
+			isa = PBXGroup;
+			children = (
+				TV0001000000000000000043 /* VolumeStreamTVShellView.swift */,
+			);
+			path = Coordinators;
+			sourceTree = "<group>";
+		};
+		TV000100000000000000007E /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				TV0001000000000000000044 /* TVPrimaryButtonStyle.swift */,
+			);
+			path = Theme;
+			sourceTree = "<group>";
+		};
+		TV000100000000000000007F /* Support */ = {
+			isa = PBXGroup;
+			children = (
+				TV0001000000000000000045 /* PlayerHostView.swift */,
+				TV0001000000000000000046 /* FocusEffect+tvOS.swift */,
+				TV0001000000000000000047 /* ArtworkImageView.swift */,
+			);
+			path = Support;
+			sourceTree = "<group>";
+		};
+		TV0001000000000000000080 /* Cards */ = {
+			isa = PBXGroup;
+			children = (
+				TV0001000000000000000048 /* TVMediaCardView.swift */,
+				TV0001000000000000000049 /* TVOverlayTrackCardView.swift */,
+			);
+			path = Cards;
+			sourceTree = "<group>";
+		};
+		TV0001000000000000000081 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				TV000100000000000000004A /* TVFeedbackViews.swift */,
+				TV000100000000000000004B /* TVOverlayChipView.swift */,
+				TV000100000000000000004C /* TVSideNavView.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		TV0001000000000000000082 /* Screens */ = {
+			isa = PBXGroup;
+			children = (
+				TV000100000000000000004D /* TVHomeScreenView.swift */,
+				TV000100000000000000004E /* TVSearchScreenView.swift */,
+				TV000100000000000000004F /* TVProfileScreenView.swift */,
+				TV0001000000000000000050 /* TVSettingsScreenView.swift */,
+			);
+			path = Screens;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		TV0001000000000000000090 /* tvOSApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = TV0001000000000000000093 /* Build configuration list for PBXNativeTarget "tvOSApp" */;
+			buildPhases = (
+				TV00010000000000000000A0 /* Compile Kotlin Framework */,
+				TV00010000000000000000A1 /* Sources */,
+				TV0001000000000000000060 /* Frameworks */,
+				TV00010000000000000000A2 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = tvOSApp;
+			productName = tvOSApp;
+			productReference = TV0001000000000000000038 /* tvOSApp.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		TV0001000000000000000091 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastSwiftUpdateCheck = 1540;
+				LastUpgradeCheck = 1540;
+				ORGANIZATIONNAME = vdigital;
+				TargetAttributes = {
+					TV0001000000000000000090 = {
+						CreatedOnToolsVersion = 15.4;
+					};
+				};
+			};
+			buildConfigurationList = TV0001000000000000000092 /* Build configuration list for PBXProject "tvOSApp" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = TV0001000000000000000070;
+			productRefGroup = TV0001000000000000000072 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				TV0001000000000000000090 /* tvOSApp */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		TV00010000000000000000A2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		TV00010000000000000000A0 /* Compile Kotlin Framework */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Compile Kotlin Framework";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ \"YES\" = \"$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED\" ]; then\n  echo \"Skipping Gradle build task invocation due to OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED environment variable set to \\\"YES\\\"\"\n  exit 0\nfi\ncd \"$SRCROOT/..\"\n./gradlew :data:embedAndSignAppleFrameworkForXcode\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		TV00010000000000000000A1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				TV0001000000000000000010 /* VolumeStreamTVApp.swift in Sources */,
+				TV0001000000000000000011 /* VolumeStreamTVConfig.swift in Sources */,
+				TV0001000000000000000012 /* VolumeStreamTVViewModel.swift in Sources */,
+				TV0001000000000000000013 /* VolumeStreamTVShellView.swift in Sources */,
+				TV0001000000000000000014 /* TVPrimaryButtonStyle.swift in Sources */,
+				TV0001000000000000000015 /* PlayerHostView.swift in Sources */,
+				TV0001000000000000000016 /* FocusEffect+tvOS.swift in Sources */,
+				TV0001000000000000000017 /* ArtworkImageView.swift in Sources */,
+				TV0001000000000000000018 /* TVMediaCardView.swift in Sources */,
+				TV0001000000000000000019 /* TVOverlayTrackCardView.swift in Sources */,
+				TV000100000000000000001A /* TVFeedbackViews.swift in Sources */,
+				TV000100000000000000001B /* TVOverlayChipView.swift in Sources */,
+				TV000100000000000000001C /* TVSideNavView.swift in Sources */,
+				TV000100000000000000001D /* TVHomeScreenView.swift in Sources */,
+				TV000100000000000000001E /* TVSearchScreenView.swift in Sources */,
+				TV000100000000000000001F /* TVProfileScreenView.swift in Sources */,
+				TV0001000000000000000020 /* TVSettingsScreenView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		TV00010000000000000000B0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = appletvos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				TVOS_DEPLOYMENT_TARGET = 16.0;
+			};
+			name = Debug;
+		};
+		TV00010000000000000000B1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = appletvos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				TVOS_DEPLOYMENT_TARGET = 16.0;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		TV00010000000000000000B2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = TV000100000000000000003A /* Config.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "${TEAM_ID}";
+				EXECUTABLE_NAME = tvOSApp;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)",
+					"$(SRCROOT)/../data/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
+				);
+				INFOPLIST_FILE = "tvOSApp/Info-tvOS.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-framework",
+					VolumeStreamShared,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "${BUNDLE_ID}";
+				PRODUCT_NAME = tvOSApp;
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SDKROOT = appletvos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 3;
+				TVOS_DEPLOYMENT_TARGET = 16.0;
+			};
+			name = Debug;
+		};
+		TV00010000000000000000B3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = TV000100000000000000003A /* Config.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "${TEAM_ID}";
+				EXECUTABLE_NAME = tvOSApp;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)",
+					"$(SRCROOT)/../data/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
+				);
+				INFOPLIST_FILE = "tvOSApp/Info-tvOS.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-framework",
+					VolumeStreamShared,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "${BUNDLE_ID}";
+				PRODUCT_NAME = tvOSApp;
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SDKROOT = appletvos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 5.0;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				TARGETED_DEVICE_FAMILY = 3;
+				TVOS_DEPLOYMENT_TARGET = 16.0;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		TV0001000000000000000092 /* Build configuration list for PBXProject "tvOSApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				TV00010000000000000000B0 /* Debug */,
+				TV00010000000000000000B1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		TV0001000000000000000093 /* Build configuration list for PBXNativeTarget "tvOSApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				TV00010000000000000000B2 /* Debug */,
+				TV00010000000000000000B3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = TV0001000000000000000091 /* Project object */;
+}
+

@@ -24,13 +24,8 @@ class ProfileDataSourceImpl(
     private val config: StreamVaultConfig = StreamVaultConfig(),
 ) : ProfileDataSource {
 
-    private val protocol: URLProtocol
-        get() = when {
-            authHost.startsWith("https://", ignoreCase = true) -> URLProtocol.HTTPS
-            authHost.startsWith("http://", ignoreCase = true) -> URLProtocol.HTTP
-            config.authUseHttps -> URLProtocol.HTTPS
-            else -> URLProtocol.HTTP
-        }
+    private val configuredProtocol: URLProtocol
+        get() = if (config.authUseHttps) URLProtocol.HTTPS else URLProtocol.HTTP
 
     private val normalizedAuthority: String
         get() = authHost
@@ -48,10 +43,10 @@ class ProfileDataSourceImpl(
             ?: config.authPort
 
     override suspend fun createProfile(jwt: String, request: CreateProfileRequest): UserProfile {
-        AppLogger.d("ProfileDS", "createProfile -> ${protocol.name.lowercase()}://$host:$port/profile/create")
+        AppLogger.d("ProfileDS", "createProfile -> ${configuredProtocol.name.lowercase()}://$host:$port/profile/create")
         val response = httpClient.post {
             url {
-                protocol = this@ProfileDataSourceImpl.protocol
+                protocol = configuredProtocol
                 host = this@ProfileDataSourceImpl.host
                 port = this@ProfileDataSourceImpl.port
                 path("profile", "create")
@@ -67,7 +62,7 @@ class ProfileDataSourceImpl(
     override suspend fun viewProfileById(jwt: String, profileId: String): UserProfile {
         val response = httpClient.get {
             url {
-                protocol = this@ProfileDataSourceImpl.protocol
+                protocol = configuredProtocol
                 host = this@ProfileDataSourceImpl.host
                 port = this@ProfileDataSourceImpl.port
                 path("profile", "view")
@@ -82,7 +77,7 @@ class ProfileDataSourceImpl(
     override suspend fun viewProfileByUserId(jwt: String, userId: String): UserProfile {
         val response = httpClient.get {
             url {
-                protocol = this@ProfileDataSourceImpl.protocol
+                protocol = configuredProtocol
                 host = this@ProfileDataSourceImpl.host
                 port = this@ProfileDataSourceImpl.port
                 path("profile", "user")
@@ -97,7 +92,7 @@ class ProfileDataSourceImpl(
     override suspend fun updateProfile(jwt: String, profile: UserProfile): UserProfile {
         val response = httpClient.put {
             url {
-                protocol = this@ProfileDataSourceImpl.protocol
+                protocol = configuredProtocol
                 host = this@ProfileDataSourceImpl.host
                 port = this@ProfileDataSourceImpl.port
                 path("profile", "update")
@@ -113,7 +108,7 @@ class ProfileDataSourceImpl(
     override suspend fun upgradeAdmin(jwt: String): String {
         val response = httpClient.post {
             url {
-                protocol = this@ProfileDataSourceImpl.protocol
+                protocol = configuredProtocol
                 host = this@ProfileDataSourceImpl.host
                 port = this@ProfileDataSourceImpl.port
                 path("profile", "upgrade-admin")

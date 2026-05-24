@@ -41,8 +41,8 @@ import VolumeStreamShared
 _ = AppleDataBootstrapKt.initializeAppleDataLayer(
     apiHost: "your-api-host",
     authHost: "your-auth-host",
-    apiPort: 18443,
-    authPort: 18443,
+    apiPort: 8081,
+    authPort: 8080,
     apiUseHttps: true,
     authUseHttps: true,
     artworkProfile: "TV"
@@ -78,20 +78,20 @@ The app reads auth/API host and ports from `software/local.properties`.
 
 ```properties
 API_HOST=https://localhost
-AUTH_PORT=18443
-API_PORT=18443
+AUTH_PORT=8080
+API_PORT=8081
 USE_HTTPS=true
 ```
 
 Notes:
 
 - `API_HOST` may include `https://`; the app normalizes host/scheme internally.
-- `USE_HTTPS=true` forces TLS even on non-443 ports (for example `18443`).
+- `USE_HTTPS=true` forces TLS even on non-443 ports (for example `8080`).
 - Login/Register call `/api/*`; profile calls `/profile/*` on the same auth service host/port.
 
 ## iOS Simulator TLS (-1202) Troubleshooting
 
-If iOS shows `NSURLErrorDomain Code=-1202` for `https://localhost:18443/...`,
+If iOS shows `NSURLErrorDomain Code=-1202` for `https://localhost:8080/...`,
 the simulator does not trust the local TLS certificate chain yet.
 
 1) Generate a trusted local certificate (mkcert):
@@ -115,7 +115,7 @@ JWT_SECRET='local-dev-jwt-secret-change-me-please-32-bytes-min' \
 MONGODB_URI='mongodb://host.docker.internal:27017/trust_pulse_auth' \
 REDIS_HOST='host.docker.internal' \
 REDIS_PORT='6379' \
-CORS_ALLOWED_ORIGINS='https://localhost:18443' \
+CORS_ALLOWED_ORIGINS='https://localhost:8080' \
 APP_SECURITY_API_KEY_PEPPER='local-dev-api-key-pepper-change-me' \
 APP_SECURITY_RESET_TOKEN_PEPPER='local-dev-reset-token-pepper-change-me' \
 SERVER_SSL_ENABLED='true' \
@@ -124,7 +124,7 @@ SSL_KEY_STORE_CONTAINER_PATH='/run/secrets/auth-pulse-local.p12' \
 SSL_KEY_STORE_PATH='file:/run/secrets/auth-pulse-local.p12' \
 SSL_KEY_STORE_PASSWORD='changeit123' \
 SSL_KEY_ALIAS='auth-pulse-local' \
-PORT='18443' \
+PORT='8080' \
 MANAGEMENT_PORT='18081' \
 ./scripts/run-prod-docker.sh start
 ```
@@ -132,8 +132,8 @@ MANAGEMENT_PORT='18081' \
 3) Verify backend over TLS:
 
 ```bash
-curl -k -i https://localhost:18443/v3/api-docs
-curl -k -i https://localhost:18443/swagger-ui/index.html
+curl -k -i https://localhost:8080/v3/api-docs
+curl -k -i https://localhost:8080/swagger-ui/index.html
 ```
 
 4) If the app still fails with `-1202`, trust the mkcert root CA in simulator:

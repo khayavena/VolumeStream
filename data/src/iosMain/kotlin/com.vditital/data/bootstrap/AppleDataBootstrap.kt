@@ -21,8 +21,8 @@ fun initializeAppleDataLayer(
     authHost: String = apiHost,
     apiPort: Int = 8081,
     authPort: Int = 8080,
-    apiUseHttps: Boolean = false,
-    authUseHttps: Boolean = false,
+    apiUseHttps: Boolean = true,
+    authUseHttps: Boolean = true,
     artworkProfile: String = "TV",
 ): Boolean {
     val selectedArtworkProfile = when (artworkProfile.uppercase()) {
@@ -56,7 +56,7 @@ fun initializeAppleDataLayer(
                 authRepository = authRepository,
                 sessionRepository = sessionRepository,
             )
-            AppleTvContentBridge.bindRepositories(
+            TvosContentBridge.bindRepositories(
                 authRepository = authRepository,
                 playbackMediaItemRepository = koinApp.koin.get<PlaybackMediaItemRepository>(),
                 profileRepository = koinApp.koin.get<ProfileRepository>(),
@@ -69,12 +69,12 @@ fun initializeAppleDataLayer(
 }
 
 fun isAppleDataLayerReady(): Boolean =
-    ApplePlaybackBridge.isBound() && AppleTvContentBridge.isBound()
+    ApplePlaybackBridge.isBound() && TvosContentBridge.isBound()
 
 fun appleDataLayerReadinessMessage(): String = when {
-    ApplePlaybackBridge.isBound() && AppleTvContentBridge.isBound() ->
+    ApplePlaybackBridge.isBound() && TvosContentBridge.isBound() ->
         "Apple data layer is ready"
-    !ApplePlaybackBridge.isBound() && !AppleTvContentBridge.isBound() ->
+    !ApplePlaybackBridge.isBound() && !TvosContentBridge.isBound() ->
         "Apple data layer is not initialized"
     !ApplePlaybackBridge.isBound() ->
         "Playback bridge is not wired"

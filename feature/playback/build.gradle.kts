@@ -19,9 +19,6 @@ kotlin {
     iosX64()
     iosArm64()
     iosSimulatorArm64()
-    tvosArm64()
-    tvosSimulatorArm64()
-    tvosX64()
 
     sourceSets {
         commonMain.dependencies {
@@ -42,11 +39,6 @@ kotlin {
         androidMain.dependencies {
             // BackHandler for intercepting the hardware/gesture back button on Android
             implementation(libs.androidx.activity.compose)
-        }
-        // Shared source set for all iOS targets — hierarchy template creates it automatically.
-        val iosMain by getting
-        val tvosMain by getting {
-            dependsOn(iosMain)
         }
     }
 }

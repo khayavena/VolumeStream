@@ -29,9 +29,9 @@ data class StreamVaultConfig(
     /** Port the auth-pulse-service listens on. */
     val authPort: Int = 8080,
     /** Use HTTPS for auth-pulse-service requests. */
-    val authUseHttps: Boolean = false,
+    val authUseHttps: Boolean = true,
     /** Use HTTPS for Stream Vault API/media requests. */
-    val apiUseHttps: Boolean = false,
+    val apiUseHttps: Boolean = true,
     /**
      * Backward-compatibility alias for older call sites that assumed one protocol.
      * Prefer [authUseHttps] and [apiUseHttps] for mixed-protocol deployments.

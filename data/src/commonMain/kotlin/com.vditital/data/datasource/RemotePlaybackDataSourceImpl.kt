@@ -23,7 +23,7 @@ class RemotePlaybackDataSourceImpl(
     private val config: StreamVaultConfig = StreamVaultConfig()
 ) : RemotePlaybackDataSource {
 
-    private val protocol  get() = if (config.apiUseHttps) URLProtocol.HTTPS else URLProtocol.HTTP
+    private val configuredProtocol get() = if (config.apiUseHttps) URLProtocol.HTTPS else URLProtocol.HTTP
     private val port      get() = config.apiPort
     private val feedPath  get() = "${config.apiBasePath}/media/feed"
 
@@ -37,16 +37,18 @@ class RemotePlaybackDataSourceImpl(
         val jwt = tokenStore.getJwt()
         AppLogger.d("DataSource", "fetchFeed from $apiHost:$port/$feedPath  jwt=${jwt != null}")
 
-        val response = httpClient.get {
+        suspend fun fetch(protocol: URLProtocol) = httpClient.get {
             url {
-                protocol = this@RemotePlaybackDataSourceImpl.protocol
-                host     = apiHost
-                port     = this@RemotePlaybackDataSourceImpl.port
+                this.protocol = protocol
+                host = apiHost
+                port = this@RemotePlaybackDataSourceImpl.port
                 appendPathSegments(feedPath.split("/"))
             }
             if (jwt != null) bearerAuth(jwt)
             headers.append(HttpHeaders.Accept, "application/json")
         }
+
+        val response = fetch(configuredProtocol)
 
         val rawBody = response.bodyAsText()
         AppLogger.d("DataSource", "HTTP ${response.status} feedBodyPreview=${rawBody.take(1200)}")

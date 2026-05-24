@@ -31,14 +31,14 @@ kotlin {
         commonMain.dependencies {
             api(project(":data"))
             implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.ui)
             implementation(libs.koin.core)
-            implementation(libs.koin.compose)
             implementation(libs.ktor.client.core)
         }
         androidMain.dependencies {
+            implementation(compose.foundation)
+            implementation(compose.ui)
             implementation(libs.koin.android)
+            implementation(libs.koin.compose)
             implementation(libs.androidx.work.runtime)
             implementation(libs.androidx.media3.exoplayer)
             implementation(libs.androidx.media3.exoplayer.dash)
@@ -47,15 +47,17 @@ kotlin {
             implementation(libs.androidx.media3.ui)
             implementation(libs.androidx.activity.compose)
         }
+        val appleMain by getting
         val iosMain by getting {
             dependencies {
+                implementation(compose.foundation)
+                implementation(compose.ui)
                 implementation(libs.koin.core)
+                implementation(libs.koin.compose)
                 implementation(libs.ktor.client.darwin)
             }
         }
-        val tvosMain by getting {
-            dependsOn(iosMain)
-        }
+        val tvosMain by getting
     }
 }
 

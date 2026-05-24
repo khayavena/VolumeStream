@@ -12,7 +12,6 @@ plugins {
     alias(libs.plugins.compose.compiler)
     kotlin("plugin.serialization") version libs.versions.kotlin.get()
 }
-
 // ── App config ───────────────────────────────────────────────────────────────
 // All runtime config lives in local.properties (gitignored).
 // Add entries there; they are injected into Android via BuildConfig and into
@@ -101,13 +100,13 @@ val iosApiUseHttpsRaw: String? = if (iosEnvValue == "prod") {
 
 val iosHostParts = parseHostParts(iosHostRawValue)
 val iosAuthUseHttpsValue: Boolean = parseBooleanProp(iosAuthUseHttpsRaw)
-    ?: (iosHostParts.useHttps || iosAuthPortValue == "443" || iosAuthPortValue == "18443")
+    ?: (iosHostParts.useHttps || iosAuthPortValue == "443")
 val iosApiUseHttpsValue: Boolean = parseBooleanProp(iosApiUseHttpsRaw)
     ?: (iosHostParts.useHttps || iosApiPortValue == "443")
 
 val androidHostParts = parseHostParts(apiHostValueRaw)
 val androidAuthUseHttpsValue: Boolean = parseBooleanProp(authUseHttpsValue)
-    ?: (androidHostParts.useHttps || authPortValue == "443" || authPortValue == "18443")
+    ?: (androidHostParts.useHttps || authPortValue == "443")
 val androidApiUseHttpsValue: Boolean = parseBooleanProp(apiUseHttpsValue)
     ?: (androidHostParts.useHttps || apiPortValue == "443")
 
@@ -165,14 +164,14 @@ val updateApiHostFromNetwork by tasks.registering {
     }
 }
 
-// Generates AppConfig.kt directly into the iosMain source tree so the IDE
+// Generates AppConfig.kt directly into the appleMain source tree so the IDE
 // can resolve the constants without a prior Gradle build.  The file is
 // gitignored (it contains machine-specific values from local.properties).
 val generateIosAppConfig by tasks.registering {
     // Write straight into the checked-in source directory so IntelliJ / AS
     // indexes it as a regular source file — no kotlin.srcDir plumbing needed.
     val outputFile = file(
-        "src/iosMain/kotlin/com/vdigital/volumestream/config/AppConfig.kt"
+        "src/appleMain/kotlin/com/vdigital/volumestream/config/AppConfig.kt"
     )
     // Declare local.properties as an input so the task is re-run whenever
     // the host/port values change (busts Gradle's up-to-date check).
@@ -208,9 +207,6 @@ kotlin {
         iosX64(),
         iosArm64(),
         iosSimulatorArm64(),
-        tvosArm64(),
-        tvosSimulatorArm64(),
-        tvosX64(),
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "ComposeApp"
@@ -227,6 +223,8 @@ kotlin {
             implementation(libs.android.splashscreen)
             implementation(libs.androidx.media3.exoplayer.dash)
             implementation(libs.androidx.tv.material)
+            implementation(libs.navigation.compose)
+            implementation(libs.image.loader)
         }
         commonMain.dependencies {
             implementation(project(":data"))
@@ -248,16 +246,13 @@ kotlin {
             implementation(libs.koin.compose)
             implementation(libs.koin.composeVM)
             implementation(libs.koin.core)
-            implementation(libs.navigation.compose)
-            implementation(libs.image.loader)
         }
+        val appleMain by getting
         val iosMain by getting {
             dependencies {
-                implementation(libs.koin.core)
+                implementation(libs.navigation.compose)
+                implementation(libs.image.loader)
             }
-        }
-        val tvosMain by getting {
-            dependsOn(iosMain)
         }
     }
 }
@@ -317,9 +312,6 @@ android {
     dependencies {
         debugImplementation(compose.uiTooling)
     }
-}
-dependencies {
-    implementation(libs.androidx.lifecycle.common.jvm)
 }
 
 tasks.named("preBuild") {
@@ -390,6 +382,29 @@ tasks.register("launchTvDebugFromIde") {
     }
 }
 
+tasks.register("launchTvosSimulatorFromIde") {
+    group = "ide"
+    description = "Build, install, and launch tvOSApp on the selected tvOS simulator."
+    doLast {
+        val simulatorName = projectEnvOrDefault("TVOS_SIMULATOR", "tvOS Simulator")
+        val scheme = projectEnvOrDefault("TVOS_SCHEME", "tvOSApp")
+        val launchScript = rootProject.file("composeApp/scripts/launch_tvos_simulator.sh")
+        if (!launchScript.exists()) {
+            throw GradleException("tvOS launch script not found: ${launchScript.absolutePath}")
+        }
+        exec {
+            environment(
+                mapOf(
+                    "TVOS_SIMULATOR" to simulatorName,
+                    "TVOS_SCHEME" to scheme,
+                    "TVOS_BUNDLE_ID" to "com.vdigital.volumestream.tvos",
+                )
+            )
+            commandLine("/bin/zsh", launchScript.absolutePath)
+        }
+    }
+}
+
 tasks.register("launchIosSimulatorFromIde") {
     group = "ide"
     description = "Build, install, and launch iosApp on the selected iOS simulator."
@@ -408,6 +423,12 @@ tasks.register("launchIosSimulatorFromIde") {
         exec {
             environment(
                 mapOf(
+                    "IOS_SIMULATOR" to simulatorName,
+                    "IOS_SCHEME" to scheme,
+                    "IOS_BUNDLE_ID" to bundleId,
+                    "IOS_PROJECT_PATH" to projectPath,
+                    "IOS_DERIVED_DATA" to derivedDataPath,
+                    "IOS_APP_PATH" to appPath,
                     "SIMULATOR" to simulatorName,
                     "SCHEME" to scheme,
                     "BUNDLE_ID" to bundleId,
@@ -420,4 +441,3 @@ tasks.register("launchIosSimulatorFromIde") {
         }
     }
 }
-
