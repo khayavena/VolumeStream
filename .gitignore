@@ -51,7 +51,12 @@ iosApp/tvos_stderr.log
 scripts/add_tvos_target.rb
 
 /iosApp/build_ios_install/info.plist
+/iosApp/build_tvos_install/info.plist
 /iosApp/build_ios_install/Logs/Launch/LogStoreManifest.plist
 /iosApp/build_ios_install/Logs/Localization/LogStoreManifest.plist
 /iosApp/build_ios_install/Logs/Package/LogStoreManifest.plist
 /iosApp/build_ios_install/Logs/Test/LogStoreManifest.plist
+/iosApp/build_tvos_install/Logs/Launch/LogStoreManifest.plist
+/iosApp/build_tvos_install/Logs/Localization/LogStoreManifest.plist
+/iosApp/build_tvos_install/Logs/Package/LogStoreManifest.plist
+/iosApp/build_tvos_install/Logs/Test/LogStoreManifest.plist
