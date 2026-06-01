@@ -50,3 +50,8 @@ iosApp/tvos_stderr.log
 # Local helper scripts
 scripts/add_tvos_target.rb
 
+/iosApp/build_ios_install/info.plist
+/iosApp/build_ios_install/Logs/Launch/LogStoreManifest.plist
+/iosApp/build_ios_install/Logs/Localization/LogStoreManifest.plist
+/iosApp/build_ios_install/Logs/Package/LogStoreManifest.plist
+/iosApp/build_ios_install/Logs/Test/LogStoreManifest.plist
