@@ -169,7 +169,8 @@ class DownloadViewModel(
 
         val baseHeaders = mutableMapOf(
             "Authorization" to "Bearer $jwt",
-            "X-Session-Token" to session.data.sessionToken
+            "X-Session-Token" to session.data.sessionToken,
+            "X-Device-Id" to sessionRepository.getDeviceId()
         )
 
         if (osType == OsType.ANDROID) {

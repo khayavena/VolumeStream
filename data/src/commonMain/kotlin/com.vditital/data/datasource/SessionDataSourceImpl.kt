@@ -116,7 +116,9 @@ class SessionDataSourceImpl(
         // All network/crypto operations are wrapped in try/catch for robust error logging (iOS-friendly)
         try {
             AppLogger.d("SessionDS", "fetchAesKey mediaId=$mediaId sid=$sessionId")
-            val response = httpClient.get("${protocol.name.lowercase()}://$apiHost:$port/$base/manifest/$mediaId/key?sid=$sessionId&t=$sessionToken")
+            val response = httpClient.get("${protocol.name.lowercase()}://$apiHost:$port/$base/manifest/$mediaId/key?sid=$sessionId&t=$sessionToken") {
+                header(config.headerDeviceId, tokenStore.getDeviceId())
+            }
             val bytes = response.readRawBytes()
             check(bytes.size == 16) {
                 "StreamVault key endpoint returned ${bytes.size} bytes; expected 16 (AES-128)"

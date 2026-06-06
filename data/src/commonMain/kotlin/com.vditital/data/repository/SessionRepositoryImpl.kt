@@ -5,6 +5,7 @@ import com.vditital.data.model.SessionStartResponse
 import com.vditital.data.repository.state.ResultState
 import com.vditital.data.security.TokenStore
 import com.vditital.data.util.AppLogger
+import com.vditital.data.util.deviceTamperReason
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -27,6 +28,15 @@ class SessionRepositoryImpl(
     private val registrationMutex = Mutex()
 
     override suspend fun ensureDeviceRegistered(): ResultState<Unit> {
+        val tamperReason = deviceTamperReason()
+        if (tamperReason != null) {
+            AppLogger.w("SessionRepo", "ensureDeviceRegistered blocked: $tamperReason")
+            return ResultState.Error(
+                IllegalStateException(
+                    "Device registration blocked: this device appears tampered. Please use a secure device."
+                )
+            )
+        }
         val jwt = tokenStore.getJwt()
         if (jwt.isNullOrBlank()) {
             AppLogger.d("SessionRepo", "ensureDeviceRegistered skipped (no JWT)")
@@ -117,4 +127,6 @@ class SessionRepositoryImpl(
             }
         )
     }
+
+    override fun getDeviceId(): String = tokenStore.getDeviceId()
 }

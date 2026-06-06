@@ -23,5 +23,8 @@ interface SessionRepository {
 
     /** Persists playback progress for the current user/media in Stream Vault. */
     suspend fun saveRecentlyWatched(mediaId: String, playbackPosition: Long): ResultState<Unit>
+
+    /** Stable device ID used for cert-pin registration and playback binding headers. */
+    fun getDeviceId(): String
     // endSession removed — session cleanup is handled server-side via TTL / 401 revocation.
 }

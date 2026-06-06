@@ -84,6 +84,7 @@ class PlaybackViewModel(
          *  override them without touching the player layer. */
         const val HEADER_AUTHORIZATION  = "Authorization"
         const val HEADER_SESSION_TOKEN  = "X-Session-Token"
+        const val HEADER_DEVICE_ID      = "X-Device-Id"
         const val RECENTLY_WATCHED_SYNC_INTERVAL_MS = 60_000L
     }
 
@@ -169,12 +170,14 @@ class PlaybackViewModel(
                     AppLogger.i("PlaybackVM",
                         "Session started: sessionId=${sessionResult.data.sessionId} mediaId=${item.id}")
                     val playbackJwt = withContext(Dispatchers.IO) { latestJwtOrFallback(jwt) }
+                    val deviceId = withContext(Dispatchers.IO) { sessionRepository.getDeviceId() }
                     // 4. Inject headers into the player's HTTP layer BEFORE
                     //    initPlayer() builds ExoPlayer / AVPlayer.
                     playbackStateController.setAuthHeaders(
                         mapOf(
                             HEADER_AUTHORIZATION to "Bearer $playbackJwt",
-                            HEADER_SESSION_TOKEN to sessionResult.data.sessionToken
+                            HEADER_SESSION_TOKEN to sessionResult.data.sessionToken,
+                            HEADER_DEVICE_ID to deviceId
                         )
                     )
                     // 5. Fetch + inject the 16-byte AES-128 key for DASH segment decryption.
@@ -445,10 +448,12 @@ class PlaybackViewModel(
                     AppLogger.i("PlaybackVM", "Track switch session: ${sessionResult.data.sessionId} mediaId=${item.id}")
                     if (selectionVersion != trackSelectionVersion) return@launch
                     val playbackJwt = withContext(Dispatchers.IO) { latestJwtOrFallback(jwt) }
+                    val deviceId = withContext(Dispatchers.IO) { sessionRepository.getDeviceId() }
                     playbackStateController.setAuthHeaders(
                         mapOf(
                             HEADER_AUTHORIZATION to "Bearer $playbackJwt",
-                            HEADER_SESSION_TOKEN to sessionResult.data.sessionToken
+                            HEADER_SESSION_TOKEN to sessionResult.data.sessionToken,
+                            HEADER_DEVICE_ID to deviceId
                         )
                     )
                     // 5. Fetch + inject AES key for DASH segment decryption.
@@ -552,9 +557,11 @@ class PlaybackViewModel(
         val sessionResult = sessionRepository.startSession(jwt, mediaId)
         return if (sessionResult is ResultState.Success) {
             val playbackJwt = latestJwtOrFallback(jwt)
+            val deviceId = sessionRepository.getDeviceId()
             mapOf(
                 HEADER_AUTHORIZATION to "Bearer $playbackJwt",
-                HEADER_SESSION_TOKEN to sessionResult.data.sessionToken
+                HEADER_SESSION_TOKEN to sessionResult.data.sessionToken,
+                HEADER_DEVICE_ID to deviceId
             )
         } else {
             val cause = (sessionResult as? ResultState.Error)?.exception?.message ?: "unknown"

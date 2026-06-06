@@ -4,6 +4,7 @@ import com.vditital.data.datasource.AuthDataSource
 import com.vditital.data.repository.state.ResultState
 import com.vditital.data.security.TokenStore
 import com.vditital.data.util.AppLogger
+import com.vditital.data.util.deviceTamperReason
 import com.vditital.data.util.isJwtExpired
 
 class AuthRepositoryImpl(
@@ -12,6 +13,12 @@ class AuthRepositoryImpl(
 ) : AuthRepository {
 
     override suspend fun login(email: String, password: String): ResultState<Unit> = runCatching {
+        val tamperReason = deviceTamperReason()
+        if (tamperReason != null) {
+            throw IllegalStateException(
+                "Login blocked: this device appears tampered. Please use a secure device."
+            )
+        }
         AppLogger.d("AuthRepo", "login email=$email")
         val response = authDataSource.login(email, password)
         val rawToken = response.token.removePrefix("Bearer ").trim()
@@ -23,6 +30,12 @@ class AuthRepositoryImpl(
     )
 
     override suspend fun register(email: String, password: String): ResultState<Unit> = runCatching {
+        val tamperReason = deviceTamperReason()
+        if (tamperReason != null) {
+            throw IllegalStateException(
+                "Registration blocked: this device appears tampered. Please use a secure device."
+            )
+        }
         AppLogger.d("AuthRepo", "register email=$email")
         authDataSource.register(email, password)
         val loginResponse = authDataSource.login(email, password)
@@ -70,4 +83,3 @@ class AuthRepositoryImpl(
         }
     }
 }
-

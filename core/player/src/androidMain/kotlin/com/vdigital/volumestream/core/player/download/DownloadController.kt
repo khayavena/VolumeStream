@@ -38,6 +38,7 @@ actual class DownloadController(private val context: Context) {
                     DownloadWorker.KEY_ARTWORK to artworkUrl,
                     DownloadWorker.KEY_AUTHORIZATION to headers["Authorization"],
                     DownloadWorker.KEY_SESSION_TOKEN to headers["X-Session-Token"],
+                    DownloadWorker.KEY_DEVICE_ID to headers["X-Device-Id"],
                     DownloadWorker.KEY_AES_KEY_B64 to headers["X-Aes-Key-B64"]
                 )
             )

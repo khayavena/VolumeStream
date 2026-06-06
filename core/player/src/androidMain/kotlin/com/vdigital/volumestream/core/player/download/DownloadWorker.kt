@@ -37,6 +37,7 @@ internal class DownloadWorker(
         const val KEY_ARTWORK = "artwork"
         const val KEY_AUTHORIZATION = "authorization"
         const val KEY_SESSION_TOKEN = "session_token"
+        const val KEY_DEVICE_ID = "device_id"
         const val KEY_AES_KEY_B64 = "aes_key_b64"
         const val KEY_PROGRESS  = "progress"
         const val KEY_LOCAL_PATH = "local_path"
@@ -52,6 +53,7 @@ internal class DownloadWorker(
         val artwork  = inputData.getString(KEY_ARTWORK) ?: ""
         val authorization = inputData.getString(KEY_AUTHORIZATION)
         val sessionToken = inputData.getString(KEY_SESSION_TOKEN)
+        val deviceId = inputData.getString(KEY_DEVICE_ID)
         val aesKey = inputData.getString(KEY_AES_KEY_B64)
             ?.takeIf { it.isNotBlank() }
             ?.let { encoded -> runCatching { Base64.decode(encoded, Base64.DEFAULT) }.getOrNull() }
@@ -63,7 +65,7 @@ internal class DownloadWorker(
         var outputFile: File? = null
 
         try {
-            val probe = openConnection(url, authorization, sessionToken)
+            val probe = openConnection(url, authorization, sessionToken, deviceId)
             val extension = inferExtension(url, probe.contentType)
             probe.disconnect()
             outputFile = if (extension == ".mpd") {
@@ -80,7 +82,8 @@ internal class DownloadWorker(
                     rootOutput = outputFile,
                     downloadsDir = downloadsDir,
                     authorization = authorization,
-                    sessionToken = sessionToken
+                    sessionToken = sessionToken,
+                    deviceId = deviceId
                 )
                 val localUri = Uri.fromFile(outputFile).toString()
                 context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -104,6 +107,7 @@ internal class DownloadWorker(
                     rootOutput = outputFile,
                     authorization = authorization,
                     sessionToken = sessionToken,
+                    deviceId = deviceId,
                     aesKey = aesKey
                 )
                 val localUri = Uri.fromFile(outputFile).toString()
@@ -119,7 +123,7 @@ internal class DownloadWorker(
                 return@withContext Result.success(workDataOf(KEY_LOCAL_PATH to localUri))
             }
 
-            val connection = openConnection(url, authorization, sessionToken)
+            val connection = openConnection(url, authorization, sessionToken, deviceId)
             val totalBytes = connection.contentLengthLong
             var downloaded = 0L
             var lastReportedProgress = -1
@@ -175,7 +179,8 @@ internal class DownloadWorker(
         rootOutput: File,
         downloadsDir: File,
         authorization: String?,
-        sessionToken: String?
+        sessionToken: String?,
+        deviceId: String?
     ) {
         val uriMap = mutableMapOf<String, String>()
         val visitedPlaylists = mutableSetOf<String>()
@@ -197,7 +202,7 @@ internal class DownloadWorker(
         fun downloadBinary(remoteUrl: String, localName: String) {
             val out = File(downloadsDir, localName)
             if (out.exists()) return
-            val conn = openConnection(remoteUrl, authorization, sessionToken)
+            val conn = openConnection(remoteUrl, authorization, sessionToken, deviceId)
             conn.inputStream.use { input ->
                 FileOutputStream(out).use { output ->
                     input.copyTo(output)
@@ -210,7 +215,7 @@ internal class DownloadWorker(
 
         fun rewritePlaylist(remoteUrl: String, outFile: File, depth: Int) {
             if (depth > 4 || !visitedPlaylists.add(remoteUrl)) return
-            val conn = openConnection(remoteUrl, authorization, sessionToken)
+            val conn = openConnection(remoteUrl, authorization, sessionToken, deviceId)
             val text = conn.inputStream.bufferedReader().use { it.readText() }
             conn.disconnect()
 
@@ -262,12 +267,13 @@ internal class DownloadWorker(
         rootOutput: File,
         authorization: String?,
         sessionToken: String?,
+        deviceId: String?,
         aesKey: ByteArray?
     ) {
         val rootDir = rootOutput.parentFile ?: error("Missing output parent directory")
         rootDir.deleteRecursively()
         rootDir.mkdirs()
-        val mpdText = openConnection(rootUrl, authorization, sessionToken).useText()
+        val mpdText = openConnection(rootUrl, authorization, sessionToken, deviceId).useText()
         val segmentTemplates = parseSegmentTemplates(mpdText)
 
         val assetsByLocalName = linkedMapOf<String, String>()
@@ -300,6 +306,7 @@ internal class DownloadWorker(
                     outputFile = out,
                     authorization = authorization,
                     sessionToken = sessionToken,
+                    deviceId = deviceId,
                     aesKey = aesKey
                 )
             }
@@ -388,13 +395,14 @@ internal class DownloadWorker(
         outputFile: File,
         authorization: String?,
         sessionToken: String?,
+        deviceId: String?,
         aesKey: ByteArray?
     ) {
         val candidates = buildDashAssetCandidates(rootUrl, mediaId, assetPath)
         var lastError: Exception? = null
         for (candidate in candidates) {
             try {
-                val conn = openConnection(candidate, authorization, sessionToken)
+                val conn = openConnection(candidate, authorization, sessionToken, deviceId)
                 val payload = conn.inputStream.use { it.readBytes() }
                 val bytesToWrite = if (isDashProxyAsset(candidate)) {
                     val key = aesKey ?: throw IllegalStateException("Missing AES key for DASH proxy asset")
@@ -451,7 +459,12 @@ internal class DownloadWorker(
         }
     }
 
-    private fun openConnection(url: String, authorization: String?, sessionToken: String?): HttpURLConnection {
+    private fun openConnection(
+        url: String,
+        authorization: String?,
+        sessionToken: String?,
+        deviceId: String?
+    ): HttpURLConnection {
         return (URL(url).openConnection() as HttpURLConnection).apply {
             connectTimeout = 15_000
             readTimeout = 30_000
@@ -460,6 +473,9 @@ internal class DownloadWorker(
             }
             if (!sessionToken.isNullOrBlank()) {
                 setRequestProperty("X-Session-Token", sessionToken)
+            }
+            if (!deviceId.isNullOrBlank()) {
+                setRequestProperty("X-Device-Id", deviceId)
             }
             connect()
         }

@@ -6,6 +6,7 @@ import com.vditital.data.repository.state.ResultState
 
 private const val HEADER_AUTHORIZATION = "Authorization"
 private const val HEADER_SESSION_TOKEN = "X-Session-Token"
+private const val HEADER_DEVICE_ID = "X-Device-Id"
 
 /**
  * Bridge helpers for Apple hosts that want to keep playback auth behavior aligned
@@ -45,9 +46,9 @@ object ApplePlaybackBridge {
             is ResultState.Success -> mapOf(
                 HEADER_AUTHORIZATION to "Bearer $jwt",
                 HEADER_SESSION_TOKEN to session.data.sessionToken,
+                HEADER_DEVICE_ID to sessionRepo.getDeviceId(),
             )
             else -> emptyMap()
         }
     }
 }
-
